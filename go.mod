@@ -5,7 +5,7 @@ go 1.24.0
 require (
 	github.com/abema/go-mp4 v1.4.1
 	github.com/bluenviron/gortsplib/v4 v4.16.2
-	github.com/bluenviron/mediacommon/v2 v2.4.2-0.20250909112826-017d0bbe41db
+	github.com/bluenviron/mediacommon/v2 v2.4.2
 	github.com/google/uuid v1.6.0
 	github.com/stretchr/testify v1.11.1
 )
