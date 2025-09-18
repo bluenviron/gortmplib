@@ -15,14 +15,14 @@ Go &ge; 1.24 is required.
 Features:
 
 * Read and write multiple video and audio tracks
-* Read and write tracks encoded with AV1, VP9, H265, H264, Opus, MPEG-4 Audio (AAC), MPEG-1/2 Audio, AC-3, G711 (PCMA, PCMU), LPCM
+* Read and write tracks encoded with AV1, VP9, H265, H264, Opus, MPEG-4 Audio (AAC), MPEG-1/2 Audio (MP3), AC-3, G711 (PCMA, PCMU), LPCM
 * Support most Enhanced RTMP features
 * Support TLS encryption (RTMPS)
 * Support Diffie-hellman based encryption (RTMPE)
 
 Current limitations:
 
-* API is not stable and might be subjected to major changes.
+* API is not stable and might be subjected to breaking changes.
 * Codec definitions are borrowed from gortsplib. They will be made independent in the future.
 
 ## Table of contents
