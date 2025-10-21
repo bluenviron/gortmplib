@@ -32,6 +32,14 @@ var errBufferTooShort = errors.New("buffer is too short")
 // StrictArray is an AMF0 Strict Array.
 type StrictArray []interface{}
 
+// Undefined is the undefined value.
+type Undefined struct {
+	// in Go, empty structs share the same pointer,
+	// therefore they cannot be used as map keys
+	// or in equality operations. Prevent this.
+	unused int //nolint:unused
+}
+
 // Data is a list of ActionScript object graphs.
 type Data []interface{}
 
@@ -190,6 +198,9 @@ func unmarshal(buf []byte) (interface{}, []byte, error) {
 	case markerNull:
 		return nil, buf, nil
 
+	case markerUndefined:
+		return Undefined{}, buf, nil
+
 	case markerStrictArray:
 		if len(buf) < 4 {
 			return nil, nil, errBufferTooShort
@@ -304,6 +315,9 @@ func marshalSizeItem(item interface{}) (int, error) {
 
 		return n, nil
 
+	case Undefined:
+		return 1, nil
+
 	case StrictArray:
 		n := 5
 
@@ -400,6 +414,10 @@ func marshalItem(item interface{}, buf []byte) int {
 		buf[n+2] = markerObjectEnd
 
 		return n + 3
+
+	case Undefined:
+		buf[0] = markerUndefined
+		return 1
 
 	case StrictArray:
 		le := len(item)
