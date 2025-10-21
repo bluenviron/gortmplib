@@ -19,6 +19,7 @@ Features:
 * Support most Enhanced RTMP features
 * Support TLS encryption (RTMPS)
 * Support Diffie-hellman based encryption (RTMPE)
+* Support encoding and decoding data with the AMF0 format
 
 Current limitations:
 
