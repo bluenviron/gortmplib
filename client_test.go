@@ -19,6 +19,7 @@ func TestClient(t *testing.T) {
 		"auth",
 		"read",
 		"read nginx rtmp",
+		"read srs",
 		"publish",
 	} {
 		t.Run(ca, func(t *testing.T) {
@@ -170,7 +171,7 @@ func TestClient(t *testing.T) {
 							}, msg)
 						}
 
-					case "read", "read nginx rtmp":
+					case "read", "read nginx rtmp", "read srs":
 						msg, err2 = mrw.Read()
 						require.NoError(t, err2)
 						require.Equal(t, &message.CommandAMF0{ //nolint:dupl
@@ -285,7 +286,7 @@ func TestClient(t *testing.T) {
 					require.NoError(t, err2)
 
 					switch ca {
-					case "auth", "read", "read nginx rtmp":
+					case "auth", "read", "read nginx rtmp", "read srs":
 						msg, err2 = mrw.Read()
 						require.NoError(t, err2)
 						require.Equal(t, &message.CommandAMF0{
@@ -296,6 +297,18 @@ func TestClient(t *testing.T) {
 								nil,
 							},
 						}, msg)
+
+						if ca == "read srs" {
+							err2 = mrw.Write(&message.CommandAMF0{
+								ChunkStreamID: 3,
+								Name:          "onBWDone",
+								CommandID:     0,
+								Arguments: []interface{}{
+									nil,
+								},
+							})
+							require.NoError(t, err2)
+						}
 
 						err2 = mrw.Write(&message.CommandAMF0{
 							ChunkStreamID: 3,
@@ -453,6 +466,10 @@ func TestClient(t *testing.T) {
 			switch ca {
 			case "read", "read nginx rtmp":
 				require.Equal(t, uint64(3421), conn.BytesReceived())
+				require.Equal(t, uint64(0xdb3), conn.BytesSent())
+
+			case "read srs":
+				require.Equal(t, uint64(0xd7a), conn.BytesReceived())
 				require.Equal(t, uint64(0xdb3), conn.BytesSent())
 
 			case "publish":
