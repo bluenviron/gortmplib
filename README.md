@@ -36,6 +36,7 @@ Current limitations:
 
 * [client-read](examples/client-read/main.go)
 * [client-publish-h264](examples/client-publish-h264/main.go)
+* [client-publish-mpeg4audio](examples/client-publish-mpeg4audio/main.go)
 * [server](examples/server/main.go)
 
 ## API Documentation
