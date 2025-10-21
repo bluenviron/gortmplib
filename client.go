@@ -127,7 +127,27 @@ func readCommandResult(
 		}
 
 		if cmd, ok := msg.(*message.CommandAMF0); ok {
-			if cmd.CommandID == commandID || cmd.CommandID == 0 {
+			if cmd.CommandID == commandID || (cmd.CommandID == 0) &&
+				(cmd.Name == "_result" || cmd.Name == "_error") {
+				return cmd, nil
+			}
+		}
+	}
+}
+
+func waitOnStatus(
+	mrw *message.ReadWriter,
+	commandID int,
+) (*message.CommandAMF0, error) {
+	for {
+		msg, err := mrw.Read()
+		if err != nil {
+			return nil, err
+		}
+
+		if cmd, ok := msg.(*message.CommandAMF0); ok {
+			if cmd.CommandID == commandID || (cmd.CommandID == 0 &&
+				cmd.Name == "onStatus") {
 				return cmd, nil
 			}
 		}
@@ -428,7 +448,7 @@ func (c *Client) initialize3() error {
 			return err
 		}
 
-		res, err = readCommandResult(c.mrw, 3)
+		res, err = waitOnStatus(c.mrw, 3)
 		if err != nil {
 			return err
 		}
@@ -499,7 +519,7 @@ func (c *Client) initialize3() error {
 			return err
 		}
 
-		res, err = readCommandResult(c.mrw, 5)
+		res, err = waitOnStatus(c.mrw, 5)
 		if err != nil {
 			return err
 		}
