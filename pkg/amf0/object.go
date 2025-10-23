@@ -51,3 +51,13 @@ func (o Object) GetFloat64(key string) (float64, bool) {
 
 	return v2, ok2
 }
+
+// ToMap converts the Object into a map[string]interface{}.
+func (o Object) ToMap() map[string]interface{} {
+	m := make(map[string]interface{})
+	for _, item := range o {
+		m[item.Key] = item.Value
+	}
+
+	return m
+}
