@@ -187,7 +187,7 @@ var readWriterCases = []struct {
 			MessageStreamID: 345243,
 			Name:            "i8yythrergre",
 			CommandID:       56456,
-			Arguments: []interface{}{
+			Arguments: []any{
 				amf0.Object{
 					{Key: "k1", Value: "v1"},
 					{Key: "k2", Value: "v2"},
@@ -211,7 +211,7 @@ var readWriterCases = []struct {
 		&DataAMF0{
 			ChunkStreamID:   3,
 			MessageStreamID: 345243,
-			Payload: []interface{}{
+			Payload: []any{
 				float64(234),
 				"string",
 				nil,
@@ -591,7 +591,7 @@ var readWriterCases = []struct {
 			DTS:             0,
 			MessageStreamID: 0x1000000,
 			FourCC:          0x68766331,
-			Payload:         []interface{}{"colorInfo", amf0.Object{{Key: "colorConfig", Value: amf0.Object{}}}},
+			Payload:         []any{"colorInfo", amf0.Object{{Key: "colorConfig", Value: amf0.Object{}}}},
 		},
 		[]byte{
 			0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x26, 0x09,

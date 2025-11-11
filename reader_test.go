@@ -116,7 +116,7 @@ func TestReadTracks(t *testing.T) {
 				&message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 1,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{
@@ -188,7 +188,7 @@ func TestReadTracks(t *testing.T) {
 				&message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 1,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{
@@ -317,7 +317,7 @@ func TestReadTracks(t *testing.T) {
 				&message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 1,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{
@@ -432,7 +432,7 @@ func TestReadTracks(t *testing.T) {
 				&message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 1,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{
@@ -509,7 +509,7 @@ func TestReadTracks(t *testing.T) {
 				&message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 1,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{
@@ -565,7 +565,7 @@ func TestReadTracks(t *testing.T) {
 				&message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 1,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{
@@ -618,7 +618,7 @@ func TestReadTracks(t *testing.T) {
 				&message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 1,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{
@@ -713,7 +713,7 @@ func TestReadTracks(t *testing.T) {
 				&message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 1,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{
@@ -786,7 +786,7 @@ func TestReadTracks(t *testing.T) {
 				&message.DataAMF0{
 					ChunkStreamID:   8,
 					MessageStreamID: 0x1000000,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{
@@ -863,7 +863,7 @@ func TestReadTracks(t *testing.T) {
 				&message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 1,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{
@@ -909,7 +909,7 @@ func TestReadTracks(t *testing.T) {
 				&message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 1,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{
@@ -955,7 +955,7 @@ func TestReadTracks(t *testing.T) {
 				&message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 1,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{
@@ -1001,7 +1001,7 @@ func TestReadTracks(t *testing.T) {
 				&message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 1,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{
@@ -1076,7 +1076,7 @@ func TestReadTracks(t *testing.T) {
 				&message.DataAMF0{ //nolint:dupl
 					ChunkStreamID:   4,
 					MessageStreamID: 1,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.ECMAArray{
@@ -1203,7 +1203,7 @@ func TestReadTracks(t *testing.T) {
 				&message.DataAMF0{ //nolint:dupl
 					ChunkStreamID:   4,
 					MessageStreamID: 1,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.ECMAArray{
@@ -1322,7 +1322,7 @@ func TestReadTracks(t *testing.T) {
 				&message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 0x1000000,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.ECMAArray{
@@ -1444,7 +1444,7 @@ func TestReadTracks(t *testing.T) {
 				&message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 0x1000000,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.ECMAArray{
@@ -1573,7 +1573,7 @@ func TestReadTracks(t *testing.T) {
 				&message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 1,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{

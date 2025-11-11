@@ -84,7 +84,7 @@ func TestServerConn(t *testing.T) {
 					ChunkStreamID: 3,
 					Name:          "connect",
 					CommandID:     1,
-					Arguments: []interface{}{
+					Arguments: []any{
 						amf0.Object{
 							{Key: "app", Value: "stream?key=val"},
 							{Key: "flashVer", Value: "LNX 9,0,124,2"},
@@ -106,7 +106,7 @@ func TestServerConn(t *testing.T) {
 					ChunkStreamID: 3,
 					Name:          "_error",
 					CommandID:     1,
-					Arguments: []interface{}{
+					Arguments: []any{
 						nil,
 						amf0.Object{
 							{Key: "level", Value: "error"},
@@ -121,7 +121,7 @@ func TestServerConn(t *testing.T) {
 					ChunkStreamID: 3,
 					Name:          "connect",
 					CommandID:     1,
-					Arguments: []interface{}{
+					Arguments: []any{
 						amf0.Object{
 							{Key: "app", Value: "stream?key=val?authmod=adobe&user=myuser"},
 							{Key: "flashVer", Value: "LNX 9,0,124,2"},
@@ -143,7 +143,7 @@ func TestServerConn(t *testing.T) {
 					ChunkStreamID: 3,
 					Name:          "_error",
 					CommandID:     1,
-					Arguments: []interface{}{
+					Arguments: []any{
 						nil,
 						amf0.Object{
 							{Key: "level", Value: "error"},
@@ -161,7 +161,7 @@ func TestServerConn(t *testing.T) {
 					ChunkStreamID: 3,
 					Name:          "connect",
 					CommandID:     1,
-					Arguments: []interface{}{
+					Arguments: []any{
 						amf0.Object{
 							{
 								Key: "app",
@@ -210,7 +210,7 @@ func TestServerConn(t *testing.T) {
 					ChunkStreamID: 3,
 					Name:          "_result",
 					CommandID:     1,
-					Arguments: []interface{}{
+					Arguments: []any{
 						amf0.Object{
 							{Key: "fmsVer", Value: "LNX 9,0,124,2"},
 							{Key: "capabilities", Value: float64(31)},
@@ -233,7 +233,7 @@ func TestServerConn(t *testing.T) {
 					ChunkStreamID: 3,
 					Name:          "createStream",
 					CommandID:     2,
-					Arguments: []interface{}{
+					Arguments: []any{
 						nil,
 					},
 				})
@@ -245,7 +245,7 @@ func TestServerConn(t *testing.T) {
 					ChunkStreamID: 3,
 					Name:          "_result",
 					CommandID:     2,
-					Arguments: []interface{}{
+					Arguments: []any{
 						nil,
 						float64(1),
 					},
@@ -261,7 +261,7 @@ func TestServerConn(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Name:            "play",
 					CommandID:       0,
-					Arguments: []interface{}{
+					Arguments: []any{
 						nil,
 						"",
 					},
@@ -273,7 +273,7 @@ func TestServerConn(t *testing.T) {
 					ChunkStreamID: 3,
 					Name:          "connect",
 					CommandID:     1,
-					Arguments: []interface{}{
+					Arguments: []any{
 						amf0.Object{
 							{Key: "app", Value: "stream?key=val"},
 							{Key: "flashVer", Value: "LNX 9,0,124,2"},
@@ -314,7 +314,7 @@ func TestServerConn(t *testing.T) {
 					ChunkStreamID: 3,
 					Name:          "_result",
 					CommandID:     1,
-					Arguments: []interface{}{
+					Arguments: []any{
 						amf0.Object{
 							{Key: "fmsVer", Value: "LNX 9,0,124,2"},
 							{Key: "capabilities", Value: float64(31)},
@@ -337,7 +337,7 @@ func TestServerConn(t *testing.T) {
 					ChunkStreamID: 3,
 					Name:          "createStream",
 					CommandID:     2,
-					Arguments: []interface{}{
+					Arguments: []any{
 						nil,
 					},
 				})
@@ -349,7 +349,7 @@ func TestServerConn(t *testing.T) {
 					ChunkStreamID: 3,
 					Name:          "_result",
 					CommandID:     2,
-					Arguments: []interface{}{
+					Arguments: []any{
 						nil,
 						float64(1),
 					},
@@ -365,7 +365,7 @@ func TestServerConn(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Name:            "play",
 					CommandID:       0,
-					Arguments: []interface{}{
+					Arguments: []any{
 						nil,
 						"",
 					},
@@ -377,7 +377,7 @@ func TestServerConn(t *testing.T) {
 					ChunkStreamID: 3,
 					Name:          "connect",
 					CommandID:     1,
-					Arguments: []interface{}{
+					Arguments: []any{
 						amf0.Object{
 							{Key: "app", Value: "stream?key=val"},
 							{Key: "flashVer", Value: "LNX 9,0,124,2"},
@@ -418,7 +418,7 @@ func TestServerConn(t *testing.T) {
 					ChunkStreamID: 3,
 					Name:          "_result",
 					CommandID:     1,
-					Arguments: []interface{}{
+					Arguments: []any{
 						amf0.Object{
 							{Key: "fmsVer", Value: "LNX 9,0,124,2"},
 							{Key: "capabilities", Value: float64(31)},
@@ -441,7 +441,7 @@ func TestServerConn(t *testing.T) {
 					ChunkStreamID: 3,
 					Name:          "releaseStream",
 					CommandID:     2,
-					Arguments: []interface{}{
+					Arguments: []any{
 						nil,
 						"",
 					},
@@ -452,7 +452,7 @@ func TestServerConn(t *testing.T) {
 					ChunkStreamID: 3,
 					Name:          "FCPublish",
 					CommandID:     3,
-					Arguments: []interface{}{
+					Arguments: []any{
 						nil,
 						"",
 					},
@@ -463,7 +463,7 @@ func TestServerConn(t *testing.T) {
 					ChunkStreamID: 3,
 					Name:          "createStream",
 					CommandID:     4,
-					Arguments: []interface{}{
+					Arguments: []any{
 						nil,
 					},
 				})
@@ -475,7 +475,7 @@ func TestServerConn(t *testing.T) {
 					ChunkStreamID: 3,
 					Name:          "_result",
 					CommandID:     4,
-					Arguments: []interface{}{
+					Arguments: []any{
 						nil,
 						float64(1),
 					},
@@ -486,7 +486,7 @@ func TestServerConn(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Name:            "publish",
 					CommandID:       5,
-					Arguments: []interface{}{
+					Arguments: []any{
 						nil,
 						"",
 						"stream",
@@ -615,7 +615,7 @@ func TestServerConnPath(t *testing.T) {
 				ChunkStreamID: 3,
 				Name:          "connect",
 				CommandID:     1,
-				Arguments: []interface{}{
+				Arguments: []any{
 					amf0.Object{
 						{Key: "app", Value: app},
 						{Key: "flashVer", Value: "LNX 9,0,124,2"},
@@ -655,7 +655,7 @@ func TestServerConnPath(t *testing.T) {
 				ChunkStreamID: 3,
 				Name:          "_result",
 				CommandID:     1,
-				Arguments: []interface{}{
+				Arguments: []any{
 					amf0.Object{
 						{Key: "fmsVer", Value: "LNX 9,0,124,2"},
 						{Key: "capabilities", Value: float64(31)},
@@ -678,7 +678,7 @@ func TestServerConnPath(t *testing.T) {
 				ChunkStreamID: 3,
 				Name:          "createStream",
 				CommandID:     2,
-				Arguments: []interface{}{
+				Arguments: []any{
 					nil,
 				},
 			})
@@ -690,7 +690,7 @@ func TestServerConnPath(t *testing.T) {
 				ChunkStreamID: 3,
 				Name:          "_result",
 				CommandID:     2,
-				Arguments: []interface{}{
+				Arguments: []any{
 					nil,
 					float64(1),
 				},
@@ -716,7 +716,7 @@ func TestServerConnPath(t *testing.T) {
 				MessageStreamID: 0x1000000,
 				Name:            "play",
 				CommandID:       0,
-				Arguments: []interface{}{
+				Arguments: []any{
 					nil,
 					streamKey,
 				},
@@ -768,7 +768,7 @@ func TestServerConnFourCcList(t *testing.T) {
 		ChunkStreamID: 3,
 		Name:          "connect",
 		CommandID:     1,
-		Arguments: []interface{}{
+		Arguments: []any{
 			amf0.Object{
 				{Key: "app", Value: "stream?key=val"},
 				{Key: "flashVer", Value: "LNX 9,0,124,2"},

@@ -140,7 +140,7 @@ func TestWriter(t *testing.T) {
 				require.Equal(t, &message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 0x1000000,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{
@@ -156,7 +156,7 @@ func TestWriter(t *testing.T) {
 				require.Equal(t, &message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 0x1000000,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{
@@ -172,7 +172,7 @@ func TestWriter(t *testing.T) {
 				require.Equal(t, &message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 0x1000000,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{
@@ -188,7 +188,7 @@ func TestWriter(t *testing.T) {
 				require.Equal(t, &message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 0x1000000,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{
@@ -204,7 +204,7 @@ func TestWriter(t *testing.T) {
 				require.Equal(t, &message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 0x1000000,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{
@@ -220,7 +220,7 @@ func TestWriter(t *testing.T) {
 				require.Equal(t, &message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 0x1000000,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{
@@ -236,7 +236,7 @@ func TestWriter(t *testing.T) {
 				require.Equal(t, &message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 0x1000000,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{
@@ -252,7 +252,7 @@ func TestWriter(t *testing.T) {
 				require.Equal(t, &message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 0x1000000,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{
@@ -268,7 +268,7 @@ func TestWriter(t *testing.T) {
 				require.Equal(t, &message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 0x1000000,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{
@@ -284,7 +284,7 @@ func TestWriter(t *testing.T) {
 				require.Equal(t, &message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 0x1000000,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{
@@ -300,7 +300,7 @@ func TestWriter(t *testing.T) {
 				require.Equal(t, &message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 0x1000000,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{
@@ -316,7 +316,7 @@ func TestWriter(t *testing.T) {
 				require.Equal(t, &message.DataAMF0{
 					ChunkStreamID:   4,
 					MessageStreamID: 0x1000000,
-					Payload: []interface{}{
+					Payload: []any{
 						"@setDataFrame",
 						"onMetaData",
 						amf0.Object{

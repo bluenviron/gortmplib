@@ -72,7 +72,7 @@ func TestClient(t *testing.T) {
 								ChunkStreamID: 3,
 								Name:          "connect",
 								CommandID:     1,
-								Arguments: []interface{}{
+								Arguments: []any{
 									amf0.Object{
 										{Key: "app", Value: "stream"},
 										{Key: "flashVer", Value: "LNX 9,0,124,2"},
@@ -102,7 +102,7 @@ func TestClient(t *testing.T) {
 								ChunkStreamID: 3,
 								Name:          "connect",
 								CommandID:     1,
-								Arguments: []interface{}{
+								Arguments: []any{
 									amf0.Object{
 										{Key: "app", Value: "stream?authmod=adobe&user=myuser"},
 										{Key: "flashVer", Value: "LNX 9,0,124,2"},
@@ -137,7 +137,7 @@ func TestClient(t *testing.T) {
 								ChunkStreamID: 3,
 								Name:          "connect",
 								CommandID:     1,
-								Arguments: []interface{}{
+								Arguments: []any{
 									amf0.Object{
 										{
 											Key: "app",
@@ -178,7 +178,7 @@ func TestClient(t *testing.T) {
 							ChunkStreamID: 3,
 							Name:          "connect",
 							CommandID:     1,
-							Arguments: []interface{}{
+							Arguments: []any{
 								amf0.Object{
 									{Key: "app", Value: "stream"},
 									{Key: "flashVer", Value: "LNX 9,0,124,2"},
@@ -210,7 +210,7 @@ func TestClient(t *testing.T) {
 							ChunkStreamID: 3,
 							Name:          "connect",
 							CommandID:     1,
-							Arguments: []interface{}{
+							Arguments: []any{
 								amf0.Object{
 									{Key: "app", Value: "stream"},
 									{Key: "flashVer", Value: "LNX 9,0,124,2"},
@@ -228,7 +228,7 @@ func TestClient(t *testing.T) {
 								ChunkStreamID: 3,
 								Name:          "_error",
 								CommandID:     1,
-								Arguments: []interface{}{
+								Arguments: []any{
 									nil,
 									amf0.Object{
 										{Key: "level", Value: "error"},
@@ -247,7 +247,7 @@ func TestClient(t *testing.T) {
 								ChunkStreamID: 3,
 								Name:          "_error",
 								CommandID:     1,
-								Arguments: []interface{}{
+								Arguments: []any{
 									nil,
 									amf0.Object{
 										{Key: "level", Value: "error"},
@@ -270,7 +270,7 @@ func TestClient(t *testing.T) {
 						ChunkStreamID: 3,
 						Name:          "_result",
 						CommandID:     1,
-						Arguments: []interface{}{
+						Arguments: []any{
 							amf0.Object{
 								{Key: "fmsVer", Value: "LNX 9,0,124,2"},
 								{Key: "capabilities", Value: float64(31)},
@@ -293,7 +293,7 @@ func TestClient(t *testing.T) {
 							ChunkStreamID: 3,
 							Name:          "createStream",
 							CommandID:     2,
-							Arguments: []interface{}{
+							Arguments: []any{
 								nil,
 							},
 						}, msg)
@@ -303,7 +303,7 @@ func TestClient(t *testing.T) {
 								ChunkStreamID: 3,
 								Name:          "onBWDone",
 								CommandID:     0,
-								Arguments: []interface{}{
+								Arguments: []any{
 									nil,
 								},
 							})
@@ -314,7 +314,7 @@ func TestClient(t *testing.T) {
 							ChunkStreamID: 3,
 							Name:          "_result",
 							CommandID:     2,
-							Arguments: []interface{}{
+							Arguments: []any{
 								nil,
 								float64(1),
 							},
@@ -334,7 +334,7 @@ func TestClient(t *testing.T) {
 							MessageStreamID: 0x1000000,
 							Name:            "play",
 							CommandID:       3,
-							Arguments: []interface{}{
+							Arguments: []any{
 								nil,
 								"",
 							},
@@ -350,7 +350,7 @@ func TestClient(t *testing.T) {
 								}
 								return 3
 							}(),
-							Arguments: []interface{}{
+							Arguments: []any{
 								nil,
 								amf0.Object{
 									{Key: "level", Value: "status"},
@@ -368,7 +368,7 @@ func TestClient(t *testing.T) {
 							ChunkStreamID: 3,
 							Name:          "releaseStream",
 							CommandID:     2,
-							Arguments: []interface{}{
+							Arguments: []any{
 								nil,
 								"",
 							},
@@ -380,7 +380,7 @@ func TestClient(t *testing.T) {
 							ChunkStreamID: 3,
 							Name:          "FCPublish",
 							CommandID:     3,
-							Arguments: []interface{}{
+							Arguments: []any{
 								nil,
 								"",
 							},
@@ -392,7 +392,7 @@ func TestClient(t *testing.T) {
 							ChunkStreamID: 3,
 							Name:          "createStream",
 							CommandID:     4,
-							Arguments: []interface{}{
+							Arguments: []any{
 								nil,
 							},
 						}, msg)
@@ -401,7 +401,7 @@ func TestClient(t *testing.T) {
 							ChunkStreamID: 3,
 							Name:          "_result",
 							CommandID:     4,
-							Arguments: []interface{}{
+							Arguments: []any{
 								nil,
 								float64(1),
 							},
@@ -415,7 +415,7 @@ func TestClient(t *testing.T) {
 							MessageStreamID: 0x1000000,
 							Name:            "publish",
 							CommandID:       5,
-							Arguments: []interface{}{
+							Arguments: []any{
 								nil,
 								"",
 								"stream",
@@ -427,7 +427,7 @@ func TestClient(t *testing.T) {
 							MessageStreamID: 0x1000000,
 							Name:            "onStatus",
 							CommandID:       5,
-							Arguments: []interface{}{
+							Arguments: []any{
 								nil,
 								amf0.Object{
 									{Key: "level", Value: "status"},
