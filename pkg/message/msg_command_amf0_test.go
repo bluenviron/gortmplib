@@ -12,7 +12,7 @@ func BenchmarkCommandAMF0Marshal(b *testing.B) {
 		ChunkStreamID: 3,
 		Name:          "connect",
 		CommandID:     1,
-		Arguments: []interface{}{
+		Arguments: []any{
 			amf0.Object{
 				{Key: "app", Value: "/stream"},
 				{Key: "flashVer", Value: "LNX 9,0,124,2"},
@@ -26,7 +26,7 @@ func BenchmarkCommandAMF0Marshal(b *testing.B) {
 		},
 	}
 
-	for n := 0; n < b.N; n++ {
+	for b.Loop() {
 		msg.marshal() //nolint:errcheck
 	}
 }
@@ -67,7 +67,7 @@ func BenchmarkCommandAMF0Unmarshal(b *testing.B) {
 
 	msg := &CommandAMF0{}
 
-	for n := 0; n < b.N; n++ {
+	for b.Loop() {
 		msg.unmarshal(raw) //nolint:errcheck
 	}
 }

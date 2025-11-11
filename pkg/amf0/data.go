@@ -39,14 +39,14 @@ var errBufferTooShort = errors.New("buffer is too short")
 // - Undefined{}
 // - ECMAArray{}
 // - StrictArray{}
-type Data []interface{}
+type Data []any
 
 // Unmarshal decodes AMF0 data.
 func Unmarshal(buf []byte) (Data, error) {
 	var out Data
 
 	for len(buf) != 0 {
-		var item interface{}
+		var item any
 		var err error
 		item, buf, err = unmarshal(buf)
 		if err != nil {
@@ -59,7 +59,7 @@ func Unmarshal(buf []byte) (Data, error) {
 	return out, nil
 }
 
-func unmarshal(buf []byte) (interface{}, []byte, error) {
+func unmarshal(buf []byte) (any, []byte, error) {
 	if len(buf) < 1 {
 		return nil, nil, errBufferTooShort
 	}
@@ -125,7 +125,7 @@ func unmarshal(buf []byte) (interface{}, []byte, error) {
 			key := string(buf[:keyLen])
 			buf = buf[keyLen:]
 
-			var value interface{}
+			var value any
 			var err error
 			value, buf, err = unmarshal(buf)
 			if err != nil {
@@ -170,7 +170,7 @@ func unmarshal(buf []byte) (interface{}, []byte, error) {
 			key := string(buf[:keyLen])
 			buf = buf[keyLen:]
 
-			var value interface{}
+			var value any
 			var err error
 			value, buf, err = unmarshal(buf)
 			if err != nil {
@@ -210,7 +210,7 @@ func unmarshal(buf []byte) (interface{}, []byte, error) {
 		out := StrictArray{}
 
 		for i := 0; i < int(arrayCount); i++ {
-			var value interface{}
+			var value any
 			var err error
 			value, buf, err = unmarshal(buf)
 			if err != nil {
@@ -270,7 +270,7 @@ func (data Data) MarshalSize() (int, error) {
 	return n, nil
 }
 
-func marshalSizeItem(item interface{}) (int, error) {
+func marshalSizeItem(item any) (int, error) {
 	switch item := item.(type) {
 	case float64:
 		return 9, nil
@@ -338,7 +338,7 @@ func marshalSizeItem(item interface{}) (int, error) {
 	}
 }
 
-func marshalItem(item interface{}, buf []byte) int {
+func marshalItem(item any, buf []byte) int {
 	switch item := item.(type) {
 	case float64:
 		v := math.Float64bits(item)
@@ -439,7 +439,7 @@ func marshalItem(item interface{}, buf []byte) int {
 }
 
 // StrictArray is an AMF0 Strict Array.
-type StrictArray []interface{}
+type StrictArray []any
 
 // Undefined is the undefined value.
 type Undefined struct {
@@ -452,14 +452,14 @@ type Undefined struct {
 // ObjectEntry is an entry of Object.
 type ObjectEntry struct {
 	Key   string
-	Value interface{}
+	Value any
 }
 
 // Object is an AMF0 object.
 type Object []ObjectEntry
 
 // Get returns the value corresponding to key.
-func (o Object) Get(key string) (interface{}, bool) {
+func (o Object) Get(key string) (any, bool) {
 	for _, item := range o {
 		if item.Key == key {
 			return item.Value, true

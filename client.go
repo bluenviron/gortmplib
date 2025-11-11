@@ -339,7 +339,7 @@ func (c *Client) initialize3() error {
 		ChunkStreamID: 3,
 		Name:          "connect",
 		CommandID:     1,
-		Arguments:     []interface{}{connectArg},
+		Arguments:     []any{connectArg},
 	})
 	if err != nil {
 		return err
@@ -410,7 +410,7 @@ func (c *Client) initialize3() error {
 			ChunkStreamID: 3,
 			Name:          "createStream",
 			CommandID:     2,
-			Arguments: []interface{}{
+			Arguments: []any{
 				nil,
 			},
 		})
@@ -439,7 +439,7 @@ func (c *Client) initialize3() error {
 			MessageStreamID: 0x1000000,
 			Name:            "play",
 			CommandID:       3,
-			Arguments: []interface{}{
+			Arguments: []any{
 				nil,
 				streamKey,
 			},
@@ -461,7 +461,7 @@ func (c *Client) initialize3() error {
 			ChunkStreamID: 3,
 			Name:          "releaseStream",
 			CommandID:     2,
-			Arguments: []interface{}{
+			Arguments: []any{
 				nil,
 				streamKey,
 			},
@@ -474,7 +474,7 @@ func (c *Client) initialize3() error {
 			ChunkStreamID: 3,
 			Name:          "FCPublish",
 			CommandID:     3,
-			Arguments: []interface{}{
+			Arguments: []any{
 				nil,
 				streamKey,
 			},
@@ -487,7 +487,7 @@ func (c *Client) initialize3() error {
 			ChunkStreamID: 3,
 			Name:          "createStream",
 			CommandID:     4,
-			Arguments: []interface{}{
+			Arguments: []any{
 				nil,
 			},
 		})
@@ -509,7 +509,7 @@ func (c *Client) initialize3() error {
 			MessageStreamID: 0x1000000,
 			Name:            "publish",
 			CommandID:       5,
-			Arguments: []interface{}{
+			Arguments: []any{
 				nil,
 				streamKey,
 				app,

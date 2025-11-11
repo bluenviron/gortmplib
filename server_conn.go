@@ -23,7 +23,7 @@ func queryDecode(enc string) map[string]string {
 	// do not use url.ParseQuery since values are not URL-encoded
 	vals := make(map[string]string)
 
-	for _, kv := range strings.Split(enc, "&") {
+	for kv := range strings.SplitSeq(enc, "&") {
 		tmp := strings.SplitN(kv, "=", 2)
 		if len(tmp) == 2 {
 			vals[tmp[0]] = tmp[1]
@@ -92,7 +92,7 @@ func buildURL(tcURL string, app string, streamKey string) (*url.URL, error) {
 	return u, nil
 }
 
-func objectOrArray(in interface{}) (amf0.Object, bool) {
+func objectOrArray(in any) (amf0.Object, bool) {
 	switch o := in.(type) {
 	case amf0.Object:
 		return o, true
@@ -197,7 +197,7 @@ func (c *ServerConn) CheckCredentials(expectedUser string, expectedPass string) 
 			ChunkStreamID: c.connectChunkStreamID,
 			Name:          "_error",
 			CommandID:     c.connectCommandID,
-			Arguments: []interface{}{
+			Arguments: []any{
 				nil,
 				amf0.Object{
 					{Key: "level", Value: "error"},
@@ -229,7 +229,7 @@ func (c *ServerConn) CheckCredentials(expectedUser string, expectedPass string) 
 			ChunkStreamID: c.connectChunkStreamID,
 			Name:          "_error",
 			CommandID:     c.connectCommandID,
-			Arguments: []interface{}{
+			Arguments: []any{
 				nil,
 				amf0.Object{
 					{Key: "level", Value: "error"},
@@ -255,7 +255,7 @@ func (c *ServerConn) CheckCredentials(expectedUser string, expectedPass string) 
 			ChunkStreamID: c.connectChunkStreamID,
 			Name:          "_error",
 			CommandID:     c.connectCommandID,
-			Arguments: []interface{}{
+			Arguments: []any{
 				nil,
 				amf0.Object{
 					{Key: "level", Value: "error"},
@@ -313,7 +313,7 @@ func (c *ServerConn) Accept() error {
 		ChunkStreamID: c.connectChunkStreamID,
 		Name:          "_result",
 		CommandID:     c.connectCommandID,
-		Arguments: []interface{}{
+		Arguments: []any{
 			amf0.Object{
 				{Key: "fmsVer", Value: "LNX 9,0,124,2"},
 				{Key: "capabilities", Value: float64(31)},
@@ -343,7 +343,7 @@ func (c *ServerConn) Accept() error {
 				ChunkStreamID: cmd.ChunkStreamID,
 				Name:          "_result",
 				CommandID:     cmd.CommandID,
-				Arguments: []interface{}{
+				Arguments: []any{
 					nil,
 					float64(1),
 				},
@@ -386,7 +386,7 @@ func (c *ServerConn) Accept() error {
 				MessageStreamID: 0x1000000,
 				Name:            "onStatus",
 				CommandID:       cmd.CommandID,
-				Arguments: []interface{}{
+				Arguments: []any{
 					nil,
 					amf0.Object{
 						{Key: "level", Value: "status"},
@@ -404,7 +404,7 @@ func (c *ServerConn) Accept() error {
 				MessageStreamID: 0x1000000,
 				Name:            "onStatus",
 				CommandID:       cmd.CommandID,
-				Arguments: []interface{}{
+				Arguments: []any{
 					nil,
 					amf0.Object{
 						{Key: "level", Value: "status"},
@@ -422,7 +422,7 @@ func (c *ServerConn) Accept() error {
 				MessageStreamID: 0x1000000,
 				Name:            "onStatus",
 				CommandID:       cmd.CommandID,
-				Arguments: []interface{}{
+				Arguments: []any{
 					nil,
 					amf0.Object{
 						{Key: "level", Value: "status"},
@@ -440,7 +440,7 @@ func (c *ServerConn) Accept() error {
 				MessageStreamID: 0x1000000,
 				Name:            "onStatus",
 				CommandID:       cmd.CommandID,
-				Arguments: []interface{}{
+				Arguments: []any{
 					nil,
 					amf0.Object{
 						{Key: "level", Value: "status"},
@@ -476,7 +476,7 @@ func (c *ServerConn) Accept() error {
 				Name:            "onStatus",
 				CommandID:       cmd.CommandID,
 				MessageStreamID: 0x1000000,
-				Arguments: []interface{}{
+				Arguments: []any{
 					nil,
 					amf0.Object{
 						{Key: "level", Value: "status"},
