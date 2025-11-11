@@ -29,18 +29,16 @@ const (
 
 var errBufferTooShort = errors.New("buffer is too short")
 
-// StrictArray is an AMF0 Strict Array.
-type StrictArray []interface{}
-
-// Undefined is the undefined value.
-type Undefined struct {
-	// in Go, empty structs share the same pointer,
-	// therefore they cannot be used as map keys
-	// or in equality operations. Prevent this.
-	unused int //nolint:unused
-}
-
 // Data is a list of ActionScript object graphs.
+// These can be:
+// - float64
+// - bool
+// - string
+// - Object{}
+// - nil
+// - Undefined{}
+// - ECMAArray{}
+// - StrictArray{}
 type Data []interface{}
 
 // Unmarshal decodes AMF0 data.
@@ -439,3 +437,66 @@ func marshalItem(item interface{}, buf []byte) int {
 		return 1
 	}
 }
+
+// StrictArray is an AMF0 Strict Array.
+type StrictArray []interface{}
+
+// Undefined is the undefined value.
+type Undefined struct {
+	// in Go, empty structs share the same pointer,
+	// therefore they cannot be used as map keys
+	// or in equality operations. Prevent this.
+	unused int //nolint:unused
+}
+
+// ObjectEntry is an entry of Object.
+type ObjectEntry struct {
+	Key   string
+	Value interface{}
+}
+
+// Object is an AMF0 object.
+type Object []ObjectEntry
+
+// Get returns the value corresponding to key.
+func (o Object) Get(key string) (interface{}, bool) {
+	for _, item := range o {
+		if item.Key == key {
+			return item.Value, true
+		}
+	}
+	return nil, false
+}
+
+// GetString returns the value corresponding to key, only if that is a string.
+func (o Object) GetString(key string) (string, bool) {
+	v, ok := o.Get(key)
+	if !ok {
+		return "", false
+	}
+
+	v2, ok2 := v.(string)
+	if !ok2 {
+		return "", false
+	}
+
+	return v2, ok2
+}
+
+// GetFloat64 returns the value corresponding to key, only if that is a float64.
+func (o Object) GetFloat64(key string) (float64, bool) {
+	v, ok := o.Get(key)
+	if !ok {
+		return 0, false
+	}
+
+	v2, ok2 := v.(float64)
+	if !ok2 {
+		return 0, false
+	}
+
+	return v2, ok2
+}
+
+// ECMAArray is an AMF0 ECMA Array.
+type ECMAArray Object
