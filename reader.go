@@ -274,6 +274,7 @@ func sortedKeys(m map[uint8]format.Format) []int {
 type Reader struct {
 	Conn Conn
 
+	preload     []message.Message
 	videoTracks map[uint8]format.Format
 	audioTracks map[uint8]format.Format
 	onVideoData map[uint8]func(message.Message) error
@@ -384,6 +385,8 @@ func (r *Reader) readTracks() (map[uint8]format.Format, map[uint8]format.Format,
 				if err != nil {
 					return nil, nil, err
 				}
+			} else if msg.Type == message.VideoTypeAU {
+				r.preload = append(r.preload, msg)
 			}
 
 		case *message.VideoExSequenceStart:
@@ -759,9 +762,17 @@ func (r *Reader) OnDataLPCM(track *format.LPCM, cb OnDataLPCMFunc) {
 
 // Read reads data.
 func (r *Reader) Read() error {
-	msg, err := r.Conn.Read()
-	if err != nil {
-		return err
+	var msg message.Message
+
+	if len(r.preload) > 0 {
+		msg = r.preload[0]
+		r.preload = r.preload[1:]
+	} else {
+		var err error
+		msg, err = r.Conn.Read()
+		if err != nil {
+			return err
+		}
 	}
 
 	switch msg := msg.(type) {
