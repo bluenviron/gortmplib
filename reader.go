@@ -282,11 +282,16 @@ type Reader struct {
 
 // Initialize initializes Reader.
 func (r *Reader) Initialize() error {
+	rc := &rewindableConn{Conn: r.Conn}
+	r.Conn = rc
+
 	var err error
 	r.videoTracks, r.audioTracks, err = r.readTracks()
 	if err != nil {
 		return err
 	}
+
+	rc.Rewind()
 
 	r.onVideoData = make(map[uint8]func(message.Message) error)
 	r.onAudioData = make(map[uint8]func(message.Message) error)
