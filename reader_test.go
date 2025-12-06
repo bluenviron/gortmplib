@@ -1661,3 +1661,90 @@ func TestReadTracks(t *testing.T) {
 		})
 	}
 }
+
+func TestReaderRewind(t *testing.T) {
+	messages := []message.Message{
+		&message.Video{
+			ChunkStreamID:   message.VideoChunkStreamID,
+			MessageStreamID: 0x1000000,
+			Codec:           message.CodecH264,
+			IsKeyFrame:      true,
+			Type:            message.VideoTypeConfig,
+			Payload: func() []byte {
+				buf, _ := h264conf.Conf{
+					SPS: testFormatH264.SPS,
+					PPS: testFormatH264.PPS,
+				}.Marshal()
+				return buf
+			}(),
+		},
+		&message.Video{
+			ChunkStreamID:   message.VideoChunkStreamID,
+			DTS:             100 * time.Millisecond,
+			MessageStreamID: 0x1000000,
+			Codec:           message.CodecH264,
+			IsKeyFrame:      true,
+			Type:            message.VideoTypeAU,
+			Payload:         []byte{0x00, 0x00, 0x00, 0x02, 0x09, 0xf0},
+		},
+		&message.Video{
+			ChunkStreamID:   message.VideoChunkStreamID,
+			DTS:             200 * time.Millisecond,
+			MessageStreamID: 0x1000000,
+			Codec:           message.CodecH264,
+			IsKeyFrame:      false,
+			Type:            message.VideoTypeAU,
+			Payload:         []byte{0x00, 0x00, 0x00, 0x02, 0x09, 0xf0},
+		},
+		&message.Video{
+			ChunkStreamID:   message.VideoChunkStreamID,
+			DTS:             2 * time.Second,
+			MessageStreamID: 0x1000000,
+			Codec:           message.CodecH264,
+			IsKeyFrame:      false,
+			Type:            message.VideoTypeAU,
+			Payload:         []byte{0x00, 0x00, 0x00, 0x02, 0x09, 0xf0},
+		},
+	}
+
+	var buf bytes.Buffer
+	bc := bytecounter.NewReadWriter(&buf)
+	mrw := message.NewReadWriter(bc, bc, true)
+
+	for _, msg := range messages {
+		err := mrw.Write(msg)
+		require.NoError(t, err)
+	}
+
+	c := &dummyConn{
+		rw: &buf,
+	}
+	c.initialize()
+
+	r := &Reader{
+		Conn: c,
+	}
+
+	err := r.Initialize()
+	require.NoError(t, err)
+
+	tracks := r.Tracks()
+	require.Equal(t, []format.Format{&format.H264{
+		PayloadTyp:        96,
+		SPS:               testFormatH264.SPS,
+		PPS:               testFormatH264.PPS,
+		PacketizationMode: 1,
+	}}, tracks)
+
+	receivedCount := 0
+	r.OnDataH264(tracks[0].(*format.H264), func(pts time.Duration, dts time.Duration, au [][]byte) {
+		receivedCount++
+	})
+
+	for range 3 {
+		err = r.Read()
+		require.NoError(t, err)
+	}
+
+	require.Equal(t, 3, receivedCount)
+}
