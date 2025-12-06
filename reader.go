@@ -282,7 +282,7 @@ type Reader struct {
 
 // Initialize initializes Reader.
 func (r *Reader) Initialize() error {
-	rc := &RewindableConn{Conn: r.Conn}
+	rc := &rewindableConn{Conn: r.Conn}
 	r.Conn = rc
 
 	var err error
