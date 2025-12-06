@@ -1737,7 +1737,7 @@ func TestReaderRewind(t *testing.T) {
 	}}, tracks)
 
 	receivedCount := 0
-	r.OnDataH264(tracks[0].(*format.H264), func(pts time.Duration, dts time.Duration, au [][]byte) {
+	r.OnDataH264(tracks[0].(*format.H264), func(_ time.Duration, _ time.Duration, _ [][]byte) {
 		receivedCount++
 	})
 

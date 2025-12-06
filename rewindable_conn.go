@@ -1,6 +1,14 @@
 package gortmplib
 
-import "github.com/bluenviron/gortmplib/pkg/message"
+import (
+	"errors"
+
+	"github.com/bluenviron/gortmplib/pkg/message"
+)
+
+const (
+	maxRecordedSize = 5000
+)
 
 type rewindableConn struct {
 	Conn Conn
@@ -17,6 +25,10 @@ func (r *rewindableConn) Read() (message.Message, error) {
 	if !r.rewinded {
 		msg, err := r.Conn.Read()
 		if err == nil {
+			if len(r.entries) >= maxRecordedSize {
+				return nil, errors.New("max recorded size exceeded")
+			}
+
 			r.entries = append(r.entries, msg)
 		}
 		return msg, err
