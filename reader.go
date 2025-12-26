@@ -125,7 +125,7 @@ func audioTrackFromData(msg *message.Audio) (format.Format, error) {
 		return &format.LPCM{
 			PayloadTyp: 96,
 			BitDepth: func() int {
-				if msg.Depth == message.Depth16 {
+				if msg.Depth == message.AudioDepth16 {
 					return 16
 				}
 				return 8

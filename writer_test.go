@@ -354,8 +354,8 @@ func TestWriter(t *testing.T) {
 					ChunkStreamID:   message.AudioChunkStreamID,
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecMPEG4Audio,
-					Rate:            message.Rate44100,
-					Depth:           message.Depth16,
+					Rate:            message.AudioRate44100,
+					Depth:           message.AudioDepth16,
 					IsStereo:        true,
 					AACType:         message.AudioAACTypeConfig,
 					Payload:         []byte{0x12, 0x10},
@@ -601,8 +601,8 @@ func TestWriter(t *testing.T) {
 					ChunkStreamID:   message.AudioChunkStreamID,
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecMPEG1Audio,
-					Rate:            message.Rate44100,
-					Depth:           message.Depth16,
+					Rate:            message.AudioRate44100,
+					Depth:           message.AudioDepth16,
 					IsStereo:        true,
 					Payload: []byte{
 						0xff, 0xfa, 0x52, 0x04, 0x00,
@@ -640,7 +640,7 @@ func TestWriter(t *testing.T) {
 					ChunkStreamID:   message.AudioChunkStreamID,
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecPCMA,
-					Depth:           message.Depth16,
+					Depth:           message.AudioDepth16,
 					Payload:         []byte{1, 2},
 				}, msg)
 
@@ -654,7 +654,7 @@ func TestWriter(t *testing.T) {
 					ChunkStreamID:   message.AudioChunkStreamID,
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecPCMU,
-					Depth:           message.Depth16,
+					Depth:           message.AudioDepth16,
 					Payload:         []byte{1, 2},
 				}, msg)
 
@@ -668,8 +668,8 @@ func TestWriter(t *testing.T) {
 					ChunkStreamID:   message.AudioChunkStreamID,
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecLPCM,
-					Rate:            message.Rate44100,
-					Depth:           message.Depth16,
+					Rate:            message.AudioRate44100,
+					Depth:           message.AudioDepth16,
 					Payload:         []byte{2, 1},
 				}, msg)
 			}

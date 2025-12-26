@@ -21,21 +21,27 @@ const (
 	CodecMPEG4Audio = 10
 )
 
+// AudioRate is the audio rate of an Audio.
+type AudioRate uint8
+
 // audio rates
 const (
-	Rate5512  = 0
-	Rate11025 = 1
-	Rate22050 = 2
-	Rate44100 = 3
+	AudioRate5512  AudioRate = 0
+	AudioRate11025 AudioRate = 1
+	AudioRate22050 AudioRate = 2
+	AudioRate44100 AudioRate = 3
 )
+
+// AudioDepth is the audio depth of an Audio.
+type AudioDepth uint8
 
 // audio depths
 const (
-	Depth8  = 0
-	Depth16 = 1
+	AudioDepth8  AudioDepth = 0
+	AudioDepth16 AudioDepth = 1
 )
 
-// AudioAACType is the AAC type of a Audio.
+// AudioAACType is the AAC type of an Audio.
 type AudioAACType uint8
 
 // AudioAACType values.
@@ -50,8 +56,8 @@ type Audio struct {
 	DTS             time.Duration
 	MessageStreamID uint32
 	Codec           uint8
-	Rate            uint8
-	Depth           uint8
+	Rate            AudioRate
+	Depth           AudioDepth
 	IsStereo        bool
 	AACType         AudioAACType // only for CodecMPEG4Audio
 	Payload         []byte
@@ -73,8 +79,8 @@ func (m *Audio) unmarshal(raw *rawmessage.Message) error {
 		return fmt.Errorf("unsupported audio codec: %d", m.Codec)
 	}
 
-	m.Rate = (raw.Body[0] >> 2) & 0x03
-	m.Depth = (raw.Body[0] >> 1) & 0x01
+	m.Rate = AudioRate((raw.Body[0] >> 2) & 0x03)
+	m.Depth = AudioDepth((raw.Body[0] >> 1) & 0x01)
 
 	if (raw.Body[0] & 0x01) != 0 {
 		m.IsStereo = true
@@ -106,7 +112,7 @@ func (m Audio) marshalBodySize() int {
 func (m Audio) marshal() (*rawmessage.Message, error) {
 	body := make([]byte, m.marshalBodySize())
 
-	body[0] = m.Codec<<4 | m.Rate<<2 | m.Depth<<1
+	body[0] = m.Codec<<4 | byte(m.Rate)<<2 | byte(m.Depth)<<1
 
 	if m.IsStereo {
 		body[0] |= 1

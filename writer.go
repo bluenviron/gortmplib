@@ -180,29 +180,29 @@ func generateAvcC(sps, pps []byte) *mp4.AVCDecoderConfiguration {
 	}
 }
 
-func audioRateRTMPToInt(v uint8) int {
+func audioRateRTMPToInt(v message.AudioRate) int {
 	switch v {
-	case message.Rate5512:
+	case message.AudioRate5512:
 		return 5512
-	case message.Rate11025:
+	case message.AudioRate11025:
 		return 11025
-	case message.Rate22050:
+	case message.AudioRate22050:
 		return 22050
 	default:
 		return 44100
 	}
 }
 
-func audioRateIntToRTMP(v int) (uint8, bool) {
+func audioRateIntToRTMP(v int) (message.AudioRate, bool) {
 	switch v {
 	case 5512:
-		return message.Rate5512, true
+		return message.AudioRate5512, true
 	case 11025:
-		return message.Rate11025, true
+		return message.AudioRate11025, true
 	case 22050:
-		return message.Rate22050, true
+		return message.AudioRate22050, true
 	case 44100:
-		return message.Rate44100, true
+		return message.AudioRate44100, true
 	}
 
 	return 0, false
@@ -521,8 +521,8 @@ func (w *Writer) writeTracks() error {
 					ChunkStreamID:   message.AudioChunkStreamID,
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecMPEG4Audio,
-					Rate:            message.Rate44100,
-					Depth:           message.Depth16,
+					Rate:            message.AudioRate44100,
+					Depth:           message.AudioDepth16,
 					IsStereo:        true,
 					AACType:         message.AudioAACTypeConfig,
 					Payload:         enc,
@@ -560,8 +560,8 @@ func (w *Writer) writeTracks() error {
 					ChunkStreamID:   message.AudioChunkStreamID,
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecMPEG4Audio,
-					Rate:            message.Rate44100,
-					Depth:           message.Depth16,
+					Rate:            message.AudioRate44100,
+					Depth:           message.AudioDepth16,
 					IsStereo:        true,
 					AACType:         message.AudioAACTypeConfig,
 					Payload:         enc,
@@ -797,8 +797,8 @@ func (w *Writer) WriteMPEG4Audio(track format.Format, pts time.Duration, au []by
 			ChunkStreamID:   message.AudioChunkStreamID,
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecMPEG4Audio,
-			Rate:            message.Rate44100,
-			Depth:           message.Depth16,
+			Rate:            message.AudioRate44100,
+			Depth:           message.AudioDepth16,
 			IsStereo:        true,
 			AACType:         message.AudioAACTypeAU,
 			Payload:         au,
@@ -844,7 +844,7 @@ func (w *Writer) WriteMPEG1Audio(track *format.MPEG1Audio, pts time.Duration, fr
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecMPEG1Audio,
 			Rate:            rate,
-			Depth:           message.Depth16,
+			Depth:           message.AudioDepth16,
 			IsStereo:        mpeg1AudioChannels(h.ChannelMode),
 			Payload:         frame,
 			DTS:             pts,
@@ -901,8 +901,8 @@ func (w *Writer) WriteG711(track *format.G711, pts time.Duration, samples []byte
 		ChunkStreamID:   message.AudioChunkStreamID,
 		MessageStreamID: 0x1000000,
 		Codec:           codec,
-		Rate:            message.Rate5512,
-		Depth:           message.Depth16,
+		Rate:            message.AudioRate5512,
+		Depth:           message.AudioDepth16,
 		IsStereo:        track.ChannelCount == 2,
 		Payload:         samples,
 		DTS:             pts,
@@ -933,7 +933,7 @@ func (w *Writer) WriteLPCM(track *format.LPCM, pts time.Duration, samples []byte
 		MessageStreamID: 0x1000000,
 		Codec:           message.CodecLPCM,
 		Rate:            rate,
-		Depth:           message.Depth16,
+		Depth:           message.AudioDepth16,
 		IsStereo:        (track.ChannelCount == 2),
 		Payload:         samplesCopy,
 		DTS:             pts,
