@@ -6,12 +6,12 @@ import (
 	"time"
 
 	"github.com/abema/go-mp4"
-	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortmplib/pkg/amf0"
 	"github.com/bluenviron/gortmplib/pkg/bytecounter"
+	"github.com/bluenviron/gortmplib/pkg/codecs"
 	"github.com/bluenviron/gortmplib/pkg/message"
 )
 
@@ -31,12 +31,11 @@ func TestWriter(t *testing.T) {
 		"lpcm",
 	} {
 		t.Run(ca, func(t *testing.T) {
-			var tracks []format.Format
+			var tracks []*Track
 
 			switch ca {
 			case "h264 + aac":
-				tracks = append(tracks, &format.H264{
-					PayloadTyp: 96,
+				tracks = append(tracks, &Track{Codec: &codecs.H264{
 					SPS: []byte{
 						0x67, 0x64, 0x00, 0x0c, 0xac, 0x3b, 0x50, 0xb0,
 						0x4b, 0x42, 0x00, 0x00, 0x03, 0x00, 0x02, 0x00,
@@ -45,75 +44,65 @@ func TestWriter(t *testing.T) {
 					PPS: []byte{
 						0x68, 0xee, 0x3c, 0x80,
 					},
-					PacketizationMode: 1,
-				})
+				}})
 
-				tracks = append(tracks, &format.MPEG4Audio{
-					PayloadTyp: 96,
+				tracks = append(tracks, &Track{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
 						Type:         2,
 						SampleRate:   44100,
 						ChannelCount: 2,
 					},
-					SizeLength:       13,
-					IndexLength:      3,
-					IndexDeltaLength: 3,
-				})
+				}})
 
 			case "av1":
-				tracks = append(tracks, &format.AV1{
-					PayloadTyp: 96,
-				})
+				tracks = append(tracks, &Track{Codec: &codecs.AV1{}})
 
 			case "vp9":
-				tracks = append(tracks, &format.VP9{
-					PayloadTyp: 96,
-				})
+				tracks = append(tracks, &Track{Codec: &codecs.VP9{}})
 
 			case "h265":
-				tracks = append(tracks, testFormatH265)
+				tracks = append(tracks, &Track{Codec: testCodecH265})
 
 			case "h265 no params":
-				tracks = append(tracks, &format.H265{})
+				tracks = append(tracks, &Track{Codec: &codecs.H265{}})
 
 			case "h264 no params":
-				tracks = append(tracks, &format.H264{})
+				tracks = append(tracks, &Track{Codec: &codecs.H264{}})
 
 			case "opus":
-				tracks = append(tracks, &format.Opus{
-					PayloadTyp:   96,
+				tracks = append(tracks, &Track{Codec: &codecs.Opus{
 					ChannelCount: 2,
-				})
+				}})
 
 			case "mp3":
-				tracks = append(tracks, &format.MPEG1Audio{})
+				tracks = append(tracks, &Track{Codec: &codecs.MPEG1Audio{}})
 
 			case "ac-3":
-				tracks = append(tracks, &format.AC3{
+				tracks = append(tracks, &Track{Codec: &codecs.AC3{
 					SampleRate:   44100,
 					ChannelCount: 2,
-				})
+				}})
 
 			case "pcma":
-				tracks = append(tracks, &format.G711{
+				tracks = append(tracks, &Track{Codec: &codecs.G711{
 					MULaw:        false,
 					SampleRate:   8000,
 					ChannelCount: 1,
-				})
+				}})
 
 			case "pcmu":
-				tracks = append(tracks, &format.G711{
+				tracks = append(tracks, &Track{Codec: &codecs.G711{
 					MULaw:        true,
 					SampleRate:   8000,
 					ChannelCount: 1,
-				})
+				}})
 
 			case "lpcm":
-				tracks = append(tracks, &format.LPCM{
+				tracks = append(tracks, &Track{Codec: &codecs.LPCM{
 					BitDepth:     16,
 					SampleRate:   44100,
 					ChannelCount: 1,
-				})
+				}})
 			}
 
 			var buf bytes.Buffer
@@ -361,7 +350,7 @@ func TestWriter(t *testing.T) {
 					Payload:         []byte{0x12, 0x10},
 				}, msg)
 
-				err = w.WriteH264(tracks[0].(*format.H264), 100*time.Millisecond, 0, [][]byte{{5, 1}})
+				err = w.WriteH264(tracks[0], 100*time.Millisecond, 0, [][]byte{{5, 1}})
 				require.NoError(t, err)
 
 				err = w.WriteMPEG4Audio(tracks[1], 0, []byte{1, 2})
@@ -396,7 +385,7 @@ func TestWriter(t *testing.T) {
 					},
 				}, msg)
 
-				err = w.WriteAV1(tracks[0].(*format.AV1), 0, [][]byte{{1, 2}})
+				err = w.WriteAV1(tracks[0], 0, [][]byte{{1, 2}})
 				require.NoError(t, err)
 
 				msg, err = mrw.Read()
@@ -427,7 +416,7 @@ func TestWriter(t *testing.T) {
 					},
 				}, msg)
 
-				err = w.WriteVP9(tracks[0].(*format.VP9), 0, []byte{1, 2})
+				err = w.WriteVP9(tracks[0], 0, []byte{1, 2})
 				require.NoError(t, err)
 
 				msg, err = mrw.Read()
@@ -470,7 +459,7 @@ func TestWriter(t *testing.T) {
 								NumNalus: 0x1,
 								Nalus: []mp4.HEVCNalu{{
 									Length:  24,
-									NALUnit: testFormatH265.VPS,
+									NALUnit: testCodecH265.VPS,
 								}},
 							},
 							{
@@ -478,7 +467,7 @@ func TestWriter(t *testing.T) {
 								NumNalus: 0x1,
 								Nalus: []mp4.HEVCNalu{{
 									Length:  60,
-									NALUnit: testFormatH265.SPS,
+									NALUnit: testCodecH265.SPS,
 								}},
 							},
 							{
@@ -486,14 +475,14 @@ func TestWriter(t *testing.T) {
 								NumNalus: 0x1,
 								Nalus: []mp4.HEVCNalu{{
 									Length:  8,
-									NALUnit: testFormatH265.PPS,
+									NALUnit: testCodecH265.PPS,
 								}},
 							},
 						},
 					},
 				}, msg)
 
-				err = w.WriteH265(tracks[0].(*format.H265), 0, 0, [][]byte{{1, 2}})
+				err = w.WriteH265(tracks[0], 0, 0, [][]byte{{1, 2}})
 				require.NoError(t, err)
 
 				msg, err = mrw.Read()
@@ -517,7 +506,7 @@ func TestWriter(t *testing.T) {
 						h265DefaultSPS, h265DefaultPPS),
 				}, msg)
 
-				err = w.WriteH265(tracks[0].(*format.H265), 0, 0, [][]byte{{1, 2}})
+				err = w.WriteH265(tracks[0], 0, 0, [][]byte{{1, 2}})
 				require.NoError(t, err)
 
 				msg, err = mrw.Read()
@@ -547,7 +536,7 @@ func TestWriter(t *testing.T) {
 					},
 				}, msg)
 
-				err = w.WriteH264(tracks[0].(*format.H264), 0, 0, [][]byte{{1, 2}})
+				err = w.WriteH264(tracks[0], 0, 0, [][]byte{{1, 2}})
 				require.NoError(t, err)
 
 				msg, err = mrw.Read()
@@ -575,7 +564,7 @@ func TestWriter(t *testing.T) {
 					},
 				}, msg)
 
-				err = w.WriteOpus(tracks[0].(*format.Opus), 0, []byte{1, 2})
+				err = w.WriteOpus(tracks[0], 0, []byte{1, 2})
 				require.NoError(t, err)
 
 				msg, err = mrw.Read()
@@ -592,7 +581,7 @@ func TestWriter(t *testing.T) {
 					0xff, 0xfa, 0x52, 0x04, 0x00,
 				}
 
-				err = w.WriteMPEG1Audio(tracks[0].(*format.MPEG1Audio), 0, fr)
+				err = w.WriteMPEG1Audio(tracks[0], 0, fr)
 				require.NoError(t, err)
 
 				msg, err = mrw.Read()
@@ -618,7 +607,7 @@ func TestWriter(t *testing.T) {
 					FourCC:          message.FourCCAC3,
 				}, msg)
 
-				err = w.WriteAC3(tracks[0].(*format.AC3), 0, []byte{1, 2})
+				err = w.WriteAC3(tracks[0], 0, []byte{1, 2})
 				require.NoError(t, err)
 
 				msg, err = mrw.Read()
@@ -631,7 +620,7 @@ func TestWriter(t *testing.T) {
 				}, msg)
 
 			case "pcma":
-				err = w.WriteG711(tracks[0].(*format.G711), 0, []byte{1, 2})
+				err = w.WriteG711(tracks[0], 0, []byte{1, 2})
 				require.NoError(t, err)
 
 				msg, err = mrw.Read()
@@ -645,7 +634,7 @@ func TestWriter(t *testing.T) {
 				}, msg)
 
 			case "pcmu":
-				err = w.WriteG711(tracks[0].(*format.G711), 0, []byte{1, 2})
+				err = w.WriteG711(tracks[0], 0, []byte{1, 2})
 				require.NoError(t, err)
 
 				msg, err = mrw.Read()
@@ -659,7 +648,7 @@ func TestWriter(t *testing.T) {
 				}, msg)
 
 			case "lpcm":
-				err = w.WriteLPCM(tracks[0].(*format.LPCM), 0, []byte{1, 2})
+				err = w.WriteLPCM(tracks[0], 0, []byte{1, 2})
 				require.NoError(t, err)
 
 				msg, err = mrw.Read()

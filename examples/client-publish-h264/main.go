@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/bluenviron/gortmplib"
-	"github.com/bluenviron/gortsplib/v5/pkg/format"
+	"github.com/bluenviron/gortmplib/pkg/codecs"
 )
 
 // This example shows how to:
@@ -38,13 +38,13 @@ func main() {
 	}
 	defer c.Close()
 
-	track := &format.H264{}
+	track := &gortmplib.Track{Codec: &codecs.H264{}}
 
 	c.NetConn().SetReadDeadline(time.Now().Add(10 * time.Second))
 
 	w := &gortmplib.Writer{
 		Conn:   c,
-		Tracks: []format.Format{track},
+		Tracks: []*gortmplib.Track{track},
 	}
 	err = w.Initialize()
 	if err != nil {

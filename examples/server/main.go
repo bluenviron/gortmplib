@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/bluenviron/gortmplib"
-	"github.com/bluenviron/gortsplib/v5/pkg/format"
+	"github.com/bluenviron/gortmplib/pkg/codecs"
 )
 
 // This example shows how to:
@@ -21,7 +21,7 @@ import (
 var (
 	mutex     sync.Mutex
 	publisher *gortmplib.ServerConn
-	tracks    []format.Format
+	tracks    []*gortmplib.Track
 	readers   []*gortmplib.Writer
 )
 
@@ -66,8 +66,8 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 	for _, track := range r.Tracks() {
 		log.Printf("%T", track)
 
-		switch track := track.(type) {
-		case *format.AV1:
+		switch track.Codec.(type) {
+		case *codecs.AV1:
 			r.OnDataAV1(track, func(pts time.Duration, tu [][]byte) {
 				mutex.Lock()
 				defer mutex.Unlock()
@@ -77,7 +77,7 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 				}
 			})
 
-		case *format.VP9:
+		case *codecs.VP9:
 			r.OnDataVP9(track, func(pts time.Duration, frame []byte) {
 				mutex.Lock()
 				defer mutex.Unlock()
@@ -87,7 +87,7 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 				}
 			})
 
-		case *format.H265:
+		case *codecs.H265:
 			r.OnDataH265(track, func(pts time.Duration, dts time.Duration, au [][]byte) {
 				mutex.Lock()
 				defer mutex.Unlock()
@@ -97,7 +97,7 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 				}
 			})
 
-		case *format.H264:
+		case *codecs.H264:
 			r.OnDataH264(track, func(pts time.Duration, dts time.Duration, au [][]byte) {
 				mutex.Lock()
 				defer mutex.Unlock()
@@ -107,7 +107,7 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 				}
 			})
 
-		case *format.Opus:
+		case *codecs.Opus:
 			r.OnDataOpus(track, func(pts time.Duration, packet []byte) {
 				mutex.Lock()
 				defer mutex.Unlock()
@@ -117,7 +117,7 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 				}
 			})
 
-		case *format.MPEG4Audio:
+		case *codecs.MPEG4Audio:
 			r.OnDataMPEG4Audio(track, func(pts time.Duration, au []byte) {
 				mutex.Lock()
 				defer mutex.Unlock()
@@ -127,7 +127,7 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 				}
 			})
 
-		case *format.MPEG1Audio:
+		case *codecs.MPEG1Audio:
 			r.OnDataMPEG1Audio(track, func(pts time.Duration, frame []byte) {
 				mutex.Lock()
 				defer mutex.Unlock()
@@ -137,7 +137,7 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 				}
 			})
 
-		case *format.AC3:
+		case *codecs.AC3:
 			r.OnDataAC3(track, func(pts time.Duration, frame []byte) {
 				mutex.Lock()
 				defer mutex.Unlock()
@@ -147,7 +147,7 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 				}
 			})
 
-		case *format.G711:
+		case *codecs.G711:
 			r.OnDataG711(track, func(pts time.Duration, samples []byte) {
 				mutex.Lock()
 				defer mutex.Unlock()
@@ -157,7 +157,7 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 				}
 			})
 
-		case *format.LPCM:
+		case *codecs.LPCM:
 			r.OnDataLPCM(track, func(pts time.Duration, samples []byte) {
 				mutex.Lock()
 				defer mutex.Unlock()

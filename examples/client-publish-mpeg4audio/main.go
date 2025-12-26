@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/bluenviron/gortmplib"
-	"github.com/bluenviron/gortsplib/v5/pkg/format"
+	"github.com/bluenviron/gortmplib/pkg/codecs"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 )
 
@@ -45,11 +45,13 @@ func main() {
 	}
 	defer c.Close()
 
-	track := &format.MPEG4Audio{
-		Config: &mpeg4audio.AudioSpecificConfig{
-			Type:         mpeg4audio.ObjectTypeAACLC,
-			SampleRate:   44100,
-			ChannelCount: 2,
+	track := &gortmplib.Track{
+		Codec: &codecs.MPEG4Audio{
+			Config: &mpeg4audio.AudioSpecificConfig{
+				Type:         mpeg4audio.ObjectTypeAACLC,
+				SampleRate:   44100,
+				ChannelCount: 2,
+			},
 		},
 	}
 
@@ -57,7 +59,7 @@ func main() {
 
 	w := &gortmplib.Writer{
 		Conn:   c,
-		Tracks: []format.Format{track},
+		Tracks: []*gortmplib.Track{track},
 	}
 	err = w.Initialize()
 	if err != nil {
