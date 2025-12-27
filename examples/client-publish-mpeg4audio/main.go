@@ -43,6 +43,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	defer c.Close()
 
 	track := &format.MPEG4Audio{
 		Config: &mpeg4audio.AudioSpecificConfig{

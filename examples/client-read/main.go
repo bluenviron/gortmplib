@@ -29,6 +29,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	defer c.Close()
 
 	c.NetConn().SetReadDeadline(time.Now().Add(10 * time.Second))
 
