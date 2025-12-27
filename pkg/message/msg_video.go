@@ -12,7 +12,7 @@ const (
 	VideoChunkStreamID = 6
 )
 
-// supported video codecs
+// video codecs
 const (
 	CodecH264 = 7
 )
