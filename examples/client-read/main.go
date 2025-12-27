@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/bluenviron/gortmplib"
-	"github.com/bluenviron/gortsplib/v5/pkg/format"
+	"github.com/bluenviron/gortmplib/pkg/codecs"
 )
 
 // This example shows how to:
@@ -46,53 +46,53 @@ func main() {
 	for _, track := range r.Tracks() {
 		log.Printf("%T", track)
 
-		switch track := track.(type) {
-		case *format.AV1:
+		switch track.Codec.(type) {
+		case *codecs.AV1:
 			r.OnDataAV1(track, func(pts time.Duration, tu [][]byte) {
 				log.Printf("incoming AV1 data, pts=%v, len=%v", pts, len(tu))
 			})
 
-		case *format.VP9:
+		case *codecs.VP9:
 			r.OnDataVP9(track, func(pts time.Duration, frame []byte) {
 				log.Printf("incoming VP9 data, pts=%v, len=%v", pts, len(frame))
 			})
 
-		case *format.H265:
+		case *codecs.H265:
 			r.OnDataH265(track, func(pts time.Duration, dts time.Duration, au [][]byte) {
 				log.Printf("incoming H265 data, pts=%v, pts=%v, len=%v", pts, dts, len(au))
 			})
 
-		case *format.H264:
+		case *codecs.H264:
 			r.OnDataH264(track, func(pts time.Duration, dts time.Duration, au [][]byte) {
 				log.Printf("incoming H264 data, pts=%v, dts=%v, len=%v", pts, dts, len(au))
 			})
 
-		case *format.Opus:
+		case *codecs.Opus:
 			r.OnDataOpus(track, func(pts time.Duration, packet []byte) {
 				log.Printf("incoming Opus data, pts=%v, len=%v", pts, len(packet))
 			})
 
-		case *format.MPEG4Audio:
+		case *codecs.MPEG4Audio:
 			r.OnDataMPEG4Audio(track, func(pts time.Duration, au []byte) {
 				log.Printf("incoming MPEG-4 Audio data, pts=%v, len=%v", pts, len(au))
 			})
 
-		case *format.MPEG1Audio:
+		case *codecs.MPEG1Audio:
 			r.OnDataMPEG1Audio(track, func(pts time.Duration, frame []byte) {
 				log.Printf("incoming MPEG-1 Audio data, pts=%v, len=%v", pts, len(frame))
 			})
 
-		case *format.AC3:
+		case *codecs.AC3:
 			r.OnDataAC3(track, func(pts time.Duration, frame []byte) {
 				log.Printf("incoming AC3 data, pts=%v, len=%v", pts, len(frame))
 			})
 
-		case *format.G711:
+		case *codecs.G711:
 			r.OnDataG711(track, func(pts time.Duration, samples []byte) {
 				log.Printf("incoming G711 data, pts=%v, len=%v", pts, len(samples))
 			})
 
-		case *format.LPCM:
+		case *codecs.LPCM:
 			r.OnDataLPCM(track, func(pts time.Duration, samples []byte) {
 				log.Printf("incoming LPCM data, pts=%v, len=%v", pts, len(samples))
 			})

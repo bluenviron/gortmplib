@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/abema/go-mp4"
-	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/av1"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h265"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg1audio"
 
 	"github.com/bluenviron/gortmplib/pkg/amf0"
+	"github.com/bluenviron/gortmplib/pkg/codecs"
 	"github.com/bluenviron/gortmplib/pkg/h264conf"
 	"github.com/bluenviron/gortmplib/pkg/message"
 )
@@ -47,49 +47,6 @@ var (
 
 	h264DefaultPPS = []byte{0x08, 0x06, 0x07, 0x08}
 )
-
-func codecID(track format.Format) float64 {
-	switch track := track.(type) {
-	// video
-
-	case *format.AV1:
-		return float64(message.FourCCAV1)
-
-	case *format.VP9:
-		return float64(message.FourCCVP9)
-
-	case *format.H265:
-		return float64(message.FourCCHEVC)
-
-	case *format.H264:
-		return message.CodecH264
-
-		// audio
-
-	case *format.Opus:
-		return float64(message.FourCCOpus)
-
-	case *format.MPEG4Audio, *format.MPEG4AudioLATM:
-		return message.CodecMPEG4Audio
-
-	case *format.MPEG1Audio:
-		return message.CodecMPEG1Audio
-
-	case *format.AC3:
-		return float64(message.FourCCAC3)
-
-	case *format.G711:
-		if track.MULaw {
-			return message.CodecPCMU
-		}
-		return message.CodecPCMA
-
-	case *format.LPCM:
-		return message.CodecLPCM
-	}
-
-	return 0
-}
 
 func generateHvcC(vps, sps, pps []byte) *mp4.HvcC {
 	var psps h265.SPS
@@ -215,10 +172,10 @@ func mpeg1AudioChannels(m mpeg1audio.ChannelMode) bool {
 // Writer provides functions to write outgoing data.
 type Writer struct {
 	Conn   Conn
-	Tracks []format.Format
+	Tracks []*Track
 
-	videoTrackToID map[format.Format]uint8
-	audioTrackToID map[format.Format]uint8
+	videoTrackToID map[*Track]uint8
+	audioTrackToID map[*Track]uint8
 }
 
 // Initialize initializes Writer.
@@ -232,25 +189,19 @@ func (w *Writer) Initialize() error {
 }
 
 func (w *Writer) writeTracks() error {
-	w.videoTrackToID = make(map[format.Format]uint8)
-	w.audioTrackToID = make(map[format.Format]uint8)
+	w.videoTrackToID = make(map[*Track]uint8)
+	w.audioTrackToID = make(map[*Track]uint8)
 
-	var videoTracks []format.Format
-	var audioTracks []format.Format
+	var videoTracks []*Track
+	var audioTracks []*Track
 
 	for _, track := range w.Tracks {
-		switch track.(type) {
-		case *format.AV1, *format.VP9, *format.H265, *format.H264:
+		if track.Codec.IsVideo() {
 			w.videoTrackToID[track] = uint8(len(videoTracks))
 			videoTracks = append(videoTracks, track)
-
-		case *format.Opus, *format.MPEG4Audio, *format.MPEG4AudioLATM,
-			*format.MPEG1Audio, *format.AC3, *format.G711, *format.LPCM:
+		} else {
 			w.audioTrackToID[track] = uint8(len(audioTracks))
 			audioTracks = append(audioTracks, track)
-
-		default:
-			return fmt.Errorf("unsupported track: %T", track)
 		}
 	}
 
@@ -259,7 +210,7 @@ func (w *Writer) writeTracks() error {
 			Key: "videocodecid",
 			Value: func() float64 {
 				if len(videoTracks) != 0 {
-					return codecID(videoTracks[0])
+					return float64(videoTracks[0].Codec.ID())
 				}
 				return 0
 			}(),
@@ -272,7 +223,7 @@ func (w *Writer) writeTracks() error {
 			Key: "audiocodecid",
 			Value: func() float64 {
 				if len(audioTracks) != 0 {
-					return codecID(audioTracks[0])
+					return float64(audioTracks[0].Codec.ID())
 				}
 				return 0
 			}(),
@@ -292,7 +243,7 @@ func (w *Writer) writeTracks() error {
 				Value: amf0.Object{
 					{
 						Key:   "videocodecid",
-						Value: codecID(track),
+						Value: float64(track.Codec.ID()),
 					},
 					{
 						Key:   "videodatarate",
@@ -317,7 +268,7 @@ func (w *Writer) writeTracks() error {
 				Value: amf0.Object{
 					{
 						Key:   "audiocodecid",
-						Value: codecID(track),
+						Value: float64(track.Codec.ID()),
 					},
 					{
 						Key:   "audiodatarate",
@@ -347,8 +298,8 @@ func (w *Writer) writeTracks() error {
 	}
 
 	for id, track := range videoTracks {
-		switch track := track.(type) {
-		case *format.AV1:
+		switch codec := track.Codec.(type) {
+		case *codecs.AV1:
 			// TODO: fill properly.
 			// unfortunately, AV1 config is not available at this stage.
 			var msg message.Message = &message.VideoExSequenceStart{
@@ -378,7 +329,7 @@ func (w *Writer) writeTracks() error {
 				return err
 			}
 
-		case *format.VP9:
+		case *codecs.VP9:
 			// TODO: fill properly.
 			// unfortunately, VP9 config is not available at this stage.
 			var msg message.Message = &message.VideoExSequenceStart{
@@ -410,8 +361,8 @@ func (w *Writer) writeTracks() error {
 				return err
 			}
 
-		case *format.H265:
-			vps, sps, pps := track.SafeParams()
+		case *codecs.H265:
+			vps, sps, pps := codec.VPS, codec.SPS, codec.PPS
 			if vps == nil || sps == nil || pps == nil {
 				vps = h265DefaultVPS
 				sps = h265DefaultSPS
@@ -438,8 +389,8 @@ func (w *Writer) writeTracks() error {
 				return err
 			}
 
-		case *format.H264:
-			sps, pps := track.SafeParams()
+		case *codecs.H264:
+			sps, pps := codec.SPS, codec.PPS
 			if sps == nil || pps == nil {
 				sps = h264DefaultSPS
 				pps = h264DefaultPPS
@@ -481,15 +432,15 @@ func (w *Writer) writeTracks() error {
 	}
 
 	for id, track := range audioTracks {
-		switch track := track.(type) {
-		case *format.Opus:
+		switch codec := track.Codec.(type) {
+		case *codecs.Opus:
 			var msg message.Message = &message.AudioExSequenceStart{
 				ChunkStreamID:   message.AudioChunkStreamID,
 				MessageStreamID: 0x1000000,
 				FourCC:          message.FourCCOpus,
 				OpusHeader: &message.OpusIDHeader{
 					Version:      0x1,
-					ChannelCount: uint8(track.ChannelCount),
+					ChannelCount: uint8(codec.ChannelCount),
 					PreSkip:      3840,
 				},
 			}
@@ -507,8 +458,8 @@ func (w *Writer) writeTracks() error {
 				return err
 			}
 
-		case *format.MPEG4Audio:
-			audioConf := track.Config
+		case *codecs.MPEG4Audio:
+			audioConf := codec.Config
 
 			if id == 0 {
 				var enc []byte
@@ -546,46 +497,7 @@ func (w *Writer) writeTracks() error {
 				}
 			}
 
-		case *format.MPEG4AudioLATM:
-			audioConf := track.StreamMuxConfig.Programs[0].Layers[0].AudioSpecificConfig
-
-			if id == 0 {
-				var enc []byte
-				enc, err = audioConf.Marshal()
-				if err != nil {
-					return err
-				}
-
-				err = w.Conn.Write(&message.Audio{
-					ChunkStreamID:   message.AudioChunkStreamID,
-					MessageStreamID: 0x1000000,
-					Codec:           message.CodecMPEG4Audio,
-					Rate:            message.AudioRate44100,
-					Depth:           message.AudioDepth16,
-					IsStereo:        true,
-					AACType:         message.AudioAACTypeConfig,
-					Payload:         enc,
-				})
-				if err != nil {
-					return err
-				}
-			} else {
-				err = w.Conn.Write(&message.AudioExMultitrack{
-					MultitrackType: 0x0,
-					TrackID:        uint8(id),
-					Wrapped: &message.AudioExSequenceStart{
-						ChunkStreamID:   message.VideoChunkStreamID,
-						MessageStreamID: 0x1000000,
-						FourCC:          message.FourCCMP4A,
-						AACHeader:       audioConf,
-					},
-				})
-				if err != nil {
-					return err
-				}
-			}
-
-		case *format.AC3:
+		case *codecs.AC3:
 			var msg message.Message = &message.AudioExSequenceStart{
 				ChunkStreamID:   message.AudioChunkStreamID,
 				MessageStreamID: 0x1000000,
@@ -605,14 +517,19 @@ func (w *Writer) writeTracks() error {
 				return err
 			}
 
-		case *format.G711:
+		case *codecs.G711:
 			if id != 0 {
 				return fmt.Errorf("it is not possible to use G711 tracks as secondary tracks")
 			}
 
-		case *format.LPCM:
+		case *codecs.LPCM:
 			if id != 0 {
 				return fmt.Errorf("it is not possible to use LPCM tracks as secondary tracks")
+			}
+
+			_, ok := audioRateIntToRTMP(codec.SampleRate)
+			if !ok {
+				return fmt.Errorf("unsupported sample rate: %v", codec.SampleRate)
 			}
 		}
 	}
@@ -621,7 +538,7 @@ func (w *Writer) writeTracks() error {
 }
 
 // WriteAV1 writes a AV1 temporal unit.
-func (w *Writer) WriteAV1(track *format.AV1, pts time.Duration, tu [][]byte) error {
+func (w *Writer) WriteAV1(track *Track, pts time.Duration, tu [][]byte) error {
 	// FFmpeg requires this.
 	tu = append([][]byte{{byte(av1.OBUTypeTemporalDelimiter << 3)}}, tu...)
 
@@ -652,7 +569,7 @@ func (w *Writer) WriteAV1(track *format.AV1, pts time.Duration, tu [][]byte) err
 }
 
 // WriteVP9 writes a VP9 frame.
-func (w *Writer) WriteVP9(track *format.VP9, pts time.Duration, frame []byte) error {
+func (w *Writer) WriteVP9(track *Track, pts time.Duration, frame []byte) error {
 	var msg message.Message = &message.VideoExFramesX{
 		ChunkStreamID:   message.VideoChunkStreamID,
 		MessageStreamID: 0x1000000,
@@ -675,7 +592,7 @@ func (w *Writer) WriteVP9(track *format.VP9, pts time.Duration, frame []byte) er
 }
 
 // WriteH265 writes a H265 access unit.
-func (w *Writer) WriteH265(track *format.H265, pts time.Duration, dts time.Duration, au [][]byte) error {
+func (w *Writer) WriteH265(track *Track, pts time.Duration, dts time.Duration, au [][]byte) error {
 	avcc, err := h264.AVCC(au).Marshal()
 	if err != nil {
 		return err
@@ -716,7 +633,7 @@ func (w *Writer) WriteH265(track *format.H265, pts time.Duration, dts time.Durat
 }
 
 // WriteH264 writes a H264 access unit.
-func (w *Writer) WriteH264(track *format.H264, pts time.Duration, dts time.Duration, au [][]byte) error {
+func (w *Writer) WriteH264(track *Track, pts time.Duration, dts time.Duration, au [][]byte) error {
 	avcc, err := h264.AVCC(au).Marshal()
 	if err != nil {
 		return err
@@ -766,7 +683,7 @@ func (w *Writer) WriteH264(track *format.H264, pts time.Duration, dts time.Durat
 }
 
 // WriteOpus writes a Opus packet.
-func (w *Writer) WriteOpus(track *format.Opus, pts time.Duration, pkt []byte) error {
+func (w *Writer) WriteOpus(track *Track, pts time.Duration, pkt []byte) error {
 	var msg message.Message = &message.AudioExCodedFrames{
 		ChunkStreamID:   message.AudioChunkStreamID,
 		MessageStreamID: 0x1000000,
@@ -789,7 +706,7 @@ func (w *Writer) WriteOpus(track *format.Opus, pts time.Duration, pkt []byte) er
 }
 
 // WriteMPEG4Audio writes a MPEG-4 Audio access unit.
-func (w *Writer) WriteMPEG4Audio(track format.Format, pts time.Duration, au []byte) error {
+func (w *Writer) WriteMPEG4Audio(track *Track, pts time.Duration, au []byte) error {
 	id := w.audioTrackToID[track]
 
 	if id == 0 {
@@ -820,7 +737,7 @@ func (w *Writer) WriteMPEG4Audio(track format.Format, pts time.Duration, au []by
 }
 
 // WriteMPEG1Audio writes a MPEG-1 Audio frame.
-func (w *Writer) WriteMPEG1Audio(track *format.MPEG1Audio, pts time.Duration, frame []byte) error {
+func (w *Writer) WriteMPEG1Audio(track *Track, pts time.Duration, frame []byte) error {
 	var h mpeg1audio.FrameHeader
 	err := h.Unmarshal(frame)
 	if err != nil {
@@ -865,7 +782,7 @@ func (w *Writer) WriteMPEG1Audio(track *format.MPEG1Audio, pts time.Duration, fr
 }
 
 // WriteAC3 writes an AC-3 frame.
-func (w *Writer) WriteAC3(track *format.AC3, pts time.Duration, frame []byte) error {
+func (w *Writer) WriteAC3(track *Track, pts time.Duration, frame []byte) error {
 	var msg message.Message = &message.AudioExCodedFrames{
 		ChunkStreamID:   message.AudioChunkStreamID,
 		MessageStreamID: 0x1000000,
@@ -888,33 +805,33 @@ func (w *Writer) WriteAC3(track *format.AC3, pts time.Duration, frame []byte) er
 }
 
 // WriteG711 writes G711 samples.
-func (w *Writer) WriteG711(track *format.G711, pts time.Duration, samples []byte) error {
-	var codec uint8
+func (w *Writer) WriteG711(track *Track, pts time.Duration, samples []byte) error {
+	codec := track.Codec.(*codecs.G711)
+	var codecID uint8
 
-	if track.MULaw {
-		codec = message.CodecPCMU
+	if codec.MULaw {
+		codecID = message.CodecPCMU
 	} else {
-		codec = message.CodecPCMA
+		codecID = message.CodecPCMA
 	}
 
 	return w.Conn.Write(&message.Audio{
 		ChunkStreamID:   message.AudioChunkStreamID,
 		MessageStreamID: 0x1000000,
-		Codec:           codec,
+		Codec:           codecID,
 		Rate:            message.AudioRate5512,
 		Depth:           message.AudioDepth16,
-		IsStereo:        track.ChannelCount == 2,
+		IsStereo:        codec.ChannelCount == 2,
 		Payload:         samples,
 		DTS:             pts,
 	})
 }
 
 // WriteLPCM writes LPCM samples.
-func (w *Writer) WriteLPCM(track *format.LPCM, pts time.Duration, samples []byte) error {
-	rate, ok := audioRateIntToRTMP(track.SampleRate)
-	if !ok {
-		return fmt.Errorf("unsupported sample rate: %v", track.SampleRate)
-	}
+func (w *Writer) WriteLPCM(track *Track, pts time.Duration, samples []byte) error {
+	codec := track.Codec.(*codecs.LPCM)
+
+	rate, _ := audioRateIntToRTMP(codec.SampleRate)
 
 	le := len(samples)
 	if le%2 != 0 {
@@ -934,7 +851,7 @@ func (w *Writer) WriteLPCM(track *format.LPCM, pts time.Duration, samples []byte
 		Codec:           message.CodecLPCM,
 		Rate:            rate,
 		Depth:           message.AudioDepth16,
-		IsStereo:        (track.ChannelCount == 2),
+		IsStereo:        (codec.ChannelCount == 2),
 		Payload:         samplesCopy,
 		DTS:             pts,
 	})

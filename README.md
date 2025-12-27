@@ -21,10 +21,7 @@ Features:
 * Support Diffie-hellman based encryption (RTMPE)
 * Support encoding and decoding data with the AMF0 format
 
-Current limitations:
-
-* API is not stable and might be subjected to breaking changes.
-* Codec definitions are borrowed from gortsplib. They will be made independent in the future.
+**WARNING**: API is not stable and might be subjected to breaking changes.
 
 ## Table of contents
 

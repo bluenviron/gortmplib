@@ -7,30 +7,27 @@ import (
 	"time"
 
 	"github.com/abema/go-mp4"
-	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h265"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortmplib/pkg/amf0"
 	"github.com/bluenviron/gortmplib/pkg/bytecounter"
+	"github.com/bluenviron/gortmplib/pkg/codecs"
 	"github.com/bluenviron/gortmplib/pkg/h264conf"
 	"github.com/bluenviron/gortmplib/pkg/message"
 )
 
-var testFormatH264 = &format.H264{
-	PayloadTyp: 96,
+var testCodecH264 = &codecs.H264{
 	SPS: []byte{ // 1920x1080 baseline
 		0x67, 0x42, 0xc0, 0x28, 0xd9, 0x00, 0x78, 0x02,
 		0x27, 0xe5, 0x84, 0x00, 0x00, 0x03, 0x00, 0x04,
 		0x00, 0x00, 0x03, 0x00, 0xf0, 0x3c, 0x60, 0xc9, 0x20,
 	},
-	PPS:               []byte{0x08, 0x06, 0x07, 0x08},
-	PacketizationMode: 1,
+	PPS: []byte{0x08, 0x06, 0x07, 0x08},
 }
 
-var testFormatH265 = &format.H265{
-	PayloadTyp: 96,
+var testCodecH265 = &codecs.H265{
 	VPS: []byte{
 		0x40, 0x01, 0x0c, 0x01, 0xff, 0xff, 0x02, 0x20,
 		0x00, 0x00, 0x03, 0x00, 0xb0, 0x00, 0x00, 0x03,
@@ -83,34 +80,28 @@ func (c *dummyConn) Write(msg message.Message) error {
 
 func TestReadTracks(t *testing.T) {
 	var spsp h265.SPS
-	err := spsp.Unmarshal(testFormatH265.SPS)
+	err := spsp.Unmarshal(testCodecH265.SPS)
 	require.NoError(t, err)
 
 	for _, ca := range []struct {
 		name     string
-		tracks   []format.Format
+		tracks   []*Track
 		messages []message.Message
 	}{
 		{
 			"h264 + aac",
-			[]format.Format{
-				&format.H264{
-					PayloadTyp:        96,
-					SPS:               testFormatH264.SPS,
-					PPS:               testFormatH264.PPS,
-					PacketizationMode: 1,
-				},
-				&format.MPEG4Audio{
-					PayloadTyp: 96,
+			[]*Track{
+				{Codec: &codecs.H264{
+					SPS: testCodecH264.SPS,
+					PPS: testCodecH264.PPS,
+				}},
+				{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
 						Type:         2,
 						SampleRate:   44100,
 						ChannelCount: 2,
 					},
-					SizeLength:       13,
-					IndexLength:      3,
-					IndexDeltaLength: 3,
-				},
+				}},
 			},
 			[]message.Message{
 				&message.DataAMF0{
@@ -147,8 +138,8 @@ func TestReadTracks(t *testing.T) {
 					Type:            message.VideoTypeConfig,
 					Payload: func() []byte {
 						buf, _ := h264conf.Conf{
-							SPS: testFormatH264.SPS,
-							PPS: testFormatH264.PPS,
+							SPS: testCodecH264.SPS,
+							PPS: testCodecH264.PPS,
 						}.Marshal()
 						return buf
 					}(),
@@ -176,14 +167,10 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"h264",
-			[]format.Format{
-				&format.H264{
-					PayloadTyp:        96,
-					SPS:               testFormatH264.SPS,
-					PPS:               testFormatH264.PPS,
-					PacketizationMode: 1,
-				},
-			},
+			[]*Track{{Codec: &codecs.H264{
+				SPS: testCodecH264.SPS,
+				PPS: testCodecH264.PPS,
+			}}},
 			[]message.Message{
 				&message.DataAMF0{
 					ChunkStreamID:   4,
@@ -219,8 +206,8 @@ func TestReadTracks(t *testing.T) {
 					Type:            message.VideoTypeConfig,
 					Payload: func() []byte {
 						buf, _ := h264conf.Conf{
-							SPS: testFormatH264.SPS,
-							PPS: testFormatH264.PPS,
+							SPS: testCodecH264.SPS,
+							PPS: testCodecH264.PPS,
 						}.Marshal()
 						return buf
 					}(),
@@ -237,24 +224,18 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"issue mediamtx/386 (missing metadata)",
-			[]format.Format{
-				&format.H264{
-					PayloadTyp:        96,
-					SPS:               testFormatH264.SPS,
-					PPS:               testFormatH264.PPS,
-					PacketizationMode: 1,
-				},
-				&format.MPEG4Audio{
-					PayloadTyp: 96,
+			[]*Track{
+				{Codec: &codecs.H264{
+					SPS: testCodecH264.SPS,
+					PPS: testCodecH264.PPS,
+				}},
+				{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
 						Type:         2,
 						SampleRate:   44100,
 						ChannelCount: 2,
 					},
-					SizeLength:       13,
-					IndexLength:      3,
-					IndexDeltaLength: 3,
-				},
+				}},
 			},
 			[]message.Message{
 				&message.Video{
@@ -265,8 +246,8 @@ func TestReadTracks(t *testing.T) {
 					Type:            message.VideoTypeConfig,
 					Payload: func() []byte {
 						buf, _ := h264conf.Conf{
-							SPS: testFormatH264.SPS,
-							PPS: testFormatH264.PPS,
+							SPS: testCodecH264.SPS,
+							PPS: testCodecH264.PPS,
 						}.Marshal()
 						return buf
 					}(),
@@ -294,24 +275,18 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"issue mediamtx/3301 (metadata without tracks)",
-			[]format.Format{
-				&format.H264{
-					PayloadTyp:        96,
-					SPS:               testFormatH264.SPS,
-					PPS:               testFormatH264.PPS,
-					PacketizationMode: 1,
-				},
-				&format.MPEG4Audio{
-					PayloadTyp: 96,
+			[]*Track{
+				{Codec: &codecs.H264{
+					SPS: testCodecH264.SPS,
+					PPS: testCodecH264.PPS,
+				}},
+				{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
 						Type:         2,
 						SampleRate:   44100,
 						ChannelCount: 2,
 					},
-					SizeLength:       13,
-					IndexLength:      3,
-					IndexDeltaLength: 3,
-				},
+				}},
 			},
 			[]message.Message{
 				&message.DataAMF0{
@@ -340,8 +315,8 @@ func TestReadTracks(t *testing.T) {
 					Type:            message.VideoTypeConfig,
 					Payload: func() []byte {
 						buf, _ := h264conf.Conf{
-							SPS: testFormatH264.SPS,
-							PPS: testFormatH264.PPS,
+							SPS: testCodecH264.SPS,
+							PPS: testCodecH264.PPS,
 						}.Marshal()
 						return buf
 					}(),
@@ -369,18 +344,14 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"issue mediamtx/386 (missing metadata)",
-			[]format.Format{
-				&format.MPEG4Audio{
-					PayloadTyp: 96,
+			[]*Track{
+				{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
 						Type:         2,
 						SampleRate:   44100,
 						ChannelCount: 2,
 					},
-					SizeLength:       13,
-					IndexLength:      3,
-					IndexDeltaLength: 3,
-				},
+				}},
 			},
 			[]message.Message{
 				&message.Audio{
@@ -415,18 +386,14 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"issue mediamtx/3414 (empty audio payload)",
-			[]format.Format{
-				&format.MPEG4Audio{
-					PayloadTyp: 96,
+			[]*Track{
+				{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
 						Type:         2,
 						SampleRate:   44100,
 						ChannelCount: 2,
 					},
-					SizeLength:       13,
-					IndexLength:      3,
-					IndexDeltaLength: 3,
-				},
+				}},
 			},
 			[]message.Message{
 				&message.DataAMF0{
@@ -497,13 +464,12 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"issue mediamtx/2232 (xsplit broadcaster)",
-			[]format.Format{
-				&format.H265{
-					PayloadTyp: 96,
-					VPS:        testFormatH265.VPS,
-					SPS:        testFormatH265.SPS,
-					PPS:        testFormatH265.PPS,
-				},
+			[]*Track{
+				{Codec: &codecs.H265{
+					VPS: testCodecH265.VPS,
+					SPS: testCodecH265.SPS,
+					PPS: testCodecH265.PPS,
+				}},
 			},
 			[]message.Message{
 				&message.DataAMF0{
@@ -536,7 +502,7 @@ func TestReadTracks(t *testing.T) {
 					ChunkStreamID:   4,
 					MessageStreamID: 0x1000000,
 					FourCC:          message.FourCCHEVC,
-					HEVCHeader:      generateHvcC(testFormatH265.VPS, testFormatH265.SPS, testFormatH265.PPS),
+					HEVCHeader:      generateHvcC(testCodecH265.VPS, testCodecH265.SPS, testCodecH265.PPS),
 				},
 				&message.VideoExCodedFrames{
 					ChunkStreamID:   4,
@@ -553,13 +519,12 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"h265, obs 30.0",
-			[]format.Format{
-				&format.H265{
-					PayloadTyp: 96,
-					VPS:        testFormatH265.VPS,
-					SPS:        testFormatH265.SPS,
-					PPS:        testFormatH265.PPS,
-				},
+			[]*Track{
+				{Codec: &codecs.H265{
+					VPS: testCodecH265.VPS,
+					SPS: testCodecH265.SPS,
+					PPS: testCodecH265.PPS,
+				}},
 			},
 			[]message.Message{
 				&message.DataAMF0{
@@ -592,7 +557,7 @@ func TestReadTracks(t *testing.T) {
 					ChunkStreamID:   4,
 					MessageStreamID: 0x1000000,
 					FourCC:          message.FourCCHEVC,
-					HEVCHeader:      generateHvcC(testFormatH265.VPS, testFormatH265.SPS, testFormatH265.PPS),
+					HEVCHeader:      generateHvcC(testCodecH265.VPS, testCodecH265.SPS, testCodecH265.PPS),
 				},
 				&message.VideoExCodedFrames{
 					ChunkStreamID:   6,
@@ -609,10 +574,8 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"av1, ffmpeg",
-			[]format.Format{
-				&format.AV1{
-					PayloadTyp: 96,
-				},
+			[]*Track{
+				{Codec: &codecs.AV1{}},
 			},
 			[]message.Message{
 				&message.DataAMF0{
@@ -685,29 +648,23 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"issue mediamtx/2289 (missing videocodecid)",
-			[]format.Format{
-				&format.H264{
-					PayloadTyp: 96,
+			[]*Track{
+				{Codec: &codecs.H264{
 					SPS: []byte{
 						0x67, 0x64, 0x00, 0x1f, 0xac, 0x2c, 0x6a, 0x81,
 						0x40, 0x16, 0xe9, 0xb8, 0x28, 0x08, 0x2a, 0x00,
 						0x00, 0x03, 0x00, 0x02, 0x00, 0x00, 0x03, 0x00,
 						0xc9, 0x08,
 					},
-					PPS:               []byte{0x68, 0xee, 0x31, 0xb2, 0x1b},
-					PacketizationMode: 1,
-				},
-				&format.MPEG4Audio{
-					PayloadTyp: 96,
+					PPS: []byte{0x68, 0xee, 0x31, 0xb2, 0x1b},
+				}},
+				{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
 						Type:         2,
 						SampleRate:   48000,
 						ChannelCount: 1,
 					},
-					SizeLength:       13,
-					IndexLength:      3,
-					IndexDeltaLength: 3,
-				},
+				}},
 			},
 			[]message.Message{
 				&message.DataAMF0{
@@ -774,13 +731,11 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"issue mediamtx/2352 (streamlabs)",
-			[]format.Format{
-				&format.H264{
-					PayloadTyp:        96,
-					SPS:               testFormatH264.SPS,
-					PPS:               testFormatH264.PPS,
-					PacketizationMode: 1,
-				},
+			[]*Track{
+				{Codec: &codecs.H264{
+					SPS: testCodecH264.SPS,
+					PPS: testCodecH264.PPS,
+				}},
 			},
 			[]message.Message{
 				&message.DataAMF0{
@@ -829,8 +784,8 @@ func TestReadTracks(t *testing.T) {
 					Type:            message.VideoTypeConfig,
 					Payload: func() []byte {
 						buf, _ := h264conf.Conf{
-							SPS: testFormatH264.SPS,
-							PPS: testFormatH264.PPS,
+							SPS: testCodecH264.SPS,
+							PPS: testCodecH264.PPS,
 						}.Marshal()
 						return buf
 					}(),
@@ -856,8 +811,8 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"mpeg-1 audio, ffmpeg",
-			[]format.Format{
-				&format.MPEG1Audio{},
+			[]*Track{
+				{Codec: &codecs.MPEG1Audio{}},
 			},
 			[]message.Message{
 				&message.DataAMF0{
@@ -897,13 +852,12 @@ func TestReadTracks(t *testing.T) {
 		},
 		{ //nolint:dupl
 			"pcma, ffmpeg",
-			[]format.Format{
-				&format.G711{
-					PayloadTyp:   8,
+			[]*Track{
+				{Codec: &codecs.G711{
 					MULaw:        false,
 					SampleRate:   8000,
 					ChannelCount: 1,
-				},
+				}},
 			},
 			[]message.Message{
 				&message.DataAMF0{
@@ -943,13 +897,12 @@ func TestReadTracks(t *testing.T) {
 		},
 		{ //nolint:dupl
 			"pcmu, ffmpeg",
-			[]format.Format{
-				&format.G711{
-					PayloadTyp:   0,
+			[]*Track{
+				{Codec: &codecs.G711{
 					MULaw:        true,
 					SampleRate:   8000,
 					ChannelCount: 1,
-				},
+				}},
 			},
 			[]message.Message{
 				&message.DataAMF0{
@@ -989,13 +942,12 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"lpcm, gstreamer",
-			[]format.Format{
-				&format.LPCM{
-					PayloadTyp:   96,
+			[]*Track{
+				{Codec: &codecs.LPCM{
 					BitDepth:     16,
 					SampleRate:   44100,
 					ChannelCount: 2,
-				},
+				}},
 			},
 			[]message.Message{
 				&message.DataAMF0{
@@ -1034,9 +986,8 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"h264+aac+aac, obs 31 vod track",
-			[]format.Format{
-				&format.H264{
-					PayloadTyp: 96,
+			[]*Track{
+				{Codec: &codecs.H264{
 					SPS: []byte{
 						0x67, 0x64, 0x00, 0x2a, 0xac, 0x2b, 0x20, 0x0f,
 						0x00, 0x44, 0xfc, 0xb8, 0x0b, 0x50, 0x10, 0x10,
@@ -1047,30 +998,21 @@ func TestReadTracks(t *testing.T) {
 					PPS: []byte{
 						0x68, 0xeb, 0x8f, 0x2c,
 					},
-					PacketizationMode: 1,
-				},
-				&format.MPEG4Audio{
-					PayloadTyp: 96,
+				}},
+				{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
 						Type:         2,
 						SampleRate:   48000,
 						ChannelCount: 2,
 					},
-					SizeLength:       13,
-					IndexLength:      3,
-					IndexDeltaLength: 3,
-				},
-				&format.MPEG4Audio{
-					PayloadTyp: 96,
+				}},
+				{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
 						Type:         2,
 						SampleRate:   48000,
 						ChannelCount: 2,
 					},
-					SizeLength:       13,
-					IndexLength:      3,
-					IndexDeltaLength: 3,
-				},
+				}},
 			},
 			[]message.Message{
 				&message.DataAMF0{ //nolint:dupl
@@ -1158,9 +1100,8 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"h264+h264+aac, obs 31 multitrack video",
-			[]format.Format{
-				&format.H264{
-					PayloadTyp: 96,
+			[]*Track{
+				{Codec: &codecs.H264{
 					SPS: []byte{
 						0x67, 0x64, 0x00, 0x2a, 0xac, 0x2c, 0xac, 0x07,
 						0x80, 0x22, 0x7e, 0x5c, 0x05, 0xa8, 0x08, 0x08,
@@ -1171,10 +1112,8 @@ func TestReadTracks(t *testing.T) {
 					PPS: []byte{
 						0x68, 0xee, 0x3c, 0xb0,
 					},
-					PacketizationMode: 1,
-				},
-				&format.H264{
-					PayloadTyp: 96,
+				}},
+				{Codec: &codecs.H264{
 					SPS: []byte{
 						0x67, 0x4d, 0x40, 0x1e, 0x96, 0x56, 0x05, 0x01,
 						0x7f, 0xcb, 0x80, 0xb5, 0x01, 0x01, 0x01, 0x40,
@@ -1185,19 +1124,14 @@ func TestReadTracks(t *testing.T) {
 					PPS: []byte{
 						0x68, 0xee, 0x3c, 0x80,
 					},
-					PacketizationMode: 1,
-				},
-				&format.MPEG4Audio{
-					PayloadTyp: 96,
+				}},
+				{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
 						Type:         2,
 						SampleRate:   48000,
 						ChannelCount: 2,
 					},
-					SizeLength:       13,
-					IndexLength:      3,
-					IndexDeltaLength: 3,
-				},
+				}},
 			},
 			[]message.Message{
 				&message.DataAMF0{ //nolint:dupl
@@ -1311,12 +1245,11 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"ac-3, ffmpeg",
-			[]format.Format{
-				&format.AC3{
-					PayloadTyp:   96,
+			[]*Track{
+				{Codec: &codecs.AC3{
 					SampleRate:   48000,
 					ChannelCount: 3,
-				},
+				}},
 			},
 			[]message.Message{
 				&message.DataAMF0{
@@ -1434,11 +1367,10 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"opus, ffmpeg",
-			[]format.Format{
-				&format.Opus{
-					PayloadTyp:   96,
+			[]*Track{
+				{Codec: &codecs.Opus{
 					ChannelCount: 2,
-				},
+				}},
 			},
 			[]message.Message{
 				&message.DataAMF0{
@@ -1561,13 +1493,11 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"issue mediamtx/3802 (double video config)",
-			[]format.Format{
-				&format.H264{
-					PayloadTyp:        96,
-					SPS:               testFormatH264.SPS,
-					PPS:               testFormatH264.PPS,
-					PacketizationMode: 1,
-				},
+			[]*Track{
+				{Codec: &codecs.H264{
+					SPS: testCodecH264.SPS,
+					PPS: testCodecH264.PPS,
+				}},
 			},
 			[]message.Message{
 				&message.DataAMF0{
@@ -1604,8 +1534,8 @@ func TestReadTracks(t *testing.T) {
 					Type:            message.VideoTypeConfig,
 					Payload: func() []byte {
 						buf, _ := h264conf.Conf{
-							SPS: testFormatH264.SPS,
-							PPS: testFormatH264.PPS,
+							SPS: testCodecH264.SPS,
+							PPS: testCodecH264.PPS,
 						}.Marshal()
 						return buf
 					}(),
@@ -1618,8 +1548,8 @@ func TestReadTracks(t *testing.T) {
 					Type:            message.VideoTypeConfig,
 					Payload: func() []byte {
 						buf, _ := h264conf.Conf{
-							SPS: testFormatH264.SPS,
-							PPS: testFormatH264.PPS,
+							SPS: testCodecH264.SPS,
+							PPS: testCodecH264.PPS,
 						}.Marshal()
 						return buf
 					}(),
@@ -1672,8 +1602,8 @@ func TestReaderRewind(t *testing.T) {
 			Type:            message.VideoTypeConfig,
 			Payload: func() []byte {
 				buf, _ := h264conf.Conf{
-					SPS: testFormatH264.SPS,
-					PPS: testFormatH264.PPS,
+					SPS: testCodecH264.SPS,
+					PPS: testCodecH264.PPS,
 				}.Marshal()
 				return buf
 			}(),
@@ -1729,15 +1659,13 @@ func TestReaderRewind(t *testing.T) {
 	require.NoError(t, err)
 
 	tracks := r.Tracks()
-	require.Equal(t, []format.Format{&format.H264{
-		PayloadTyp:        96,
-		SPS:               testFormatH264.SPS,
-		PPS:               testFormatH264.PPS,
-		PacketizationMode: 1,
-	}}, tracks)
+	require.Equal(t, []*Track{{Codec: &codecs.H264{
+		SPS: testCodecH264.SPS,
+		PPS: testCodecH264.PPS,
+	}}}, tracks)
 
 	receivedCount := 0
-	r.OnDataH264(tracks[0].(*format.H264), func(_ time.Duration, _ time.Duration, _ [][]byte) {
+	r.OnDataH264(tracks[0], func(_ time.Duration, _ time.Duration, _ [][]byte) {
 		receivedCount++
 	})
 
