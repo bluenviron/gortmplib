@@ -855,7 +855,6 @@ func TestReadTracks(t *testing.T) {
 			[]*Track{
 				{Codec: &codecs.G711{
 					MULaw:        false,
-					SampleRate:   8000,
 					ChannelCount: 1,
 				}},
 			},
@@ -900,7 +899,6 @@ func TestReadTracks(t *testing.T) {
 			[]*Track{
 				{Codec: &codecs.G711{
 					MULaw:        true,
-					SampleRate:   8000,
 					ChannelCount: 1,
 				}},
 			},
