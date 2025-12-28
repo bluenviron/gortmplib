@@ -3,9 +3,9 @@ package codecs
 import "github.com/bluenviron/gortmplib/pkg/message"
 
 // G711 is the G711 codec.
+// Sample rate is always 8khz.
 type G711 struct {
 	MULaw        bool
-	SampleRate   int
 	ChannelCount int
 }
 

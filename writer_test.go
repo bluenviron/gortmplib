@@ -86,14 +86,12 @@ func TestWriter(t *testing.T) {
 			case "pcma":
 				tracks = append(tracks, &Track{Codec: &codecs.G711{
 					MULaw:        false,
-					SampleRate:   8000,
 					ChannelCount: 1,
 				}})
 
 			case "pcmu":
 				tracks = append(tracks, &Track{Codec: &codecs.G711{
 					MULaw:        true,
-					SampleRate:   8000,
 					ChannelCount: 1,
 				}})
 

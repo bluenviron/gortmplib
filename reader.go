@@ -91,8 +91,7 @@ func audioTrackFromData(msg *message.Audio) (*Track, error) {
 
 	case message.CodecPCMA:
 		return &Track{Codec: &codecs.G711{
-			MULaw:      false,
-			SampleRate: 8000,
+			MULaw: false,
 			ChannelCount: func() int {
 				if msg.IsStereo {
 					return 2
@@ -103,8 +102,7 @@ func audioTrackFromData(msg *message.Audio) (*Track, error) {
 
 	case message.CodecPCMU:
 		return &Track{Codec: &codecs.G711{
-			MULaw:      true,
-			SampleRate: 8000,
+			MULaw: true,
 			ChannelCount: func() int {
 				if msg.IsStereo {
 					return 2
