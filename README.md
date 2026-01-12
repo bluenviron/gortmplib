@@ -1,7 +1,7 @@
 # gortmplib
 
-[![Test](https://github.com/bluenviron/gortmplib/actions/workflows/test.yml/badge.svg)](https://github.com/bluenviron/gortmplib/actions/workflows/test.yml)
-[![Lint](https://github.com/bluenviron/gortmplib/actions/workflows/lint.yml/badge.svg)](https://github.com/bluenviron/gortmplib/actions/workflows/lint.yml)
+[![Test](https://github.com/bluenviron/gortmplib/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/bluenviron/gortmplib/actions/workflows/test.yml?query=branch%3Amain)
+[![Lint](https://github.com/bluenviron/gortmplib/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/bluenviron/gortmplib/actions/workflows/lint.yml?query=branch%3Amain)
 [![Go Report Card](https://goreportcard.com/badge/github.com/bluenviron/gortmplib)](https://goreportcard.com/report/github.com/bluenviron/gortmplib)
 [![CodeCov](https://codecov.io/gh/bluenviron/gortmplib/branch/main/graph/badge.svg)](https://app.codecov.io/gh/bluenviron/gortmplib/tree/main)
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/bluenviron/gortmplib)](https://pkg.go.dev/github.com/bluenviron/gortmplib#pkg-index)
