@@ -97,9 +97,10 @@ func TestReadTracks(t *testing.T) {
 				}},
 				{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
-						Type:         2,
-						SampleRate:   44100,
-						ChannelCount: 2,
+						Type:          2,
+						SampleRate:    44100,
+						ChannelConfig: 2,
+						ChannelCount:  2,
 					},
 				}},
 			},
@@ -155,9 +156,10 @@ func TestReadTracks(t *testing.T) {
 					AACType:         message.AudioAACTypeConfig,
 					Payload: func() []byte {
 						enc, err2 := mpeg4audio.AudioSpecificConfig{
-							Type:         2,
-							SampleRate:   44100,
-							ChannelCount: 2,
+							Type:          2,
+							SampleRate:    44100,
+							ChannelConfig: 2,
+							ChannelCount:  2,
 						}.Marshal()
 						require.NoError(t, err2)
 						return enc
@@ -231,9 +233,10 @@ func TestReadTracks(t *testing.T) {
 				}},
 				{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
-						Type:         2,
-						SampleRate:   44100,
-						ChannelCount: 2,
+						Type:          2,
+						SampleRate:    44100,
+						ChannelConfig: 2,
+						ChannelCount:  2,
 					},
 				}},
 			},
@@ -263,9 +266,10 @@ func TestReadTracks(t *testing.T) {
 					AACType:         message.AudioAACTypeConfig,
 					Payload: func() []byte {
 						enc, err2 := mpeg4audio.AudioSpecificConfig{
-							Type:         2,
-							SampleRate:   44100,
-							ChannelCount: 2,
+							Type:          2,
+							SampleRate:    44100,
+							ChannelConfig: 2,
+							ChannelCount:  2,
 						}.Marshal()
 						require.NoError(t, err2)
 						return enc
@@ -282,9 +286,10 @@ func TestReadTracks(t *testing.T) {
 				}},
 				{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
-						Type:         2,
-						SampleRate:   44100,
-						ChannelCount: 2,
+						Type:          2,
+						SampleRate:    44100,
+						ChannelConfig: 2,
+						ChannelCount:  2,
 					},
 				}},
 			},
@@ -332,9 +337,10 @@ func TestReadTracks(t *testing.T) {
 					AACType:         message.AudioAACTypeConfig,
 					Payload: func() []byte {
 						enc, err2 := mpeg4audio.AudioSpecificConfig{
-							Type:         2,
-							SampleRate:   44100,
-							ChannelCount: 2,
+							Type:          2,
+							SampleRate:    44100,
+							ChannelConfig: 2,
+							ChannelCount:  2,
 						}.Marshal()
 						require.NoError(t, err2)
 						return enc
@@ -347,9 +353,10 @@ func TestReadTracks(t *testing.T) {
 			[]*Track{
 				{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
-						Type:         2,
-						SampleRate:   44100,
-						ChannelCount: 2,
+						Type:          2,
+						SampleRate:    44100,
+						ChannelConfig: 2,
+						ChannelCount:  2,
 					},
 				}},
 			},
@@ -389,9 +396,10 @@ func TestReadTracks(t *testing.T) {
 			[]*Track{
 				{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
-						Type:         2,
-						SampleRate:   44100,
-						ChannelCount: 2,
+						Type:          2,
+						SampleRate:    44100,
+						ChannelConfig: 2,
+						ChannelCount:  2,
 					},
 				}},
 			},
@@ -660,9 +668,10 @@ func TestReadTracks(t *testing.T) {
 				}},
 				{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
-						Type:         2,
-						SampleRate:   48000,
-						ChannelCount: 1,
+						Type:          2,
+						SampleRate:    48000,
+						ChannelConfig: 1,
+						ChannelCount:  1,
 					},
 				}},
 			},
@@ -999,16 +1008,18 @@ func TestReadTracks(t *testing.T) {
 				}},
 				{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
-						Type:         2,
-						SampleRate:   48000,
-						ChannelCount: 2,
+						Type:          2,
+						SampleRate:    48000,
+						ChannelConfig: 2,
+						ChannelCount:  2,
 					},
 				}},
 				{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
-						Type:         2,
-						SampleRate:   48000,
-						ChannelCount: 2,
+						Type:          2,
+						SampleRate:    48000,
+						ChannelConfig: 2,
+						ChannelCount:  2,
 					},
 				}},
 			},
@@ -1125,9 +1136,10 @@ func TestReadTracks(t *testing.T) {
 				}},
 				{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
-						Type:         2,
-						SampleRate:   48000,
-						ChannelCount: 2,
+						Type:          2,
+						SampleRate:    48000,
+						ChannelConfig: 2,
+						ChannelCount:  2,
 					},
 				}},
 			},

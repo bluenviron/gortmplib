@@ -94,9 +94,10 @@ var readWriterCases = []struct {
 			MessageStreamID: 0x1000000,
 			FourCC:          FourCCMP4A,
 			AACHeader: &mpeg4audio.AudioSpecificConfig{
-				Type:         mpeg4audio.ObjectTypeAACLC,
-				SampleRate:   48000,
-				ChannelCount: 2,
+				Type:          mpeg4audio.ObjectTypeAACLC,
+				SampleRate:    48000,
+				ChannelConfig: 2,
+				ChannelCount:  2,
 			},
 		},
 		[]byte{
