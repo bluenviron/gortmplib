@@ -14,7 +14,6 @@ import (
 	"github.com/bluenviron/gortmplib/pkg/amf0"
 	"github.com/bluenviron/gortmplib/pkg/bytecounter"
 	"github.com/bluenviron/gortmplib/pkg/codecs"
-	"github.com/bluenviron/gortmplib/pkg/h264conf"
 	"github.com/bluenviron/gortmplib/pkg/message"
 )
 
@@ -137,13 +136,7 @@ func TestReadTracks(t *testing.T) {
 					Codec:           message.CodecH264,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					Payload: func() []byte {
-						buf, _ := h264conf.Conf{
-							SPS: testCodecH264.SPS,
-							PPS: testCodecH264.PPS,
-						}.Marshal()
-						return buf
-					}(),
+					AVCConfig:       generateAvcC(testCodecH264.SPS, testCodecH264.PPS),
 				},
 				&message.Audio{
 					ChunkStreamID:   message.AudioChunkStreamID,
@@ -154,16 +147,12 @@ func TestReadTracks(t *testing.T) {
 					Depth:           message.AudioDepth16,
 					IsStereo:        true,
 					AACType:         message.AudioAACTypeConfig,
-					Payload: func() []byte {
-						enc, err2 := mpeg4audio.AudioSpecificConfig{
-							Type:          2,
-							SampleRate:    44100,
-							ChannelConfig: 2,
-							ChannelCount:  2,
-						}.Marshal()
-						require.NoError(t, err2)
-						return enc
-					}(),
+					AACConfig: &mpeg4audio.AudioSpecificConfig{
+						Type:          2,
+						SampleRate:    44100,
+						ChannelConfig: 2,
+						ChannelCount:  2,
+					},
 				},
 			},
 		},
@@ -206,13 +195,7 @@ func TestReadTracks(t *testing.T) {
 					Codec:           message.CodecH264,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					Payload: func() []byte {
-						buf, _ := h264conf.Conf{
-							SPS: testCodecH264.SPS,
-							PPS: testCodecH264.PPS,
-						}.Marshal()
-						return buf
-					}(),
+					AVCConfig:       generateAvcC(testCodecH264.SPS, testCodecH264.PPS),
 				},
 				&message.Video{
 					ChunkStreamID:   message.VideoChunkStreamID,
@@ -247,13 +230,7 @@ func TestReadTracks(t *testing.T) {
 					Codec:           message.CodecH264,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					Payload: func() []byte {
-						buf, _ := h264conf.Conf{
-							SPS: testCodecH264.SPS,
-							PPS: testCodecH264.PPS,
-						}.Marshal()
-						return buf
-					}(),
+					AVCConfig:       generateAvcC(testCodecH264.SPS, testCodecH264.PPS),
 				},
 				&message.Audio{
 					ChunkStreamID:   message.AudioChunkStreamID,
@@ -264,16 +241,12 @@ func TestReadTracks(t *testing.T) {
 					Depth:           message.AudioDepth16,
 					IsStereo:        true,
 					AACType:         message.AudioAACTypeConfig,
-					Payload: func() []byte {
-						enc, err2 := mpeg4audio.AudioSpecificConfig{
-							Type:          2,
-							SampleRate:    44100,
-							ChannelConfig: 2,
-							ChannelCount:  2,
-						}.Marshal()
-						require.NoError(t, err2)
-						return enc
-					}(),
+					AACConfig: &mpeg4audio.AudioSpecificConfig{
+						Type:          2,
+						SampleRate:    44100,
+						ChannelConfig: 2,
+						ChannelCount:  2,
+					},
 				},
 			},
 		},
@@ -318,13 +291,7 @@ func TestReadTracks(t *testing.T) {
 					Codec:           message.CodecH264,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					Payload: func() []byte {
-						buf, _ := h264conf.Conf{
-							SPS: testCodecH264.SPS,
-							PPS: testCodecH264.PPS,
-						}.Marshal()
-						return buf
-					}(),
+					AVCConfig:       generateAvcC(testCodecH264.SPS, testCodecH264.PPS),
 				},
 				&message.Audio{
 					ChunkStreamID:   message.AudioChunkStreamID,
@@ -335,16 +302,12 @@ func TestReadTracks(t *testing.T) {
 					Depth:           message.AudioDepth16,
 					IsStereo:        true,
 					AACType:         message.AudioAACTypeConfig,
-					Payload: func() []byte {
-						enc, err2 := mpeg4audio.AudioSpecificConfig{
-							Type:          2,
-							SampleRate:    44100,
-							ChannelConfig: 2,
-							ChannelCount:  2,
-						}.Marshal()
-						require.NoError(t, err2)
-						return enc
-					}(),
+					AACConfig: &mpeg4audio.AudioSpecificConfig{
+						Type:          2,
+						SampleRate:    44100,
+						ChannelConfig: 2,
+						ChannelCount:  2,
+					},
 				},
 			},
 		},
@@ -369,15 +332,11 @@ func TestReadTracks(t *testing.T) {
 					Depth:           message.AudioDepth16,
 					IsStereo:        true,
 					AACType:         message.AudioAACTypeConfig,
-					Payload: func() []byte {
-						enc, err2 := mpeg4audio.AudioSpecificConfig{
-							Type:         2,
-							SampleRate:   44100,
-							ChannelCount: 2,
-						}.Marshal()
-						require.NoError(t, err2)
-						return enc
-					}(),
+					AACConfig: &mpeg4audio.AudioSpecificConfig{
+						Type:         2,
+						SampleRate:   44100,
+						ChannelCount: 2,
+					},
 				},
 				&message.Audio{
 					ChunkStreamID:   message.AudioChunkStreamID,
@@ -438,7 +397,7 @@ func TestReadTracks(t *testing.T) {
 					Depth:           message.AudioDepth16,
 					IsStereo:        true,
 					AACType:         message.AudioAACTypeConfig,
-					Payload:         nil,
+					AACConfig:       nil,
 				},
 				&message.Audio{
 					ChunkStreamID:   message.AudioChunkStreamID,
@@ -448,15 +407,11 @@ func TestReadTracks(t *testing.T) {
 					Depth:           message.AudioDepth16,
 					IsStereo:        true,
 					AACType:         message.AudioAACTypeConfig,
-					Payload: func() []byte {
-						enc, err2 := mpeg4audio.AudioSpecificConfig{
-							Type:         2,
-							SampleRate:   44100,
-							ChannelCount: 2,
-						}.Marshal()
-						require.NoError(t, err2)
-						return enc
-					}(),
+					AACConfig: &mpeg4audio.AudioSpecificConfig{
+						Type:         2,
+						SampleRate:   44100,
+						ChannelCount: 2,
+					},
 				},
 				&message.Audio{
 					ChunkStreamID:   message.AudioChunkStreamID,
@@ -510,7 +465,7 @@ func TestReadTracks(t *testing.T) {
 					ChunkStreamID:   4,
 					MessageStreamID: 0x1000000,
 					FourCC:          message.FourCCHEVC,
-					HEVCHeader:      generateHvcC(testCodecH265.VPS, testCodecH265.SPS, testCodecH265.PPS),
+					HEVCConfig:      generateHvcC(testCodecH265.VPS, testCodecH265.SPS, testCodecH265.PPS),
 				},
 				&message.VideoExCodedFrames{
 					ChunkStreamID:   4,
@@ -565,7 +520,7 @@ func TestReadTracks(t *testing.T) {
 					ChunkStreamID:   4,
 					MessageStreamID: 0x1000000,
 					FourCC:          message.FourCCHEVC,
-					HEVCHeader:      generateHvcC(testCodecH265.VPS, testCodecH265.SPS, testCodecH265.PPS),
+					HEVCConfig:      generateHvcC(testCodecH265.VPS, testCodecH265.SPS, testCodecH265.PPS),
 				},
 				&message.VideoExCodedFrames{
 					ChunkStreamID:   6,
@@ -632,7 +587,7 @@ func TestReadTracks(t *testing.T) {
 					ChunkStreamID:   6,
 					MessageStreamID: 0x1000000,
 					FourCC:          message.FourCCAV1,
-					AV1Header: &mp4.Av1C{
+					AV1Config: &mp4.Av1C{
 						Marker:             0x1,
 						Version:            0x1,
 						SeqLevelIdx0:       0x8,
@@ -707,14 +662,16 @@ func TestReadTracks(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Codec:           0x7,
 					IsKeyFrame:      true,
-					Payload: []uint8{
-						0x01, 0x64, 0x00, 0x1f, 0xff, 0xe1, 0x00, 0x1a,
-						0x67, 0x64, 0x00, 0x1f, 0xac, 0x2c, 0x6a, 0x81,
-						0x40, 0x16, 0xe9, 0xb8, 0x28, 0x08, 0x2a, 0x00,
-						0x00, 0x03, 0x00, 0x02, 0x00, 0x00, 0x03, 0x00,
-						0xc9, 0x08, 0x01, 0x00, 0x05, 0x68, 0xee, 0x31,
-						0xb2, 0x1b,
-					},
+					Type:            message.VideoTypeConfig,
+					AVCConfig: generateAvcC(
+						[]byte{
+							0x67, 0x64, 0x00, 0x1f, 0xac, 0x2c, 0x6a, 0x81,
+							0x40, 0x16, 0xe9, 0xb8, 0x28, 0x08, 0x2a, 0x00,
+							0x00, 0x03, 0x00, 0x02, 0x00, 0x00, 0x03, 0x00,
+							0xc9, 0x08,
+						},
+						[]byte{0x68, 0xee, 0x31, 0xb2, 0x1b},
+					),
 				},
 				&message.Audio{
 					ChunkStreamID:   0x14,
@@ -723,7 +680,13 @@ func TestReadTracks(t *testing.T) {
 					Rate:            0x3,
 					Depth:           0x1,
 					IsStereo:        true,
-					Payload:         []uint8{0x11, 0x88},
+					AACType:         message.AudioAACTypeConfig,
+					AACConfig: func() *mpeg4audio.AudioSpecificConfig {
+						var conf mpeg4audio.AudioSpecificConfig
+						err2 := conf.Unmarshal([]uint8{0x11, 0x88})
+						require.NoError(t, err2)
+						return &conf
+					}(),
 				},
 				&message.Audio{
 					ChunkStreamID:   0x14,
@@ -734,7 +697,7 @@ func TestReadTracks(t *testing.T) {
 					Depth:           0x1,
 					IsStereo:        true,
 					AACType:         message.AudioAACTypeAU,
-					Payload:         []uint8{0x11, 0x88},
+					AU:              []uint8{0x11, 0x88},
 				},
 			},
 		},
@@ -791,13 +754,7 @@ func TestReadTracks(t *testing.T) {
 					Codec:           message.CodecH264,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					Payload: func() []byte {
-						buf, _ := h264conf.Conf{
-							SPS: testCodecH264.SPS,
-							PPS: testCodecH264.PPS,
-						}.Marshal()
-						return buf
-					}(),
+					AVCConfig:       generateAvcC(testCodecH264.SPS, testCodecH264.PPS),
 				},
 				&message.Video{
 					ChunkStreamID:   message.VideoChunkStreamID,
@@ -805,7 +762,7 @@ func TestReadTracks(t *testing.T) {
 					Codec:           0x7,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeAU,
-					Payload:         []uint8{5},
+					AU:              []uint8{5},
 				},
 				&message.Video{
 					ChunkStreamID:   message.VideoChunkStreamID,
@@ -814,7 +771,7 @@ func TestReadTracks(t *testing.T) {
 					Codec:           0x7,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeAU,
-					Payload:         []uint8{5},
+					AU:              []uint8{5},
 				},
 			},
 		},
@@ -845,7 +802,7 @@ func TestReadTracks(t *testing.T) {
 					Rate:            message.AudioRate44100,
 					Depth:           message.AudioDepth16,
 					IsStereo:        false,
-					Payload:         []byte{1, 2, 3, 4},
+					AU:              []byte{1, 2, 3, 4},
 				},
 				&message.Audio{
 					ChunkStreamID:   message.AudioChunkStreamID,
@@ -855,7 +812,7 @@ func TestReadTracks(t *testing.T) {
 					Rate:            message.AudioRate44100,
 					Depth:           message.AudioDepth16,
 					IsStereo:        false,
-					Payload:         []byte{1, 2, 3, 4},
+					AU:              []byte{1, 2, 3, 4},
 				},
 			},
 		},
@@ -889,7 +846,7 @@ func TestReadTracks(t *testing.T) {
 					Rate:            message.AudioRate5512,
 					Depth:           message.AudioDepth16,
 					IsStereo:        false,
-					Payload:         []byte{1, 2, 3, 4},
+					AU:              []byte{1, 2, 3, 4},
 				},
 				&message.Audio{
 					ChunkStreamID:   message.AudioChunkStreamID,
@@ -899,7 +856,7 @@ func TestReadTracks(t *testing.T) {
 					Rate:            message.AudioRate5512,
 					Depth:           message.AudioDepth16,
 					IsStereo:        false,
-					Payload:         []byte{1, 2, 3, 4},
+					AU:              []byte{1, 2, 3, 4},
 				},
 			},
 		},
@@ -933,7 +890,7 @@ func TestReadTracks(t *testing.T) {
 					Rate:            message.AudioRate5512,
 					Depth:           message.AudioDepth16,
 					IsStereo:        false,
-					Payload:         []byte{1, 2, 3, 4},
+					AU:              []byte{1, 2, 3, 4},
 				},
 				&message.Audio{
 					ChunkStreamID:   message.AudioChunkStreamID,
@@ -943,7 +900,7 @@ func TestReadTracks(t *testing.T) {
 					Rate:            message.AudioRate5512,
 					Depth:           message.AudioDepth16,
 					IsStereo:        false,
-					Payload:         []byte{1, 2, 3, 4},
+					AU:              []byte{1, 2, 3, 4},
 				},
 			},
 		},
@@ -977,7 +934,7 @@ func TestReadTracks(t *testing.T) {
 					Rate:            message.AudioRate44100,
 					Depth:           message.AudioDepth16,
 					IsStereo:        true,
-					Payload:         []byte{1, 2, 3, 4},
+					AU:              []byte{1, 2, 3, 4},
 				},
 				&message.Audio{
 					ChunkStreamID:   message.AudioChunkStreamID,
@@ -987,7 +944,7 @@ func TestReadTracks(t *testing.T) {
 					Rate:            message.AudioRate44100,
 					Depth:           message.AudioDepth16,
 					IsStereo:        true,
-					Payload:         []byte{1, 2, 3, 4},
+					AU:              []byte{1, 2, 3, 4},
 				},
 			},
 		},
@@ -1062,7 +1019,12 @@ func TestReadTracks(t *testing.T) {
 					Depth:           0x1,
 					IsStereo:        true,
 					AACType:         message.AudioAACTypeConfig,
-					Payload:         []uint8{0x11, 0x90, 0x56, 0xe5, 0x0},
+					AACConfig: func() *mpeg4audio.AudioSpecificConfig {
+						var conf mpeg4audio.AudioSpecificConfig
+						err2 := conf.Unmarshal([]uint8{0x11, 0x90, 0x56, 0xe5, 0x0})
+						require.NoError(t, err2)
+						return &conf
+					}(),
 				},
 				&message.Video{
 					ChunkStreamID:   0x4,
@@ -1070,16 +1032,16 @@ func TestReadTracks(t *testing.T) {
 					Codec:           0x7,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					Payload: []uint8{
-						0x01, 0x64, 0x00, 0x2a, 0xff, 0xe1, 0x00, 0x27,
-						0x67, 0x64, 0x00, 0x2a, 0xac, 0x2b, 0x20, 0x0f,
-						0x00, 0x44, 0xfc, 0xb8, 0x0b, 0x50, 0x10, 0x10,
-						0x14, 0x00, 0x00, 0x0f, 0xa0, 0x00, 0x07, 0x53,
-						0x03, 0x80, 0x00, 0x00, 0x5b, 0x8d, 0x80, 0x00,
-						0x0b, 0x71, 0xb1, 0xbb, 0xcb, 0x82, 0x80, 0x01,
-						0x00, 0x04, 0x68, 0xeb, 0x8f, 0x2c, 0xfd, 0xf8,
-						0xf8, 0x00,
-					},
+					AVCConfig: generateAvcC(
+						[]byte{
+							0x67, 0x64, 0x00, 0x2a, 0xac, 0x2b, 0x20, 0x0f,
+							0x00, 0x44, 0xfc, 0xb8, 0x0b, 0x50, 0x10, 0x10,
+							0x14, 0x00, 0x00, 0x0f, 0xa0, 0x00, 0x07, 0x53,
+							0x03, 0x80, 0x00, 0x00, 0x5b, 0x8d, 0x80, 0x00,
+							0x0b, 0x71, 0xb1, 0xbb, 0xcb, 0x82, 0x80,
+						},
+						[]byte{0x68, 0xeb, 0x8f, 0x2c},
+					),
 				},
 				&message.AudioExMultitrack{
 					MultitrackType: 0x0,
@@ -1088,7 +1050,7 @@ func TestReadTracks(t *testing.T) {
 						ChunkStreamID:   0x4,
 						MessageStreamID: 0x1000000,
 						FourCC:          0x6d703461,
-						AACHeader: &mpeg4audio.AudioSpecificConfig{
+						AACConfig: &mpeg4audio.AudioSpecificConfig{
 							Type:         mpeg4audio.ObjectTypeAACLC,
 							SampleRate:   48000,
 							ChannelCount: 2,
@@ -1182,7 +1144,12 @@ func TestReadTracks(t *testing.T) {
 					Depth:           0x1,
 					IsStereo:        true,
 					AACType:         0x0,
-					Payload:         []uint8{0x11, 0x90, 0x56, 0xe5, 0x0},
+					AACConfig: func() *mpeg4audio.AudioSpecificConfig {
+						var conf mpeg4audio.AudioSpecificConfig
+						err2 := conf.Unmarshal([]uint8{0x11, 0x90, 0x56, 0xe5, 0x0})
+						require.NoError(t, err2)
+						return &conf
+					}(),
 				},
 				&message.Video{
 					ChunkStreamID:   0x4,
@@ -1190,16 +1157,16 @@ func TestReadTracks(t *testing.T) {
 					Codec:           0x7,
 					IsKeyFrame:      true,
 					Type:            0x0,
-					Payload: []uint8{
-						0x01, 0x64, 0x00, 0x2a, 0xff, 0xe1, 0x00, 0x27,
-						0x67, 0x64, 0x00, 0x2a, 0xac, 0x2c, 0xac, 0x07,
-						0x80, 0x22, 0x7e, 0x5c, 0x05, 0xa8, 0x08, 0x08,
-						0x0a, 0x00, 0x00, 0x07, 0xd0, 0x00, 0x03, 0xa9,
-						0x81, 0xc0, 0x00, 0x00, 0x2d, 0xc6, 0xc0, 0x00,
-						0x05, 0xb8, 0xd8, 0xdd, 0xe5, 0xc1, 0x40, 0x01,
-						0x00, 0x04, 0x68, 0xee, 0x3c, 0xb0, 0xfd, 0xf8,
-						0xf8, 0x00,
-					},
+					AVCConfig: generateAvcC(
+						[]byte{
+							0x67, 0x64, 0x00, 0x2a, 0xac, 0x2c, 0xac, 0x07,
+							0x80, 0x22, 0x7e, 0x5c, 0x05, 0xa8, 0x08, 0x08,
+							0x0a, 0x00, 0x00, 0x07, 0xd0, 0x00, 0x03, 0xa9,
+							0x81, 0xc0, 0x00, 0x00, 0x2d, 0xc6, 0xc0, 0x00,
+							0x05, 0xb8, 0xd8, 0xdd, 0xe5, 0xc1, 0x40,
+						},
+						[]byte{0x68, 0xee, 0x3c, 0xb0},
+					),
 				},
 				&message.VideoExMultitrack{
 					MultitrackType: 0x0,
@@ -1208,7 +1175,7 @@ func TestReadTracks(t *testing.T) {
 						ChunkStreamID:   0x4,
 						MessageStreamID: 0x1000000,
 						FourCC:          0x61766331,
-						AVCHeader: &mp4.AVCDecoderConfiguration{
+						AVCConfig: &mp4.AVCDecoderConfiguration{
 							AnyTypeBox:                 mp4.AnyTypeBox{Type: mp4.BoxType{0x61, 0x76, 0x63, 0x43}},
 							ConfigurationVersion:       0x1,
 							Profile:                    0x4d,
@@ -1405,7 +1372,7 @@ func TestReadTracks(t *testing.T) {
 					ChunkStreamID:   0x4,
 					MessageStreamID: 0x1000000,
 					FourCC:          0x4f707573,
-					OpusHeader: &message.OpusIDHeader{
+					OpusConfig: &message.OpusIDHeader{
 						Version:              0x1,
 						ChannelCount:         0x2,
 						PreSkip:              0x3801,
@@ -1542,13 +1509,7 @@ func TestReadTracks(t *testing.T) {
 					Codec:           message.CodecH264,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					Payload: func() []byte {
-						buf, _ := h264conf.Conf{
-							SPS: testCodecH264.SPS,
-							PPS: testCodecH264.PPS,
-						}.Marshal()
-						return buf
-					}(),
+					AVCConfig:       generateAvcC(testCodecH264.SPS, testCodecH264.PPS),
 				},
 				&message.Video{
 					ChunkStreamID:   message.VideoChunkStreamID,
@@ -1556,13 +1517,7 @@ func TestReadTracks(t *testing.T) {
 					Codec:           message.CodecH264,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					Payload: func() []byte {
-						buf, _ := h264conf.Conf{
-							SPS: testCodecH264.SPS,
-							PPS: testCodecH264.PPS,
-						}.Marshal()
-						return buf
-					}(),
+					AVCConfig:       generateAvcC(testCodecH264.SPS, testCodecH264.PPS),
 				},
 				&message.Video{
 					ChunkStreamID:   message.VideoChunkStreamID,
@@ -1610,13 +1565,7 @@ func TestReaderRewind(t *testing.T) {
 			Codec:           message.CodecH264,
 			IsKeyFrame:      true,
 			Type:            message.VideoTypeConfig,
-			Payload: func() []byte {
-				buf, _ := h264conf.Conf{
-					SPS: testCodecH264.SPS,
-					PPS: testCodecH264.PPS,
-				}.Marshal()
-				return buf
-			}(),
+			AVCConfig:       generateAvcC(testCodecH264.SPS, testCodecH264.PPS),
 		},
 		&message.Video{
 			ChunkStreamID:   message.VideoChunkStreamID,
@@ -1625,7 +1574,7 @@ func TestReaderRewind(t *testing.T) {
 			Codec:           message.CodecH264,
 			IsKeyFrame:      true,
 			Type:            message.VideoTypeAU,
-			Payload:         []byte{0x00, 0x00, 0x00, 0x02, 0x09, 0xf0},
+			AU:              []byte{0x00, 0x00, 0x00, 0x02, 0x09, 0xf0},
 		},
 		&message.Video{
 			ChunkStreamID:   message.VideoChunkStreamID,
@@ -1634,7 +1583,7 @@ func TestReaderRewind(t *testing.T) {
 			Codec:           message.CodecH264,
 			IsKeyFrame:      false,
 			Type:            message.VideoTypeAU,
-			Payload:         []byte{0x00, 0x00, 0x00, 0x02, 0x09, 0xf0},
+			AU:              []byte{0x00, 0x00, 0x00, 0x02, 0x09, 0xf0},
 		},
 		&message.Video{
 			ChunkStreamID:   message.VideoChunkStreamID,
@@ -1643,7 +1592,7 @@ func TestReaderRewind(t *testing.T) {
 			Codec:           message.CodecH264,
 			IsKeyFrame:      false,
 			Type:            message.VideoTypeAU,
-			Payload:         []byte{0x00, 0x00, 0x00, 0x02, 0x09, 0xf0},
+			AU:              []byte{0x00, 0x00, 0x00, 0x02, 0x09, 0xf0},
 		},
 	}
 

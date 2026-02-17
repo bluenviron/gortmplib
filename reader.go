@@ -11,10 +11,8 @@ import (
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/av1"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h265"
-	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 
 	"github.com/bluenviron/gortmplib/pkg/codecs"
-	"github.com/bluenviron/gortmplib/pkg/h264conf"
 	"github.com/bluenviron/gortmplib/pkg/message"
 )
 
@@ -59,28 +57,17 @@ func h265FindNALU(array []mp4.HEVCNaluArray, typ h265.NALUType) []byte {
 	return nil
 }
 
-func h264TrackFromConfig(data []byte) (*Track, error) {
-	var conf h264conf.Conf
-	err := conf.Unmarshal(data)
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse H264 config: %w", err)
+func h264TrackFromConfig(avcC *mp4.AVCDecoderConfiguration) (*Track, error) {
+	if avcC.NumOfSequenceParameterSets < 1 {
+		return nil, fmt.Errorf("no SPS found")
+	}
+	if avcC.NumOfPictureParameterSets < 1 {
+		return nil, fmt.Errorf("no PPS found")
 	}
 
 	return &Track{Codec: &codecs.H264{
-		SPS: conf.SPS,
-		PPS: conf.PPS,
-	}}, nil
-}
-
-func mpeg4AudioTrackFromConfig(data []byte) (*Track, error) {
-	var mpegConf mpeg4audio.AudioSpecificConfig
-	err := mpegConf.Unmarshal(data)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Track{Codec: &codecs.MPEG4Audio{
-		Config: &mpegConf,
+		SPS: avcC.SequenceParameterSets[0].NALUnit,
+		PPS: avcC.PictureParameterSets[0].NALUnit,
 	}}, nil
 }
 
@@ -138,7 +125,7 @@ func videoTrackFromSequenceStart(msg *message.VideoExSequenceStart) (*Track, err
 	case message.FourCCAV1:
 		// parse sequence header and metadata contained in ConfigOBUs, but do not use them
 		var tu av1.Bitstream
-		err := tu.Unmarshal(msg.AV1Header.ConfigOBUs)
+		err := tu.Unmarshal(msg.AV1Config.ConfigOBUs)
 		if err != nil {
 			return nil, fmt.Errorf("invalid AV1 configuration: %w", err)
 		}
@@ -149,9 +136,9 @@ func videoTrackFromSequenceStart(msg *message.VideoExSequenceStart) (*Track, err
 		return &Track{Codec: &codecs.VP9{}}, nil
 
 	case message.FourCCHEVC:
-		vps := h265FindNALU(msg.HEVCHeader.NaluArrays, h265.NALUType_VPS_NUT)
-		sps := h265FindNALU(msg.HEVCHeader.NaluArrays, h265.NALUType_SPS_NUT)
-		pps := h265FindNALU(msg.HEVCHeader.NaluArrays, h265.NALUType_PPS_NUT)
+		vps := h265FindNALU(msg.HEVCConfig.NaluArrays, h265.NALUType_VPS_NUT)
+		sps := h265FindNALU(msg.HEVCConfig.NaluArrays, h265.NALUType_SPS_NUT)
+		pps := h265FindNALU(msg.HEVCConfig.NaluArrays, h265.NALUType_PPS_NUT)
 		if vps == nil || sps == nil || pps == nil {
 			return nil, fmt.Errorf("H265 parameters are missing")
 		}
@@ -163,13 +150,13 @@ func videoTrackFromSequenceStart(msg *message.VideoExSequenceStart) (*Track, err
 		}}, nil
 
 	case message.FourCCAVC:
-		if len(msg.AVCHeader.SequenceParameterSets) != 1 || len(msg.AVCHeader.PictureParameterSets) != 1 {
+		if len(msg.AVCConfig.SequenceParameterSets) != 1 || len(msg.AVCConfig.PictureParameterSets) != 1 {
 			return nil, fmt.Errorf("H264 parameters are missing")
 		}
 
 		return &Track{Codec: &codecs.H264{
-			SPS: msg.AVCHeader.SequenceParameterSets[0].NALUnit,
-			PPS: msg.AVCHeader.PictureParameterSets[0].NALUnit,
+			SPS: msg.AVCConfig.SequenceParameterSets[0].NALUnit,
+			PPS: msg.AVCConfig.PictureParameterSets[0].NALUnit,
 		}}, nil
 
 	default:
@@ -197,7 +184,7 @@ func audioTrackFromExtendedMessages(
 		}
 
 		return &Track{Codec: &codecs.Opus{
-			ChannelCount: int(sequenceStart.OpusHeader.ChannelCount),
+			ChannelCount: int(sequenceStart.OpusConfig.ChannelCount),
 		}}, nil
 
 	case message.FourCCAC3:
@@ -224,7 +211,7 @@ func audioTrackFromExtendedMessages(
 
 	case message.FourCCMP4A:
 		return &Track{Codec: &codecs.MPEG4Audio{
-			Config: sequenceStart.AACHeader,
+			Config: sequenceStart.AACConfig,
 		}}, nil
 
 	case message.FourCCMP3:
@@ -361,9 +348,11 @@ func (r *Reader) readTracks() (map[uint8]*Track, map[uint8]*Track, error) {
 			curTime = msg.DTS
 
 			if msg.Type == message.VideoTypeConfig && videoTracks[0] == nil {
-				videoTracks[0], err = h264TrackFromConfig(msg.Payload)
-				if err != nil {
-					return nil, nil, err
+				if msg.Codec == message.CodecH264 {
+					videoTracks[0], err = h264TrackFromConfig(msg.AVCConfig)
+					if err != nil {
+						return nil, nil, err
+					}
 				}
 			}
 
@@ -417,12 +406,13 @@ func (r *Reader) readTracks() (map[uint8]*Track, map[uint8]*Track, error) {
 			}
 			curTime = msg.DTS
 
-			if audioTracks[0] == nil && len(msg.Payload) != 0 {
+			if audioTracks[0] == nil {
 				if msg.Codec == message.CodecMPEG4Audio {
 					if msg.AACType == message.AudioAACTypeConfig {
-						audioTracks[0], err = mpeg4AudioTrackFromConfig(msg.Payload)
-						if err != nil {
-							return nil, nil, err
+						if msg.AACConfig != nil {
+							audioTracks[0] = &Track{Codec: &codecs.MPEG4Audio{
+								Config: msg.AACConfig,
+							}}
 						}
 					}
 				} else {
@@ -591,22 +581,23 @@ func (r *Reader) OnDataH264(track *Track, cb OnDataH26xFunc) {
 		case *message.Video:
 			switch msg.Type {
 			case message.VideoTypeConfig:
-				var conf h264conf.Conf
-				err := conf.Unmarshal(msg.Payload)
-				if err != nil {
-					return fmt.Errorf("unable to parse H264 config: %w", err)
+				if msg.AVCConfig.NumOfSequenceParameterSets < 1 {
+					return fmt.Errorf("no SPS found")
+				}
+				if msg.AVCConfig.NumOfPictureParameterSets < 1 {
+					return fmt.Errorf("no PPS found")
 				}
 
 				au := [][]byte{
-					conf.SPS,
-					conf.PPS,
+					msg.AVCConfig.SequenceParameterSets[0].NALUnit,
+					msg.AVCConfig.PictureParameterSets[0].NALUnit,
 				}
 
 				cb(msg.DTS+msg.PTSDelta, msg.DTS, au)
 
 			case message.VideoTypeAU:
 				var au h264.AVCC
-				err := au.Unmarshal(msg.Payload)
+				err := au.Unmarshal(msg.AU)
 				if err != nil {
 					if errors.Is(err, h264.ErrAVCCNoNALUs) {
 						return nil
@@ -663,7 +654,7 @@ func (r *Reader) OnDataMPEG4Audio(track *Track, cb OnDataMPEG4AudioFunc) {
 		switch msg := msg.(type) {
 		case *message.Audio:
 			if msg.AACType == message.AudioAACTypeAU {
-				cb(msg.DTS, msg.Payload)
+				cb(msg.DTS, msg.AU)
 			}
 
 		case *message.AudioExCodedFrames:
@@ -678,7 +669,7 @@ func (r *Reader) OnDataMPEG1Audio(track *Track, cb OnDataMPEG1AudioFunc) {
 	r.onAudioData[r.audioTrackID(track)] = func(msg message.Message) error {
 		switch msg := msg.(type) {
 		case *message.Audio:
-			cb(msg.DTS, msg.Payload)
+			cb(msg.DTS, msg.AU)
 
 		case *message.AudioExCodedFrames:
 			cb(msg.DTS, msg.Payload)
@@ -701,7 +692,7 @@ func (r *Reader) OnDataAC3(track *Track, cb OnDataAC3Func) {
 func (r *Reader) OnDataG711(track *Track, cb OnDataG711Func) {
 	r.onAudioData[r.audioTrackID(track)] = func(msg message.Message) error {
 		if msg, ok := msg.(*message.Audio); ok {
-			cb(msg.DTS, msg.Payload)
+			cb(msg.DTS, msg.AU)
 		}
 		return nil
 	}
@@ -715,24 +706,24 @@ func (r *Reader) OnDataLPCM(track *Track, cb OnDataLPCMFunc) {
 	if bitDepth == 16 {
 		r.onAudioData[r.audioTrackID(track)] = func(msg message.Message) error {
 			if msg, ok := msg.(*message.Audio); ok {
-				le := len(msg.Payload)
+				le := len(msg.AU)
 				if le%2 != 0 {
 					return fmt.Errorf("invalid payload length: %d", le)
 				}
 
 				// convert from little endian to big endian
 				for i := 0; i < le; i += 2 {
-					msg.Payload[i], msg.Payload[i+1] = msg.Payload[i+1], msg.Payload[i]
+					msg.AU[i], msg.AU[i+1] = msg.AU[i+1], msg.AU[i]
 				}
 
-				cb(msg.DTS, msg.Payload)
+				cb(msg.DTS, msg.AU)
 			}
 			return nil
 		}
 	} else {
 		r.onAudioData[r.audioTrackID(track)] = func(msg message.Message) error {
 			if msg, ok := msg.(*message.Audio); ok {
-				cb(msg.DTS, msg.Payload)
+				cb(msg.DTS, msg.AU)
 			}
 			return nil
 		}

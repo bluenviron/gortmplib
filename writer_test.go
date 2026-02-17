@@ -326,13 +326,16 @@ func TestWriter(t *testing.T) {
 					Codec:           message.CodecH264,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					Payload: []byte{
-						0x01, 0x64, 0x00, 0x0c, 0xff, 0xe1, 0x00, 0x15,
-						0x67, 0x64, 0x00, 0x0c, 0xac, 0x3b, 0x50, 0xb0,
-						0x4b, 0x42, 0x00, 0x00, 0x03, 0x00, 0x02, 0x00,
-						0x00, 0x03, 0x00, 0x3d, 0x08, 0x01, 0x00, 0x04,
-						0x68, 0xee, 0x3c, 0x80,
-					},
+					AVCConfig: generateAvcC(
+						[]byte{
+							0x67, 0x64, 0x00, 0x0c, 0xac, 0x3b, 0x50, 0xb0,
+							0x4b, 0x42, 0x00, 0x00, 0x03, 0x00, 0x02, 0x00,
+							0x00, 0x03, 0x00, 0x3d, 0x08,
+						},
+						[]byte{
+							0x68, 0xee, 0x3c, 0x80,
+						},
+					),
 				}, msg)
 
 				msg, err = mrw.Read()
@@ -345,7 +348,12 @@ func TestWriter(t *testing.T) {
 					Depth:           message.AudioDepth16,
 					IsStereo:        true,
 					AACType:         message.AudioAACTypeConfig,
-					Payload:         []byte{0x12, 0x10},
+					AACConfig: &mpeg4audio.AudioSpecificConfig{
+						Type:          2,
+						SampleRate:    44100,
+						ChannelConfig: 2,
+						ChannelCount:  2,
+					},
 				}, msg)
 
 				err = w.WriteH264(tracks[0], 100*time.Millisecond, 0, [][]byte{{5, 1}})
@@ -363,7 +371,7 @@ func TestWriter(t *testing.T) {
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeAU,
 					PTSDelta:        100 * time.Millisecond,
-					Payload:         []byte{0, 0, 0, 2, 5, 1},
+					AU:              []byte{0, 0, 0, 2, 5, 1},
 				}, msg)
 
 			case "av1":
@@ -373,7 +381,7 @@ func TestWriter(t *testing.T) {
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
 					FourCC:          message.FourCCAV1,
-					AV1Header: &mp4.Av1C{
+					AV1Config: &mp4.Av1C{
 						Marker:             0x1,
 						Version:            0x1,
 						SeqLevelIdx0:       0x8,
@@ -402,7 +410,7 @@ func TestWriter(t *testing.T) {
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
 					FourCC:          message.FourCCVP9,
-					VP9Header: &mp4.VpcC{
+					VP9Config: &mp4.VpcC{
 						FullBox:                 mp4.FullBox{Version: 0x1},
 						Level:                   0x28,
 						BitDepth:                0x8,
@@ -434,7 +442,7 @@ func TestWriter(t *testing.T) {
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
 					FourCC:          message.FourCCHEVC,
-					HEVCHeader: &mp4.HvcC{
+					HEVCConfig: &mp4.HvcC{
 						ConfigurationVersion: 0x1,
 						GeneralProfileIdc:    2,
 						GeneralProfileCompatibility: [32]bool{
@@ -445,12 +453,17 @@ func TestWriter(t *testing.T) {
 						},
 						GeneralConstraintIndicator: [6]uint8{0x03, 0x0, 0xb0, 0x0, 0x0, 0x03},
 						GeneralLevelIdc:            0x7b,
+						Reserved1:                  0b1111,
+						Reserved2:                  0b111111,
+						Reserved3:                  0b111111,
 						ChromaFormatIdc:            0x1,
-						LengthSizeMinusOne:         0x3,
-						NumOfNaluArrays:            0x3,
+						Reserved4:                  0b11111,
 						BitDepthLumaMinus8:         2,
+						Reserved5:                  0b11111,
 						BitDepthChromaMinus8:       2,
+						LengthSizeMinusOne:         0x3,
 						NumTemporalLayers:          1,
+						NumOfNaluArrays:            0x3,
 						NaluArrays: []mp4.HEVCNaluArray{
 							{
 								NaluType: 0x20,
@@ -500,7 +513,7 @@ func TestWriter(t *testing.T) {
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
 					FourCC:          message.FourCCHEVC,
-					HEVCHeader: generateHvcC(h265DefaultVPS,
+					HEVCConfig: generateHvcC(h265DefaultVPS,
 						h265DefaultSPS, h265DefaultPPS),
 				}, msg)
 
@@ -525,13 +538,7 @@ func TestWriter(t *testing.T) {
 					Codec:           message.CodecH264,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					Payload: []byte{
-						0x01, 0x42, 0xc0, 0x28, 0xff, 0xe1, 0x00, 0x19,
-						0x67, 0x42, 0xc0, 0x28, 0xd9, 0x00, 0x78, 0x02,
-						0x27, 0xe5, 0x84, 0x00, 0x00, 0x03, 0x00, 0x04,
-						0x00, 0x00, 0x03, 0x00, 0xf0, 0x3c, 0x60, 0xc9,
-						0x20, 0x01, 0x00, 0x04, 0x08, 0x06, 0x07, 0x08,
-					},
+					AVCConfig:       generateAvcC(h264DefaultSPS, h264DefaultPPS),
 				}, msg)
 
 				err = w.WriteH264(tracks[0], 0, 0, [][]byte{{1, 2}})
@@ -544,7 +551,7 @@ func TestWriter(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecH264,
 					Type:            message.VideoTypeAU,
-					Payload:         []byte{0, 0, 0, 2, 1, 2},
+					AU:              []byte{0, 0, 0, 2, 1, 2},
 				}, msg)
 
 			case "opus":
@@ -554,7 +561,7 @@ func TestWriter(t *testing.T) {
 					ChunkStreamID:   message.AudioChunkStreamID,
 					MessageStreamID: 0x1000000,
 					FourCC:          message.FourCCOpus,
-					OpusHeader: &message.OpusIDHeader{
+					OpusConfig: &message.OpusIDHeader{
 						Version:             1,
 						PreSkip:             3840,
 						ChannelCount:        2,
@@ -591,7 +598,7 @@ func TestWriter(t *testing.T) {
 					Rate:            message.AudioRate44100,
 					Depth:           message.AudioDepth16,
 					IsStereo:        true,
-					Payload: []byte{
+					AU: []byte{
 						0xff, 0xfa, 0x52, 0x04, 0x00,
 					},
 				}, msg)
@@ -628,7 +635,7 @@ func TestWriter(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecPCMA,
 					Depth:           message.AudioDepth16,
-					Payload:         []byte{1, 2},
+					AU:              []byte{1, 2},
 				}, msg)
 
 			case "pcmu":
@@ -642,7 +649,7 @@ func TestWriter(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecPCMU,
 					Depth:           message.AudioDepth16,
-					Payload:         []byte{1, 2},
+					AU:              []byte{1, 2},
 				}, msg)
 
 			case "lpcm":
@@ -657,7 +664,7 @@ func TestWriter(t *testing.T) {
 					Codec:           message.CodecLPCM,
 					Rate:            message.AudioRate44100,
 					Depth:           message.AudioDepth16,
-					Payload:         []byte{2, 1},
+					AU:              []byte{2, 1},
 				}, msg)
 			}
 		})
