@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
+
 	"github.com/bluenviron/gortmplib/pkg/rawmessage"
 )
 
@@ -59,8 +61,9 @@ type Audio struct {
 	Rate            AudioRate
 	Depth           AudioDepth
 	IsStereo        bool
-	AACType         AudioAACType // only for CodecMPEG4Audio
-	Payload         []byte
+	AACType         AudioAACType                    // Codec = CodecMPEG4Audio
+	AACConfig       *mpeg4audio.AudioSpecificConfig // Codec = CodecMPEG4Audio, AACType = AACTypeConfig
+	AU              []byte
 }
 
 func (m *Audio) unmarshal(raw *rawmessage.Message) error {
@@ -94,35 +97,59 @@ func (m *Audio) unmarshal(raw *rawmessage.Message) error {
 			return fmt.Errorf("unsupported audio message type: %d", m.AACType)
 		}
 
-		m.Payload = raw.Body[2:]
+		if m.AACType == AudioAACTypeConfig {
+			if len(raw.Body) > 2 {
+				m.AACConfig = &mpeg4audio.AudioSpecificConfig{}
+				err := m.AACConfig.Unmarshal(raw.Body[2:])
+				if err != nil {
+					return fmt.Errorf("unable to parse MPEG4 audio config: %w", err)
+				}
+			}
+		} else {
+			m.AU = raw.Body[2:]
+		}
 	} else {
-		m.Payload = raw.Body[1:]
+		m.AU = raw.Body[1:]
 	}
 
 	return nil
 }
 
-func (m Audio) marshalBodySize() int {
-	if m.Codec == CodecMPEG4Audio {
-		return 2 + len(m.Payload)
-	}
-	return 1 + len(m.Payload)
-}
-
 func (m Audio) marshal() (*rawmessage.Message, error) {
-	body := make([]byte, m.marshalBodySize())
-
-	body[0] = m.Codec<<4 | byte(m.Rate)<<2 | byte(m.Depth)<<1
-
-	if m.IsStereo {
-		body[0] |= 1
-	}
+	var bodyData []byte
 
 	if m.Codec == CodecMPEG4Audio {
-		body[1] = uint8(m.AACType)
-		copy(body[2:], m.Payload)
+		if m.AACType == AudioAACTypeConfig {
+			if m.AACConfig != nil {
+				var err error
+				bodyData, err = m.AACConfig.Marshal()
+				if err != nil {
+					return nil, err
+				}
+			}
+		} else {
+			bodyData = m.AU
+		}
 	} else {
-		copy(body[1:], m.Payload)
+		bodyData = m.AU
+	}
+
+	var body []byte
+	if m.Codec == CodecMPEG4Audio {
+		body = make([]byte, 2+len(bodyData))
+		body[0] = m.Codec<<4 | byte(m.Rate)<<2 | byte(m.Depth)<<1
+		if m.IsStereo {
+			body[0] |= 1
+		}
+		body[1] = uint8(m.AACType)
+		copy(body[2:], bodyData)
+	} else {
+		body = make([]byte, 1+len(bodyData))
+		body[0] = m.Codec<<4 | byte(m.Rate)<<2 | byte(m.Depth)<<1
+		if m.IsStereo {
+			body[0] |= 1
+		}
+		copy(body[1:], bodyData)
 	}
 
 	return &rawmessage.Message{

@@ -13,7 +13,6 @@ import (
 
 	"github.com/bluenviron/gortmplib/pkg/amf0"
 	"github.com/bluenviron/gortmplib/pkg/codecs"
-	"github.com/bluenviron/gortmplib/pkg/h264conf"
 	"github.com/bluenviron/gortmplib/pkg/message"
 )
 
@@ -64,10 +63,15 @@ func generateHvcC(vps, sps, pps []byte) *mp4.HvcC {
 			sps[10], sps[11], sps[12],
 		},
 		GeneralLevelIdc: psps.ProfileTierLevel.GeneralLevelIdc,
+		Reserved1:       0b1111,
 		// MinSpatialSegmentationIdc
+		Reserved2: 0b111111,
 		// ParallelismType
+		Reserved3:            0b111111,
 		ChromaFormatIdc:      uint8(psps.ChromaFormatIdc),
+		Reserved4:            0b11111,
 		BitDepthLumaMinus8:   uint8(psps.BitDepthLumaMinus8),
+		Reserved5:            0b11111,
 		BitDepthChromaMinus8: uint8(psps.BitDepthChromaMinus8),
 		// AvgFrameRate
 		// ConstantFrameRate
@@ -119,7 +123,9 @@ func generateAvcC(sps, pps []byte) *mp4.AVCDecoderConfiguration {
 		Profile:                    psps.ProfileIdc,
 		ProfileCompatibility:       sps[2],
 		Level:                      psps.LevelIdc,
+		Reserved:                   0b111111,
 		LengthSizeMinusOne:         3,
+		Reserved2:                  0b111,
 		NumOfSequenceParameterSets: 1,
 		SequenceParameterSets: []mp4.AVCParameterSet{
 			{
@@ -306,7 +312,7 @@ func (w *Writer) writeTracks() error {
 				ChunkStreamID:   message.VideoChunkStreamID,
 				MessageStreamID: 0x1000000,
 				FourCC:          message.FourCCAV1,
-				AV1Header: &mp4.Av1C{
+				AV1Config: &mp4.Av1C{
 					Marker:             0x1,
 					Version:            0x1,
 					SeqLevelIdx0:       0x8,
@@ -336,7 +342,7 @@ func (w *Writer) writeTracks() error {
 				ChunkStreamID:   message.VideoChunkStreamID,
 				MessageStreamID: 0x1000000,
 				FourCC:          message.FourCCVP9,
-				VP9Header: &mp4.VpcC{
+				VP9Config: &mp4.VpcC{
 					FullBox:                 mp4.FullBox{Version: 0x1},
 					Level:                   0x28,
 					BitDepth:                0x8,
@@ -373,7 +379,7 @@ func (w *Writer) writeTracks() error {
 				ChunkStreamID:   message.VideoChunkStreamID,
 				MessageStreamID: 0x1000000,
 				FourCC:          message.FourCCHEVC,
-				HEVCHeader:      generateHvcC(vps, sps, pps),
+				HEVCConfig:      generateHvcC(vps, sps, pps),
 			}
 
 			if id != 0 {
@@ -397,18 +403,13 @@ func (w *Writer) writeTracks() error {
 			}
 
 			if id == 0 {
-				buf, _ := h264conf.Conf{
-					SPS: sps,
-					PPS: pps,
-				}.Marshal()
-
 				err = w.Conn.Write(&message.Video{
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecH264,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					Payload:         buf,
+					AVCConfig:       generateAvcC(sps, pps),
 				})
 				if err != nil {
 					return err
@@ -421,7 +422,7 @@ func (w *Writer) writeTracks() error {
 						ChunkStreamID:   message.VideoChunkStreamID,
 						MessageStreamID: 0x1000000,
 						FourCC:          message.FourCCAVC,
-						AVCHeader:       generateAvcC(sps, pps),
+						AVCConfig:       generateAvcC(sps, pps),
 					},
 				})
 				if err != nil {
@@ -438,7 +439,7 @@ func (w *Writer) writeTracks() error {
 				ChunkStreamID:   message.AudioChunkStreamID,
 				MessageStreamID: 0x1000000,
 				FourCC:          message.FourCCOpus,
-				OpusHeader: &message.OpusIDHeader{
+				OpusConfig: &message.OpusIDHeader{
 					Version:      0x1,
 					ChannelCount: uint8(codec.ChannelCount),
 					PreSkip:      3840,
@@ -462,12 +463,6 @@ func (w *Writer) writeTracks() error {
 			audioConf := codec.Config
 
 			if id == 0 {
-				var enc []byte
-				enc, err = audioConf.Marshal()
-				if err != nil {
-					return err
-				}
-
 				err = w.Conn.Write(&message.Audio{
 					ChunkStreamID:   message.AudioChunkStreamID,
 					MessageStreamID: 0x1000000,
@@ -476,7 +471,7 @@ func (w *Writer) writeTracks() error {
 					Depth:           message.AudioDepth16,
 					IsStereo:        true,
 					AACType:         message.AudioAACTypeConfig,
-					Payload:         enc,
+					AACConfig:       audioConf,
 				})
 				if err != nil {
 					return err
@@ -489,7 +484,7 @@ func (w *Writer) writeTracks() error {
 						ChunkStreamID:   message.VideoChunkStreamID,
 						MessageStreamID: 0x1000000,
 						FourCC:          message.FourCCMP4A,
-						AACHeader:       audioConf,
+						AACConfig:       audioConf,
 					},
 				})
 				if err != nil {
@@ -648,7 +643,7 @@ func (w *Writer) WriteH264(track *Track, pts time.Duration, dts time.Duration, a
 			Codec:           message.CodecH264,
 			IsKeyFrame:      h264.IsRandomAccess(au),
 			Type:            message.VideoTypeAU,
-			Payload:         avcc,
+			AU:              avcc,
 			DTS:             dts,
 			PTSDelta:        pts - dts,
 		})
@@ -718,7 +713,7 @@ func (w *Writer) WriteMPEG4Audio(track *Track, pts time.Duration, au []byte) err
 			Depth:           message.AudioDepth16,
 			IsStereo:        true,
 			AACType:         message.AudioAACTypeAU,
-			Payload:         au,
+			AU:              au,
 			DTS:             pts,
 		})
 	}
@@ -763,7 +758,7 @@ func (w *Writer) WriteMPEG1Audio(track *Track, pts time.Duration, frame []byte) 
 			Rate:            rate,
 			Depth:           message.AudioDepth16,
 			IsStereo:        mpeg1AudioChannels(h.ChannelMode),
-			Payload:         frame,
+			AU:              frame,
 			DTS:             pts,
 		})
 	}
@@ -822,7 +817,7 @@ func (w *Writer) WriteG711(track *Track, pts time.Duration, samples []byte) erro
 		Rate:            message.AudioRate5512,
 		Depth:           message.AudioDepth16,
 		IsStereo:        codec.ChannelCount == 2,
-		Payload:         samples,
+		AU:              samples,
 		DTS:             pts,
 	})
 }
@@ -852,7 +847,7 @@ func (w *Writer) WriteLPCM(track *Track, pts time.Duration, samples []byte) erro
 		Rate:            rate,
 		Depth:           message.AudioDepth16,
 		IsStereo:        (codec.ChannelCount == 2),
-		Payload:         samplesCopy,
+		AU:              samplesCopy,
 		DTS:             pts,
 	})
 }

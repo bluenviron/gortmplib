@@ -38,7 +38,7 @@ var readWriterCases = []struct {
 			Rate:            AudioRate44100,
 			Depth:           AudioDepth16,
 			IsStereo:        true,
-			Payload:         []byte{0x01, 0x02, 0x03, 0x04},
+			AU:              []byte{0x01, 0x02, 0x03, 0x04},
 		},
 		[]byte{
 			0x07, 0x5b, 0xc3, 0x6e, 0x00, 0x00, 0x05, 0x08,
@@ -57,7 +57,7 @@ var readWriterCases = []struct {
 			Depth:           AudioDepth16,
 			IsStereo:        true,
 			AACType:         AudioAACTypeAU,
-			Payload:         []byte{0x5A, 0xC0, 0x77, 0x40},
+			AU:              []byte{0x5A, 0xC0, 0x77, 0x40},
 		},
 		[]byte{
 			0x07, 0x5b, 0xc3, 0x6e, 0x00, 0x00, 0x06, 0x08,
@@ -66,12 +66,53 @@ var readWriterCases = []struct {
 		},
 	},
 	{
+		"audio mpeg4 config",
+		&Audio{
+			ChunkStreamID:   7,
+			DTS:             6013806 * time.Millisecond,
+			MessageStreamID: 4534543,
+			Codec:           CodecMPEG4Audio,
+			Rate:            AudioRate44100,
+			Depth:           AudioDepth16,
+			IsStereo:        true,
+			AACType:         AudioAACTypeConfig,
+			AACConfig: &mpeg4audio.AudioSpecificConfig{
+				Type:          mpeg4audio.ObjectTypeAACLC,
+				SampleRate:    44100,
+				ChannelConfig: 2,
+				ChannelCount:  2,
+			},
+		},
+		[]byte{
+			0x07, 0x5b, 0xc3, 0x6e, 0x00, 0x00, 0x04, 0x08,
+			0x00, 0x45, 0x31, 0x0f, 0xaf, 0x00, 0x12, 0x10,
+		},
+	},
+	{
+		"audio mpeg4 nil config",
+		&Audio{
+			ChunkStreamID:   7,
+			DTS:             6013806 * time.Millisecond,
+			MessageStreamID: 4534543,
+			Codec:           CodecMPEG4Audio,
+			Rate:            AudioRate44100,
+			Depth:           AudioDepth16,
+			IsStereo:        true,
+			AACType:         AudioAACTypeConfig,
+			AACConfig:       nil,
+		},
+		[]byte{
+			0x07, 0x5b, 0xc3, 0x6e, 0x00, 0x00, 0x02, 0x08,
+			0x00, 0x45, 0x31, 0x0f, 0xaf, 0x00,
+		},
+	},
+	{
 		"audio ex sequence start opus",
 		&AudioExSequenceStart{
 			ChunkStreamID:   0x4,
 			MessageStreamID: 0x1000000,
 			FourCC:          FourCCOpus,
-			OpusHeader: &OpusIDHeader{
+			OpusConfig: &OpusIDHeader{
 				Version:             0x1,
 				ChannelCount:        0x2,
 				PreSkip:             0x3801,
@@ -93,7 +134,7 @@ var readWriterCases = []struct {
 			ChunkStreamID:   0x4,
 			MessageStreamID: 0x1000000,
 			FourCC:          FourCCMP4A,
-			AACHeader: &mpeg4audio.AudioSpecificConfig{
+			AACConfig: &mpeg4audio.AudioSpecificConfig{
 				Type:          mpeg4audio.ObjectTypeAACLC,
 				SampleRate:    48000,
 				ChannelConfig: 2,
@@ -341,14 +382,82 @@ var readWriterCases = []struct {
 			MessageStreamID: 0x1000000,
 			Codec:           CodecH264,
 			IsKeyFrame:      true,
-			Type:            VideoTypeConfig,
+			Type:            VideoTypeAU,
 			PTSDelta:        10 * time.Millisecond,
-			Payload:         []byte{0x01, 0x02, 0x03},
+			AU:              []byte{0x01, 0x02, 0x03},
 		},
 		[]byte{
 			0x06, 0x26, 0xcf, 0xae, 0x00, 0x00, 0x08, 0x09,
-			0x01, 0x00, 0x00, 0x00, 0x17, 0x00, 0x00, 0x00,
+			0x01, 0x00, 0x00, 0x00, 0x17, 0x01, 0x00, 0x00,
 			0x0a, 0x01, 0x02, 0x03,
+		},
+	},
+	{
+		"video h264 config",
+		&Video{
+			ChunkStreamID:   6,
+			DTS:             2543534 * time.Millisecond,
+			MessageStreamID: 0x1000000,
+			Codec:           CodecH264,
+			IsKeyFrame:      true,
+			Type:            VideoTypeConfig,
+			AVCConfig: &mp4.AVCDecoderConfiguration{
+				AnyTypeBox:                 mp4.AnyTypeBox{Type: mp4.BoxType{0x61, 0x76, 0x63, 0x43}},
+				ConfigurationVersion:       0x1,
+				Profile:                    0x4d,
+				ProfileCompatibility:       0x40,
+				Level:                      0x1e,
+				Reserved:                   0x3f,
+				LengthSizeMinusOne:         0x3,
+				Reserved2:                  0x7,
+				NumOfSequenceParameterSets: 0x1,
+				SequenceParameterSets: []mp4.AVCParameterSet{
+					{
+						Length: 0x23,
+						NALUnit: []uint8{
+							0x67, 0x4d, 0x40, 0x1e, 0x96, 0x56, 0x05, 0x01,
+							0x7f, 0xcb, 0x80, 0xb5, 0x01, 0x01, 0x01, 0x40,
+							0x00, 0x00, 0xfa, 0x00, 0x00, 0x3a, 0x98, 0x38,
+							0x00, 0x00, 0x7a, 0x10, 0x00, 0x0f, 0x42, 0x5b,
+							0xbc, 0xb8, 0x28,
+						},
+					},
+				},
+				NumOfPictureParameterSets: 0x1,
+				PictureParameterSets: []mp4.AVCParameterSet{
+					{
+						Length:  0x4,
+						NALUnit: []uint8{0x68, 0xee, 0x3c, 0x80},
+					},
+				},
+			},
+		},
+		[]byte{
+			0x06, 0x26, 0xcf, 0xae, 0x00, 0x00, 0x37, 0x09,
+			0x01, 0x00, 0x00, 0x00, 0x17, 0x00, 0x00, 0x00,
+			0x00, 0x01, 0x4d, 0x40, 0x1e, 0xff, 0xe1, 0x00,
+			0x23, 0x67, 0x4d, 0x40, 0x1e, 0x96, 0x56, 0x05,
+			0x01, 0x7f, 0xcb, 0x80, 0xb5, 0x01, 0x01, 0x01,
+			0x40, 0x00, 0x00, 0xfa, 0x00, 0x00, 0x3a, 0x98,
+			0x38, 0x00, 0x00, 0x7a, 0x10, 0x00, 0x0f, 0x42,
+			0x5b, 0xbc, 0xb8, 0x28, 0x01, 0x00, 0x04, 0x68,
+			0xee, 0x3c, 0x80,
+		},
+	},
+	{
+		"video eos",
+		&Video{
+			ChunkStreamID:   6,
+			DTS:             2543534 * time.Millisecond,
+			MessageStreamID: 0x1000000,
+			Codec:           CodecH264,
+			IsKeyFrame:      false,
+			Type:            VideoTypeEOS,
+		},
+		[]byte{
+			0x06, 0x26, 0xcf, 0xae, 0x00, 0x00, 0x05, 0x09,
+			0x01, 0x00, 0x00, 0x00, 0x27, 0x02, 0x00, 0x00,
+			0x00,
 		},
 	},
 	{
@@ -357,7 +466,7 @@ var readWriterCases = []struct {
 			ChunkStreamID:   6,
 			MessageStreamID: 0x1000000,
 			FourCC:          FourCCAV1,
-			AV1Header: &mp4.Av1C{
+			AV1Config: &mp4.Av1C{
 				Marker:             0x1,
 				Version:            0x1,
 				SeqLevelIdx0:       0x8,
@@ -380,7 +489,7 @@ var readWriterCases = []struct {
 			ChunkStreamID:   4,
 			MessageStreamID: 0x1000000,
 			FourCC:          FourCCHEVC,
-			HEVCHeader: &mp4.HvcC{
+			HEVCConfig: &mp4.HvcC{
 				ConfigurationVersion: 0x1,
 				GeneralProfileIdc:    0x1,
 				GeneralProfileCompatibility: [32]bool{
@@ -474,7 +583,7 @@ var readWriterCases = []struct {
 			ChunkStreamID:   6,
 			MessageStreamID: 0x1000000,
 			FourCC:          FourCCVP9,
-			VP9Header: &mp4.VpcC{
+			VP9Config: &mp4.VpcC{
 				FullBox:                 mp4.FullBox{Version: 0x1},
 				Level:                   0x28,
 				BitDepth:                0x8,
@@ -498,7 +607,7 @@ var readWriterCases = []struct {
 			ChunkStreamID:   0x4,
 			MessageStreamID: 0x1000000,
 			FourCC:          FourCCAVC,
-			AVCHeader: &mp4.AVCDecoderConfiguration{
+			AVCConfig: &mp4.AVCDecoderConfiguration{
 				AnyTypeBox:                 mp4.AnyTypeBox{Type: mp4.BoxType{0x61, 0x76, 0x63, 0x43}},
 				ConfigurationVersion:       0x1,
 				Profile:                    0x4d,
@@ -644,7 +753,7 @@ var readWriterCases = []struct {
 				ChunkStreamID:   6,
 				MessageStreamID: 0x1000000,
 				FourCC:          FourCCVP9,
-				VP9Header: &mp4.VpcC{
+				VP9Config: &mp4.VpcC{
 					FullBox:                 mp4.FullBox{Version: 0x1},
 					Level:                   0x28,
 					BitDepth:                0x8,

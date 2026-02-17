@@ -1,8 +1,11 @@
 package message
 
 import (
+	"bytes"
 	"fmt"
 	"time"
+
+	"github.com/abema/go-mp4"
 
 	"github.com/bluenviron/gortmplib/pkg/rawmessage"
 )
@@ -36,7 +39,8 @@ type Video struct {
 	IsKeyFrame      bool
 	Type            VideoType
 	PTSDelta        time.Duration
-	Payload         []byte
+	AVCConfig       *mp4.AVCDecoderConfiguration // Type = VideoTypeConfig, Codec = CodecH264
+	AU              []byte                       // Type = VideoTypeAU
 }
 
 func (m *Video) unmarshal(raw *rawmessage.Message) error {
@@ -66,17 +70,43 @@ func (m *Video) unmarshal(raw *rawmessage.Message) error {
 
 	m.PTSDelta = time.Duration(uint32(raw.Body[2])<<16|uint32(raw.Body[3])<<8|uint32(raw.Body[4])) * time.Millisecond
 
-	m.Payload = raw.Body[5:]
+	switch m.Type {
+	case VideoTypeConfig:
+		if m.Codec == CodecH264 {
+			m.AVCConfig = &mp4.AVCDecoderConfiguration{}
+			m.AVCConfig.SetType(mp4.BoxTypeAvcC())
+			_, err := mp4.Unmarshal(bytes.NewReader(raw.Body[5:]), uint64(len(raw.Body[5:])), m.AVCConfig, mp4.Context{})
+			if err != nil {
+				return fmt.Errorf("unable to parse H264 config: %w", err)
+			}
+		}
+
+	case VideoTypeAU:
+		m.AU = raw.Body[5:]
+	}
 
 	return nil
 }
 
-func (m Video) marshalBodySize() int {
-	return 5 + len(m.Payload)
-}
-
 func (m Video) marshal() (*rawmessage.Message, error) {
-	body := make([]byte, m.marshalBodySize())
+	var bodyData []byte
+
+	switch m.Type {
+	case VideoTypeConfig:
+		if m.Codec == CodecH264 {
+			var buf bytes.Buffer
+			_, err := mp4.Marshal(&buf, m.AVCConfig, mp4.Context{})
+			if err != nil {
+				return nil, err
+			}
+			bodyData = buf.Bytes()
+		}
+
+	case VideoTypeAU:
+		bodyData = m.AU
+	}
+
+	body := make([]byte, 5+len(bodyData))
 
 	if m.IsKeyFrame {
 		body[0] = 1 << 4
@@ -91,7 +121,7 @@ func (m Video) marshal() (*rawmessage.Message, error) {
 	body[3] = uint8(tmp >> 8)
 	body[4] = uint8(tmp)
 
-	copy(body[5:], m.Payload)
+	copy(body[5:], bodyData)
 
 	return &rawmessage.Message{
 		ChunkStreamID:   m.ChunkStreamID,
