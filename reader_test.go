@@ -208,6 +208,58 @@ func TestReadTracks(t *testing.T) {
 			},
 		},
 		{
+			"issue mediamtx/5105 (h265, codec id 12)",
+			[]*Track{{Codec: &codecs.H265{
+				VPS: testCodecH265.VPS,
+				SPS: testCodecH265.SPS,
+				PPS: testCodecH265.PPS,
+			}}},
+			[]message.Message{
+				&message.DataAMF0{
+					ChunkStreamID:   4,
+					MessageStreamID: 1,
+					Payload: []any{
+						"@setDataFrame",
+						"onMetaData",
+						amf0.Object{
+							{
+								Key:   "videodatarate",
+								Value: float64(0),
+							},
+							{
+								Key:   "videocodecid",
+								Value: float64(message.CodecH265),
+							},
+							{
+								Key:   "audiodatarate",
+								Value: float64(0),
+							},
+							{
+								Key:   "audiocodecid",
+								Value: float64(0),
+							},
+						},
+					},
+				},
+				&message.Video{
+					ChunkStreamID:   message.VideoChunkStreamID,
+					MessageStreamID: 0x1000000,
+					Codec:           message.CodecH265,
+					IsKeyFrame:      true,
+					Type:            message.VideoTypeConfig,
+					HEVCConfig:      generateHvcC(testCodecH265.VPS, testCodecH265.SPS, testCodecH265.PPS),
+				},
+				&message.Video{
+					ChunkStreamID:   message.VideoChunkStreamID,
+					DTS:             2 * time.Second,
+					MessageStreamID: 0x1000000,
+					Codec:           message.CodecH265,
+					IsKeyFrame:      true,
+					Type:            message.VideoTypeAU,
+				},
+			},
+		},
+		{
 			"issue mediamtx/386 (missing metadata)",
 			[]*Track{
 				{Codec: &codecs.H264{

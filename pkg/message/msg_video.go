@@ -18,6 +18,7 @@ const (
 // video codecs
 const (
 	CodecH264 = 7
+	CodecH265 = 12 // unofficial
 )
 
 // VideoType is the type of a video message.
@@ -39,6 +40,7 @@ type Video struct {
 	IsKeyFrame      bool
 	Type            VideoType
 	PTSDelta        time.Duration
+	HEVCConfig      *mp4.HvcC                    // Type = VideoTypeConfig, Codec = CodecH265
 	AVCConfig       *mp4.AVCDecoderConfiguration // Type = VideoTypeConfig, Codec = CodecH264
 	AU              []byte                       // Type = VideoTypeAU
 }
@@ -56,7 +58,7 @@ func (m *Video) unmarshal(raw *rawmessage.Message) error {
 
 	m.Codec = raw.Body[0] & 0x0F
 	switch m.Codec {
-	case CodecH264:
+	case CodecH264, CodecH265:
 	default:
 		return fmt.Errorf("unsupported video codec: %d", m.Codec)
 	}
@@ -72,12 +74,20 @@ func (m *Video) unmarshal(raw *rawmessage.Message) error {
 
 	switch m.Type {
 	case VideoTypeConfig:
-		if m.Codec == CodecH264 {
+		switch m.Codec {
+		case CodecH264:
 			m.AVCConfig = &mp4.AVCDecoderConfiguration{}
 			m.AVCConfig.SetType(mp4.BoxTypeAvcC())
 			_, err := mp4.Unmarshal(bytes.NewReader(raw.Body[5:]), uint64(len(raw.Body[5:])), m.AVCConfig, mp4.Context{})
 			if err != nil {
 				return fmt.Errorf("unable to parse H264 config: %w", err)
+			}
+
+		case CodecH265:
+			m.HEVCConfig = &mp4.HvcC{}
+			_, err := mp4.Unmarshal(bytes.NewReader(raw.Body[5:]), uint64(len(raw.Body[5:])), m.HEVCConfig, mp4.Context{})
+			if err != nil {
+				return fmt.Errorf("unable to parse H265 config: %w", err)
 			}
 		}
 
@@ -93,9 +103,18 @@ func (m Video) marshal() (*rawmessage.Message, error) {
 
 	switch m.Type {
 	case VideoTypeConfig:
-		if m.Codec == CodecH264 {
+		switch m.Codec {
+		case CodecH264:
 			var buf bytes.Buffer
 			_, err := mp4.Marshal(&buf, m.AVCConfig, mp4.Context{})
+			if err != nil {
+				return nil, err
+			}
+			bodyData = buf.Bytes()
+
+		case CodecH265:
+			var buf bytes.Buffer
+			_, err := mp4.Marshal(&buf, m.HEVCConfig, mp4.Context{})
 			if err != nil {
 				return nil, err
 			}
