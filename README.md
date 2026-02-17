@@ -10,7 +10,7 @@ RTMP client and server library for the Go programming language, forked from [Med
 
 This was created to provide [Enhanced RTMP](https://veovera.org/docs/enhanced/enhanced-rtmp-v2) features, like multiple video/audio tracks and additional codecs.
 
-Go &ge; 1.24 is required.
+Go &ge; 1.25 is required.
 
 Features:
 
