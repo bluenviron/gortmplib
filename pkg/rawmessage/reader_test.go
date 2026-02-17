@@ -411,7 +411,7 @@ func TestReaderAcknowledge(t *testing.T) {
 }
 
 func FuzzReader(f *testing.F) {
-	f.Fuzz(func(_ *testing.T, b []byte) {
+	f.Fuzz(func(t *testing.T, b []byte) {
 		bcr := bytecounter.NewReader(bytes.NewReader(b))
 		r := NewReader(bcr, bcr, func(_ uint32) error {
 			return nil
@@ -424,7 +424,8 @@ func FuzzReader(f *testing.F) {
 		for {
 			msg, err := r.Read()
 			if err == nil {
-				w.Write(msg) //nolint:errcheck
+				err = w.Write(msg)
+				require.NoError(t, err)
 			} else {
 				break
 			}

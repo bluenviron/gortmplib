@@ -154,15 +154,29 @@ func waitOnStatus(
 	}
 }
 
-type dialer interface {
-	DialContext(ctx context.Context, network, address string) (net.Conn, error)
-}
-
 // Client is a client-side RTMP connection.
 type Client struct {
-	URL       *url.URL
+	//
+	// Target
+	//
+	// URL of the RTMP server to connect to.
+	URL *url.URL
+	// Whether to publish or play.
+	Publish bool
+
+	//
+	// RTMP parameters (all optional)
+	//
+	// a TLS configuration to connect to RTMPS servers.
+	// It defaults to nil.
 	TLSConfig *tls.Config
-	Publish   bool
+
+	//
+	// system functions (all optional)
+	//
+	// function used to initialize the TCP client.
+	// It defaults to (&net.Dialer{}).DialContext.
+	DialContext func(ctx context.Context, network, address string) (net.Conn, error)
 
 	nconn         net.Conn
 	bc            *bytecounter.ReadWriter
@@ -174,6 +188,23 @@ type Client struct {
 
 // Initialize initializes Client.
 func (c *Client) Initialize(ctx context.Context) error {
+	if c.DialContext == nil {
+		c.DialContext = (&net.Dialer{}).DialContext
+	}
+
+	switch c.URL.Scheme {
+	case "rtmp":
+	case "rtmps":
+		if c.TLSConfig == nil {
+			c.TLSConfig = &tls.Config{
+				ServerName: c.URL.Hostname(),
+			}
+		}
+
+	default:
+		return fmt.Errorf("unsupported scheme: %s", c.URL.Scheme)
+	}
+
 	for {
 		err := c.initialize2(ctx)
 		if errors.Is(err, errAuth) {
@@ -185,17 +216,14 @@ func (c *Client) Initialize(ctx context.Context) error {
 }
 
 func (c *Client) initialize2(ctx context.Context) error {
-	var dial dialer
-	if c.URL.Scheme == "rtmp" {
-		dial = &net.Dialer{}
-	} else {
-		dial = &tls.Dialer{Config: c.TLSConfig}
-	}
-
 	var err error
-	c.nconn, err = dial.DialContext(ctx, "tcp", c.URL.Host)
+	c.nconn, err = c.DialContext(ctx, "tcp", c.URL.Host)
 	if err != nil {
 		return err
+	}
+
+	if c.URL.Scheme == "rtmps" {
+		c.nconn = tls.Client(c.nconn, c.TLSConfig)
 	}
 
 	closerDone := make(chan struct{})
