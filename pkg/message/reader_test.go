@@ -445,6 +445,60 @@ var readWriterCases = []struct {
 		},
 	},
 	{
+		"video h265 config",
+		&Video{
+			ChunkStreamID:   6,
+			DTS:             2543534 * time.Millisecond,
+			MessageStreamID: 0x1000000,
+			Codec:           CodecH265,
+			IsKeyFrame:      true,
+			Type:            VideoTypeConfig,
+			HEVCConfig: &mp4.HvcC{
+				ConfigurationVersion: 0x1,
+				GeneralProfileIdc:    0x1,
+				GeneralProfileCompatibility: [32]bool{
+					false, true, false, false, false, false, false, false, false,
+					false, false, false, false, false, false, false, false, false,
+					false, false, false, false, false, false, false, false, false,
+					false, false, false, false, false,
+				},
+				GeneralConstraintIndicator: [6]uint8{0x90, 0x0, 0x0, 0x0, 0x0, 0x0},
+				GeneralLevelIdc:            0x7b,
+				Reserved1:                  0xf,
+				Reserved2:                  0x3f,
+				Reserved3:                  0x3f,
+				ChromaFormatIdc:            0x1,
+				Reserved4:                  0x1f,
+				Reserved5:                  0x1f,
+				TemporalIdNested:           0x3,
+				LengthSizeMinusOne:         0x3,
+				NumOfNaluArrays:            0x1,
+				NaluArrays: []mp4.HEVCNaluArray{
+					{
+						Completeness: true,
+						NaluType:     0x20,
+						NumNalus:     0x1,
+						Nalus: []mp4.HEVCNalu{{
+							Length: 0x7,
+							NALUnit: []uint8{
+								0x40, 0x01, 0x0c, 0x01, 0xff, 0xff, 0x01,
+							},
+						}},
+					},
+				},
+			},
+		},
+		[]byte{
+			0x06, 0x26, 0xcf, 0xae, 0x00, 0x00, 0x28, 0x09,
+			0x01, 0x00, 0x00, 0x00, 0x1c, 0x00, 0x00, 0x00,
+			0x00, 0x01, 0x01, 0x40, 0x00, 0x00, 0x00, 0x90,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x7b, 0xf0, 0x00,
+			0xfc, 0xfd, 0xf8, 0xf8, 0x00, 0x00, 0x0f, 0x01,
+			0xa0, 0x00, 0x01, 0x00, 0x07, 0x40, 0x01, 0x0c,
+			0x01, 0xff, 0xff, 0x01,
+		},
+	},
+	{
 		"video eos",
 		&Video{
 			ChunkStreamID:   6,

@@ -71,6 +71,22 @@ func h264TrackFromConfig(avcC *mp4.AVCDecoderConfiguration) (*Track, error) {
 	}}, nil
 }
 
+func h265TrackFromConfig(hvcC *mp4.HvcC) (*Track, error) {
+	vps := h265FindNALU(hvcC.NaluArrays, h265.NALUType_VPS_NUT)
+	sps := h265FindNALU(hvcC.NaluArrays, h265.NALUType_SPS_NUT)
+	pps := h265FindNALU(hvcC.NaluArrays, h265.NALUType_PPS_NUT)
+
+	if vps == nil || sps == nil || pps == nil {
+		return nil, fmt.Errorf("VPS, SPS or PPS not found")
+	}
+
+	return &Track{Codec: &codecs.H265{
+		VPS: vps,
+		SPS: sps,
+		PPS: pps,
+	}}, nil
+}
+
 func audioTrackFromData(msg *message.Audio) (*Track, error) {
 	switch msg.Codec {
 	case message.CodecMPEG1Audio:
@@ -348,8 +364,15 @@ func (r *Reader) readTracks() (map[uint8]*Track, map[uint8]*Track, error) {
 			curTime = msg.DTS
 
 			if msg.Type == message.VideoTypeConfig && videoTracks[0] == nil {
-				if msg.Codec == message.CodecH264 {
+				switch msg.Codec {
+				case message.CodecH264:
 					videoTracks[0], err = h264TrackFromConfig(msg.AVCConfig)
+					if err != nil {
+						return nil, nil, err
+					}
+
+				case message.CodecH265:
+					videoTracks[0], err = h265TrackFromConfig(msg.HEVCConfig)
 					if err != nil {
 						return nil, nil, err
 					}
@@ -546,6 +569,40 @@ func (r *Reader) OnDataVP9(track *Track, cb OnDataVP9Func) {
 func (r *Reader) OnDataH265(track *Track, cb OnDataH26xFunc) {
 	r.onVideoData[r.videoTrackID(track)] = func(msg message.Message) error {
 		switch msg := msg.(type) {
+		case *message.Video:
+			switch msg.Type {
+			case message.VideoTypeConfig:
+				vps := h265FindNALU(msg.HEVCConfig.NaluArrays, h265.NALUType_VPS_NUT)
+				sps := h265FindNALU(msg.HEVCConfig.NaluArrays, h265.NALUType_SPS_NUT)
+				pps := h265FindNALU(msg.HEVCConfig.NaluArrays, h265.NALUType_PPS_NUT)
+
+				if vps == nil || sps == nil || pps == nil {
+					return fmt.Errorf("VPS, SPS or PPS not found")
+				}
+
+				au := [][]byte{
+					vps,
+					sps,
+					pps,
+				}
+
+				cb(msg.DTS+msg.PTSDelta, msg.DTS, au)
+
+			case message.VideoTypeAU:
+				var au h264.AVCC
+				err := au.Unmarshal(msg.AU)
+				if err != nil {
+					if errors.Is(err, h264.ErrAVCCNoNALUs) {
+						return nil
+					}
+					return fmt.Errorf("unable to decode AVCC: %w", err)
+				}
+
+				cb(msg.DTS+msg.PTSDelta, msg.DTS, au)
+			}
+
+			return nil
+
 		case *message.VideoExFramesX:
 			var au h264.AVCC
 			err := au.Unmarshal(msg.Payload)
