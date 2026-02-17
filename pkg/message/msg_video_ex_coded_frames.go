@@ -62,13 +62,14 @@ func (m VideoExCodedFrames) marshal() (*rawmessage.Message, error) {
 	body[3] = uint8(m.FourCC >> 8)
 	body[4] = uint8(m.FourCC)
 
-	if m.FourCC == FourCCHEVC {
+	switch m.FourCC {
+	case FourCCAVC, FourCCHEVC:
 		tmp := uint32(m.PTSDelta / time.Millisecond)
 		body[5] = uint8(tmp >> 16)
 		body[6] = uint8(tmp >> 8)
 		body[7] = uint8(tmp)
 		copy(body[8:], m.Payload)
-	} else {
+	default:
 		copy(body[5:], m.Payload)
 	}
 
