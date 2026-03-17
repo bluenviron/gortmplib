@@ -241,11 +241,11 @@ func (w *Writer) writeTracks() error {
 	}
 
 	if len(videoTracks) > 1 {
-		var val amf0.Object
+		val := make(amf0.Object, len(videoTracks)-1)
 
-		for id, track := range videoTracks[1:] {
-			val = append(val, amf0.ObjectEntry{
-				Key: strconv.FormatInt(int64(id+2), 10),
+		for i, track := range videoTracks[1:] {
+			val[i] = amf0.ObjectEntry{
+				Key: strconv.FormatInt(int64(i+2), 10),
 				Value: amf0.Object{
 					{
 						Key:   "videocodecid",
@@ -256,7 +256,7 @@ func (w *Writer) writeTracks() error {
 						Value: float64(0),
 					},
 				},
-			})
+			}
 		}
 
 		metadata = append(metadata, amf0.ObjectEntry{
@@ -266,11 +266,11 @@ func (w *Writer) writeTracks() error {
 	}
 
 	if len(audioTracks) > 1 {
-		var val amf0.Object
+		val := make(amf0.Object, len(audioTracks)-1)
 
-		for id, track := range audioTracks[1:] {
-			val = append(val, amf0.ObjectEntry{
-				Key: strconv.FormatInt(int64(id+2), 10),
+		for i, track := range audioTracks[1:] {
+			val[i] = amf0.ObjectEntry{
+				Key: strconv.FormatInt(int64(i+2), 10),
 				Value: amf0.Object{
 					{
 						Key:   "audiocodecid",
@@ -281,7 +281,7 @@ func (w *Writer) writeTracks() error {
 						Value: float64(0),
 					},
 				},
-			})
+			}
 		}
 
 		metadata = append(metadata, amf0.ObjectEntry{
