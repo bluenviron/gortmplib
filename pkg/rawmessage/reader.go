@@ -39,6 +39,12 @@ type readerChunkStream struct {
 	hasExtendedTimestamp  bool
 }
 
+func (rc *readerChunkStream) abortMessage() {
+	rc.curBodyLen = 0
+	rc.curBodyFragments = rc.curBodyFragments[:0]
+	rc.curBodyRecv = 0
+}
+
 func (rc *readerChunkStream) readChunk(c chunk.Chunk, bodySize uint32, hasExtendedTimestamp bool) error {
 	err := c.Read(rc.mr.br, bodySize, hasExtendedTimestamp)
 	if err != nil {
@@ -272,6 +278,20 @@ func (r *Reader) SetChunkSize(v uint32) error {
 // SetWindowAckSize sets the window acknowledgement size.
 func (r *Reader) SetWindowAckSize(v uint32) {
 	r.ackWindowSize = v
+}
+
+// AbortChunkStream discards any in-progress message assembly state for a chunk stream.
+func (r *Reader) AbortChunkStream(v uint32) {
+	if v < 2 || v > 63 {
+		return
+	}
+
+	rc, ok := r.chunkStreams[byte(v)]
+	if !ok || rc.curBodyRecv == 0 {
+		return
+	}
+
+	rc.abortMessage()
 }
 
 // Read reads a Message.

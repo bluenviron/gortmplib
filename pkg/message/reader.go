@@ -13,6 +13,9 @@ func allocateMessage(raw *rawmessage.Message) (Message, error) {
 	case TypeSetChunkSize:
 		return &SetChunkSize{}, nil
 
+	case TypeAbortMessage:
+		return &AbortMessage{}, nil
+
 	case TypeAcknowledge:
 		return &Acknowledge{}, nil
 
@@ -169,6 +172,9 @@ func (r *Reader) Read() (Message, error) {
 		if err != nil {
 			return nil, err
 		}
+
+	case *AbortMessage:
+		r.r.AbortChunkStream(tmsg.ChunkStreamID)
 
 	case *SetWindowAckSize:
 		r.r.SetWindowAckSize(tmsg.Value)
