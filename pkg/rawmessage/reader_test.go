@@ -369,6 +369,91 @@ func TestReaderAdditional(t *testing.T) {
 	}
 }
 
+func TestReaderAbortChunkStream(t *testing.T) {
+	for _, ca := range []struct {
+		name    string
+		abortID uint32
+	}{
+		{
+			name:    "unsupported low csid",
+			abortID: 1,
+		},
+		{
+			name:    "unsupported high csid",
+			abortID: 64,
+		},
+		{
+			name:    "known csid",
+			abortID: 27,
+		},
+		{
+			name:    "unknown csid",
+			abortID: 28,
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			bc := bytecounter.NewReader(&buf)
+			r := NewReader(bc, bc, func(_ uint32) error {
+				return nil
+			})
+			_ = r.SetChunkSize(64)
+
+			chunks := []chunk.Chunk{
+				&chunk.Chunk0{
+					ChunkStreamID:   27,
+					Timestamp:       1000,
+					Type:            6,
+					MessageStreamID: 3123,
+					BodyLen:         80,
+					Body:            bytes.Repeat([]byte{0xaa}, 64),
+				},
+				&chunk.Chunk0{
+					ChunkStreamID:   28,
+					Timestamp:       2000,
+					Type:            7,
+					MessageStreamID: 4123,
+					BodyLen:         4,
+					Body:            []byte{1, 2, 3, 4},
+				},
+				&chunk.Chunk0{
+					ChunkStreamID:   27,
+					Timestamp:       3000,
+					Type:            8,
+					MessageStreamID: 3123,
+					BodyLen:         3,
+					Body:            []byte{9, 8, 7},
+				},
+			}
+
+			hasExtendedTimestamp := false
+			for _, cach := range chunks {
+				buf2, err := cach.Marshal(hasExtendedTimestamp)
+				require.NoError(t, err)
+				buf.Write(buf2)
+				hasExtendedTimestamp = chunkHasExtendedTimestamp(cach)
+			}
+
+			msg, err := r.Read()
+			require.NoError(t, err)
+			require.Equal(t, byte(28), msg.ChunkStreamID)
+			require.Equal(t, []byte{1, 2, 3, 4}, msg.Body)
+
+			r.AbortChunkStream(ca.abortID)
+
+			msg, err = r.Read()
+			if ca.abortID != 27 {
+				require.EqualError(t, err, "received type 0 chunk but expected type 3 chunk")
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, byte(27), msg.ChunkStreamID)
+			require.Equal(t, []byte{9, 8, 7}, msg.Body)
+		})
+	}
+}
+
 func TestReaderAcknowledge(t *testing.T) {
 	for _, ca := range []string{"standard", "overflow"} {
 		t.Run(ca, func(t *testing.T) {
