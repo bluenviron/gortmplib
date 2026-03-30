@@ -183,6 +183,10 @@ type Client struct {
 	// function used to initialize the TCP client.
 	// It defaults to (&net.Dialer{}).DialContext.
 	DialContext func(ctx context.Context, network, address string) (net.Conn, error)
+	// function used to initialize a TLS connection.
+	// When nil, DialContext and tls.Client are used in its place.
+	// It defaults to nil.
+	DialTLSContext func(ctx context.Context, network string, addr string) (net.Conn, error)
 
 	nconn         net.Conn
 	bc            *bytecounter.ReadWriter
@@ -215,31 +219,39 @@ func (c *Client) Initialize(ctx context.Context) error {
 }
 
 func (c *Client) initialize2(ctx context.Context) error {
-	var err error
-	c.nconn, err = c.DialContext(ctx, "tcp", c.URL.Host)
-	if err != nil {
-		return err
-	}
-
-	if c.URL.Scheme == schemeRTMPS {
-		// clone TLS config and fill ServerName if empty.
-		// this is the same behavior of http.Client.
-		// https://cs.opensource.google/go/go/+/master:src/net/http/transport.go;l=1754;drc=a4b534f5e42fe58d58c0ff0562d76680cedb0466
-
-		tlsConfig := c.TLSConfig
-
-		if tlsConfig == nil {
-			tlsConfig = &tls.Config{}
-		} else {
-			tlsConfig = tlsConfig.Clone()
+	if c.DialTLSContext != nil {
+		var err error
+		c.nconn, err = c.DialTLSContext(ctx, "tcp", c.URL.Host)
+		if err != nil {
+			return err
+		}
+	} else {
+		var err error
+		c.nconn, err = c.DialContext(ctx, "tcp", c.URL.Host)
+		if err != nil {
+			return err
 		}
 
-		if tlsConfig.ServerName == "" {
-			host, _, _ := net.SplitHostPort(c.URL.Host)
-			tlsConfig.ServerName = host
-		}
+		if c.URL.Scheme == schemeRTMPS {
+			// clone TLS config and fill ServerName if empty.
+			// this is the same behavior of http.Client.
+			// https://cs.opensource.google/go/go/+/master:src/net/http/transport.go;l=1754;drc=a4b534f5e42fe58d58c0ff0562d76680cedb0466
 
-		c.nconn = tls.Client(c.nconn, tlsConfig)
+			tlsConfig := c.TLSConfig
+
+			if tlsConfig == nil {
+				tlsConfig = &tls.Config{}
+			} else {
+				tlsConfig = tlsConfig.Clone()
+			}
+
+			if tlsConfig.ServerName == "" {
+				host, _, _ := net.SplitHostPort(c.URL.Host)
+				tlsConfig.ServerName = host
+			}
+
+			c.nconn = tls.Client(c.nconn, tlsConfig)
+		}
 	}
 
 	closerDone := make(chan struct{})
@@ -259,7 +271,7 @@ func (c *Client) initialize2(ctx context.Context) error {
 		}
 	}()
 
-	err = c.initialize3()
+	err := c.initialize3()
 	if err != nil {
 		c.nconn.Close()
 		return err
