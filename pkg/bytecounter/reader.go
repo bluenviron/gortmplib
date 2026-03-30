@@ -8,7 +8,7 @@ import (
 // Reader allows to count read bytes.
 type Reader struct {
 	r     io.Reader
-	count uint64
+	count atomic.Uint64
 }
 
 // NewReader allocates a Reader.
@@ -21,16 +21,16 @@ func NewReader(r io.Reader) *Reader {
 // Read implements io.Reader.
 func (r *Reader) Read(p []byte) (int, error) {
 	n, err := r.r.Read(p)
-	atomic.AddUint64(&r.count, uint64(n))
+	r.count.Add(uint64(n))
 	return n, err
 }
 
 // Count returns received bytes.
 func (r *Reader) Count() uint64 {
-	return atomic.LoadUint64(&r.count)
+	return r.count.Load()
 }
 
 // SetCount sets read bytes.
 func (r *Reader) SetCount(v uint64) {
-	atomic.StoreUint64(&r.count, v)
+	r.count.Store(v)
 }
