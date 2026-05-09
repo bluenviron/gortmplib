@@ -487,6 +487,18 @@ func (r *Reader) readTracks() (map[uint8]*Track, map[uint8]*Track, error) {
 		return nil, nil, fmt.Errorf("no tracks found")
 	}
 
+	for id, track := range videoTracks {
+		if track == nil {
+			return nil, nil, fmt.Errorf("video track %d not configured", id)
+		}
+	}
+
+	for id, track := range audioTracks {
+		if track == nil {
+			return nil, nil, fmt.Errorf("audio track %d not configured", id)
+		}
+	}
+
 	return videoTracks, audioTracks, nil
 }
 
