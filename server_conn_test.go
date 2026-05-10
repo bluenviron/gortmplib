@@ -66,6 +66,7 @@ func TestServerConn(t *testing.T) {
 					RawQuery: "key=val",
 				}, conn.URL)
 				require.Equal(t, (ca == "publish"), conn.Publish)
+				require.Equal(t, "LNX 9,0,124,2", conn.FlashVer)
 			}()
 
 			conn, err := net.Dial("tcp", "127.0.0.1:9121")
