@@ -1609,6 +1609,93 @@ func TestReadTracks(t *testing.T) {
 	}
 }
 
+func TestReadTracksErrors(t *testing.T) {
+	for _, ca := range []struct {
+		name     string
+		errMsg   string
+		messages []message.Message
+	}{
+		{
+			"video multitrack coded frames without sequence start",
+			"video track 1 not configured",
+			[]message.Message{
+				&message.VideoExMultitrack{
+					MultitrackType: 0,
+					TrackID:        1,
+					Wrapped: &message.VideoExCodedFrames{
+						ChunkStreamID:   message.VideoChunkStreamID,
+						MessageStreamID: 0x1000000,
+						FourCC:          message.FourCCAVC,
+						DTS:             0,
+					},
+				},
+				&message.VideoExMultitrack{
+					MultitrackType: 0,
+					TrackID:        1,
+					Wrapped: &message.VideoExCodedFrames{
+						ChunkStreamID:   message.VideoChunkStreamID,
+						MessageStreamID: 0x1000000,
+						FourCC:          message.FourCCAVC,
+						DTS:             2 * time.Second,
+					},
+				},
+			},
+		},
+		{
+			"audio multitrack sequence start without coded frames",
+			"audio track 1 not configured",
+			[]message.Message{
+				&message.Video{
+					ChunkStreamID:   message.VideoChunkStreamID,
+					MessageStreamID: 0x1000000,
+					Codec:           message.CodecH264,
+					Type:            message.VideoTypeAU,
+					DTS:             0,
+				},
+				&message.AudioExMultitrack{
+					MultitrackType: 0,
+					TrackID:        1,
+					Wrapped: &message.AudioExSequenceStart{
+						ChunkStreamID:   message.AudioChunkStreamID,
+						MessageStreamID: 0x1000000,
+						FourCC:          message.FourCCMP4A,
+						AACConfig: &mpeg4audio.AudioSpecificConfig{
+							Type:         mpeg4audio.ObjectTypeAACLC,
+							SampleRate:   48000,
+							ChannelCount: 2,
+						},
+					},
+				},
+				&message.Video{
+					ChunkStreamID:   message.VideoChunkStreamID,
+					MessageStreamID: 0x1000000,
+					Codec:           message.CodecH264,
+					Type:            message.VideoTypeAU,
+					DTS:             2 * time.Second,
+				},
+			},
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			bc := bytecounter.NewReadWriter(&buf)
+			mrw := message.NewReadWriter(bc, bc, true)
+
+			for _, msg := range ca.messages {
+				err := mrw.Write(msg)
+				require.NoError(t, err)
+			}
+
+			c := &dummyConn{rw: &buf}
+			c.initialize()
+
+			r := &Reader{Conn: c}
+			err := r.Initialize()
+			require.EqualError(t, err, ca.errMsg)
+		})
+	}
+}
+
 func TestReaderRewind(t *testing.T) {
 	messages := []message.Message{
 		&message.Video{
