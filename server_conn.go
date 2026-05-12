@@ -115,6 +115,7 @@ type ServerConn struct {
 	app                  string
 	tcURL                string
 	FourCcList           amf0.StrictArray
+	FlashVer             string
 
 	// filled by Accept
 	URL     *url.URL
@@ -185,6 +186,8 @@ func (c *ServerConn) Initialize() error {
 			c.FourCcList = arr
 		}
 	}
+
+	c.FlashVer, _ = connectObject.GetString("flashVer")
 
 	return nil
 }
