@@ -267,6 +267,7 @@ func TestClientReadPublish(t *testing.T) {
 											"hvc1",
 											"avc1",
 											"Opus",
+											"fLaC",
 											"ac-3",
 											"mp4a",
 											".mp3",
@@ -297,6 +298,7 @@ func TestClientReadPublish(t *testing.T) {
 											"hvc1",
 											"avc1",
 											"Opus",
+											"fLaC",
 											"ac-3",
 											"mp4a",
 											".mp3",
@@ -340,6 +342,7 @@ func TestClientReadPublish(t *testing.T) {
 											"hvc1",
 											"avc1",
 											"Opus",
+											"fLaC",
 											"ac-3",
 											"mp4a",
 											".mp3",
@@ -373,6 +376,7 @@ func TestClientReadPublish(t *testing.T) {
 										"hvc1",
 										"avc1",
 										"Opus",
+										"fLaC",
 										"ac-3",
 										"mp4a",
 										".mp3",
@@ -644,11 +648,11 @@ func TestClientReadPublish(t *testing.T) {
 			switch ca {
 			case "read", "read nginx rtmp":
 				require.Equal(t, uint64(3421), conn.BytesReceived())
-				require.Equal(t, uint64(0xdb3), conn.BytesSent())
+				require.Equal(t, uint64(0xdba), conn.BytesSent())
 
 			case "read srs":
 				require.Equal(t, uint64(0xd7a), conn.BytesReceived())
-				require.Equal(t, uint64(0xdb3), conn.BytesSent())
+				require.Equal(t, uint64(0xdba), conn.BytesSent())
 
 			case "publish":
 				require.Equal(t, uint64(3427), conn.BytesReceived())

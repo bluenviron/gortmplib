@@ -383,6 +383,7 @@ func (c *Client) initialize3() error {
 					fourCCToString(message.FourCCHEVC),
 					fourCCToString(message.FourCCAVC),
 					fourCCToString(message.FourCCOpus),
+					fourCCToString(message.FourCCFLAC),
 					fourCCToString(message.FourCCAC3),
 					fourCCToString(message.FourCCMP4A),
 					fourCCToString(message.FourCCMP3),
