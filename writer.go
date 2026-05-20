@@ -439,11 +439,7 @@ func (w *Writer) writeTracks() error {
 				ChunkStreamID:   message.AudioChunkStreamID,
 				MessageStreamID: 0x1000000,
 				FourCC:          message.FourCCOpus,
-				OpusConfig: &message.OpusIDHeader{
-					Version:      0x1,
-					ChannelCount: uint8(codec.ChannelCount),
-					PreSkip:      3840,
-				},
+				OpusConfig:      codec.IDHeader,
 			}
 
 			if id != 0 {
