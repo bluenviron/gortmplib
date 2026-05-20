@@ -3,8 +3,10 @@ package message
 import (
 	"fmt"
 
-	"github.com/bluenviron/gortmplib/pkg/rawmessage"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/opus"
+
+	"github.com/bluenviron/gortmplib/pkg/rawmessage"
 )
 
 // AudioExSequenceStart is a sequence start extended message.
@@ -12,7 +14,7 @@ type AudioExSequenceStart struct {
 	ChunkStreamID   byte
 	MessageStreamID uint32
 	FourCC          FourCC
-	OpusConfig      *OpusIDHeader
+	OpusConfig      *opus.IDHeader
 	AACConfig       *mpeg4audio.AudioSpecificConfig
 }
 
@@ -27,8 +29,8 @@ func (m *AudioExSequenceStart) unmarshal(raw *rawmessage.Message) error {
 	m.FourCC = FourCC(raw.Body[1])<<24 | FourCC(raw.Body[2])<<16 | FourCC(raw.Body[3])<<8 | FourCC(raw.Body[4])
 	switch m.FourCC {
 	case FourCCOpus:
-		m.OpusConfig = &OpusIDHeader{}
-		err := m.OpusConfig.unmarshal(raw.Body[5:])
+		m.OpusConfig = &opus.IDHeader{}
+		err := m.OpusConfig.Unmarshal(raw.Body[5:])
 		if err != nil {
 			return fmt.Errorf("invalid Opus ID header: %w", err)
 		}
@@ -57,7 +59,7 @@ func (m AudioExSequenceStart) marshal() (*rawmessage.Message, error) {
 
 	switch m.FourCC {
 	case FourCCOpus:
-		buf, err := m.OpusConfig.marshal()
+		buf, err := m.OpusConfig.Marshal()
 		if err != nil {
 			return nil, err
 		}

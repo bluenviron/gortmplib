@@ -1,10 +1,13 @@
 package codecs
 
-import "github.com/bluenviron/gortmplib/pkg/message"
+import (
+	"github.com/bluenviron/gortmplib/pkg/message"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/opus"
+)
 
 // Opus is the Opus codec.
 type Opus struct {
-	ChannelCount int
+	IDHeader *opus.IDHeader
 }
 
 // IsVideo returns whether the codec is a video one.

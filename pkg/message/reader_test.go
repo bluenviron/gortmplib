@@ -11,6 +11,7 @@ import (
 	"github.com/bluenviron/gortmplib/pkg/amf0"
 	"github.com/bluenviron/gortmplib/pkg/bytecounter"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/opus"
 )
 
 var readWriterCases = []struct {
@@ -122,7 +123,7 @@ var readWriterCases = []struct {
 			ChunkStreamID:   0x4,
 			MessageStreamID: 0x1000000,
 			FourCC:          FourCCOpus,
-			OpusConfig: &OpusIDHeader{
+			OpusConfig: &opus.IDHeader{
 				Version:             0x1,
 				ChannelCount:        0x2,
 				PreSkip:             0x3801,

@@ -9,6 +9,7 @@ import (
 	"github.com/abema/go-mp4"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h265"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/opus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortmplib/pkg/amf0"
@@ -1398,7 +1399,13 @@ func TestReadTracks(t *testing.T) {
 			"opus, ffmpeg",
 			[]*Track{
 				{Codec: &codecs.Opus{
-					ChannelCount: 2,
+					IDHeader: &opus.IDHeader{
+						Version:             0x1,
+						ChannelCount:        2,
+						PreSkip:             14337,
+						InputSampleRate:     3227320320,
+						ChannelMappingTable: []uint8{},
+					},
 				}},
 			},
 			[]message.Message{
@@ -1424,7 +1431,7 @@ func TestReadTracks(t *testing.T) {
 					ChunkStreamID:   0x4,
 					MessageStreamID: 0x1000000,
 					FourCC:          0x4f707573,
-					OpusConfig: &message.OpusIDHeader{
+					OpusConfig: &opus.IDHeader{
 						Version:              0x1,
 						ChannelCount:         0x2,
 						PreSkip:              0x3801,

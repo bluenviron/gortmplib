@@ -7,6 +7,7 @@ import (
 
 	"github.com/abema/go-mp4"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/opus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortmplib/pkg/amf0"
@@ -71,7 +72,11 @@ func TestWriter(t *testing.T) {
 
 			case "opus":
 				tracks = append(tracks, &Track{Codec: &codecs.Opus{
-					ChannelCount: 2,
+					IDHeader: &opus.IDHeader{
+						Version:      0x1,
+						ChannelCount: 2,
+						PreSkip:      3840,
+					},
 				}})
 
 			case "mp3":
@@ -561,7 +566,7 @@ func TestWriter(t *testing.T) {
 					ChunkStreamID:   message.AudioChunkStreamID,
 					MessageStreamID: 0x1000000,
 					FourCC:          message.FourCCOpus,
-					OpusConfig: &message.OpusIDHeader{
+					OpusConfig: &opus.IDHeader{
 						Version:             1,
 						PreSkip:             3840,
 						ChannelCount:        2,

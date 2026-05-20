@@ -200,8 +200,16 @@ func audioTrackFromExtendedMessages(
 		}
 
 		return &Track{Codec: &codecs.Opus{
-			ChannelCount: int(sequenceStart.OpusConfig.ChannelCount),
+			IDHeader: sequenceStart.OpusConfig,
 		}}, nil
+
+	case message.FourCCMP4A:
+		return &Track{Codec: &codecs.MPEG4Audio{
+			Config: sequenceStart.AACConfig,
+		}}, nil
+
+	case message.FourCCMP3:
+		return &Track{Codec: &codecs.MPEG1Audio{}}, nil
 
 	case message.FourCCAC3:
 		if len(frames.Payload) < 6 {
@@ -224,14 +232,6 @@ func audioTrackFromExtendedMessages(
 			SampleRate:   syncInfo.SampleRate(),
 			ChannelCount: bsi.ChannelCount(),
 		}}, nil
-
-	case message.FourCCMP4A:
-		return &Track{Codec: &codecs.MPEG4Audio{
-			Config: sequenceStart.AACConfig,
-		}}, nil
-
-	case message.FourCCMP3:
-		return &Track{Codec: &codecs.MPEG1Audio{}}, nil
 
 	default:
 		panic("should not happen")
