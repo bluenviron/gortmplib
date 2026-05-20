@@ -72,6 +72,11 @@ func main() {
 				log.Printf("incoming Opus data, pts=%v, len=%v", pts, len(packet))
 			})
 
+		case *codecs.FLAC:
+			r.OnDataFLAC(track, func(pts time.Duration, frame []byte) {
+				log.Printf("incoming FLAC data, pts=%v, len=%v", pts, len(frame))
+			})
+
 		case *codecs.MPEG4Audio:
 			r.OnDataMPEG4Audio(track, func(pts time.Duration, au []byte) {
 				log.Printf("incoming MPEG-4 Audio data, pts=%v, len=%v", pts, len(au))

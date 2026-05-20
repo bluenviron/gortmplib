@@ -3,6 +3,7 @@ package message
 import (
 	"fmt"
 
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/flac"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/opus"
 
@@ -16,6 +17,7 @@ type AudioExSequenceStart struct {
 	FourCC          FourCC
 	OpusConfig      *opus.IDHeader
 	AACConfig       *mpeg4audio.AudioSpecificConfig
+	FlacConfig      *flac.StreamInfo
 }
 
 func (m *AudioExSequenceStart) unmarshal(raw *rawmessage.Message) error {
@@ -40,6 +42,13 @@ func (m *AudioExSequenceStart) unmarshal(raw *rawmessage.Message) error {
 			return fmt.Errorf("unexpected size")
 		}
 
+	case FourCCFLAC:
+		m.FlacConfig = &flac.StreamInfo{}
+		err := m.FlacConfig.Unmarshal(raw.Body[5:])
+		if err != nil {
+			return fmt.Errorf("invalid FLAC STREAMINFO: %w", err)
+		}
+
 	case FourCCMP4A:
 		m.AACConfig = &mpeg4audio.AudioSpecificConfig{}
 		err := m.AACConfig.Unmarshal(raw.Body[5:])
@@ -60,6 +69,13 @@ func (m AudioExSequenceStart) marshal() (*rawmessage.Message, error) {
 	switch m.FourCC {
 	case FourCCOpus:
 		buf, err := m.OpusConfig.Marshal()
+		if err != nil {
+			return nil, err
+		}
+		addBody = buf
+
+	case FourCCFLAC:
+		buf, err := m.FlacConfig.Marshal()
 		if err != nil {
 			return nil, err
 		}

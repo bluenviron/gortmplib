@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/abema/go-mp4"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/flac"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h265"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/opus"
@@ -1524,6 +1525,66 @@ func TestReadTracks(t *testing.T) {
 						0xfb, 0x7b, 0x49, 0x68, 0x00, 0x2a, 0xd7, 0x94,
 						0x01, 0x99, 0xce, 0x5e, 0xec, 0x64, 0x63, 0xb9,
 					},
+				},
+			},
+		},
+		{
+			"flac, ffmpeg",
+			[]*Track{
+				{Codec: &codecs.FLAC{
+					StreamInfo: &flac.StreamInfo{
+						MinBlockSize: 4096,
+						MaxBlockSize: 4096,
+						SampleRate:   44100,
+						ChannelCount: 2,
+						BitDepth:     16,
+					},
+				}},
+			},
+			[]message.Message{
+				&message.DataAMF0{
+					ChunkStreamID:   4,
+					MessageStreamID: 0x1000000,
+					Payload: []any{
+						"@setDataFrame",
+						"onMetaData",
+						amf0.ECMAArray{
+							{Key: "duration", Value: float64(0)},
+							{Key: "audiodatarate", Value: float64(0)},
+							{Key: "audiosamplerate", Value: float64(44100)},
+							{Key: "audiosamplesize", Value: float64(16)},
+							{Key: "stereo", Value: true},
+							{Key: "audiocodecid", Value: float64(message.FourCCFLAC)},
+							{Key: "encoder", Value: "Lavf61.9.102"},
+							{Key: "filesize", Value: float64(0)},
+						},
+					},
+				},
+				&message.AudioExSequenceStart{
+					ChunkStreamID:   message.AudioChunkStreamID,
+					MessageStreamID: 0x1000000,
+					FourCC:          message.FourCCFLAC,
+					FlacConfig: &flac.StreamInfo{
+						MinBlockSize: 4096,
+						MaxBlockSize: 4096,
+						SampleRate:   44100,
+						ChannelCount: 2,
+						BitDepth:     16,
+					},
+				},
+				&message.AudioExCodedFrames{
+					ChunkStreamID:   message.AudioChunkStreamID,
+					DTS:             0,
+					MessageStreamID: 0x1000000,
+					FourCC:          message.FourCCFLAC,
+					Payload:         []byte{1, 2, 3, 4},
+				},
+				&message.AudioExCodedFrames{
+					ChunkStreamID:   message.AudioChunkStreamID,
+					DTS:             2 * time.Second,
+					MessageStreamID: 0x1000000,
+					FourCC:          message.FourCCFLAC,
+					Payload:         []byte{1, 2, 3, 4},
 				},
 			},
 		},

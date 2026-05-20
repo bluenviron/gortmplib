@@ -32,6 +32,9 @@ type OnDataH26xFunc func(pts time.Duration, dts time.Duration, au [][]byte)
 // OnDataOpusFunc is the prototype of the callback passed to OnDataOpus().
 type OnDataOpusFunc func(pts time.Duration, packet []byte)
 
+// OnDataFLACFunc is the prototype of the callback passed to OnDataFLAC().
+type OnDataFLACFunc func(pts time.Duration, frame []byte)
+
 // OnDataMPEG4AudioFunc is the prototype of the callback passed to OnDataMPEG4Audio().
 type OnDataMPEG4AudioFunc func(pts time.Duration, au []byte)
 
@@ -201,6 +204,11 @@ func audioTrackFromExtendedMessages(
 
 		return &Track{Codec: &codecs.Opus{
 			IDHeader: sequenceStart.OpusConfig,
+		}}, nil
+
+	case message.FourCCFLAC:
+		return &Track{Codec: &codecs.FLAC{
+			StreamInfo: sequenceStart.FlacConfig,
 		}}, nil
 
 	case message.FourCCMP4A:
@@ -709,6 +717,16 @@ func (r *Reader) OnDataH264(track *Track, cb OnDataH26xFunc) {
 
 // OnDataOpus sets a callback that is called when Opus data is received.
 func (r *Reader) OnDataOpus(track *Track, cb OnDataOpusFunc) {
+	r.onAudioData[r.audioTrackID(track)] = func(msg message.Message) error {
+		if msg, ok := msg.(*message.AudioExCodedFrames); ok {
+			cb(msg.DTS, msg.Payload)
+		}
+		return nil
+	}
+}
+
+// OnDataFLAC sets a callback that is called when FLAC data is received.
+func (r *Reader) OnDataFLAC(track *Track, cb OnDataFLACFunc) {
 	r.onAudioData[r.audioTrackID(track)] = func(msg message.Message) error {
 		if msg, ok := msg.(*message.AudioExCodedFrames); ok {
 			cb(msg.DTS, msg.Payload)

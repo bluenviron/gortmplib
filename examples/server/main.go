@@ -117,6 +117,16 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 				}
 			})
 
+		case *codecs.FLAC:
+			r.OnDataFLAC(track, func(pts time.Duration, frame []byte) {
+				mutex.Lock()
+				defer mutex.Unlock()
+
+				for _, reader := range readers {
+					reader.WriteFLAC(track, pts, frame) //nolint:errcheck
+				}
+			})
+
 		case *codecs.MPEG4Audio:
 			r.OnDataMPEG4Audio(track, func(pts time.Duration, au []byte) {
 				mutex.Lock()
