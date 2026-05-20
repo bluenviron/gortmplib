@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/abema/go-mp4"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/flac"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/opus"
 	"github.com/stretchr/testify/require"
@@ -27,6 +28,7 @@ func TestWriter(t *testing.T) {
 		"opus",
 		"mp3",
 		"ac-3",
+		"flac",
 		"pcma",
 		"pcmu",
 		"lpcm",
@@ -86,6 +88,17 @@ func TestWriter(t *testing.T) {
 				tracks = append(tracks, &Track{Codec: &codecs.AC3{
 					SampleRate:   44100,
 					ChannelCount: 2,
+				}})
+
+			case "flac":
+				tracks = append(tracks, &Track{Codec: &codecs.FLAC{
+					StreamInfo: &flac.StreamInfo{
+						MinBlockSize: 16,
+						MaxBlockSize: 65535,
+						SampleRate:   44100,
+						ChannelCount: 2,
+						BitDepth:     16,
+					},
 				}})
 
 			case "pcma":
@@ -267,6 +280,22 @@ func TestWriter(t *testing.T) {
 							{Key: "videocodecid", Value: float64(0)},
 							{Key: "videodatarate", Value: float64(0)},
 							{Key: "audiocodecid", Value: float64(1.633889587e+09)},
+							{Key: "audiodatarate", Value: float64(0)},
+						},
+					},
+				}, msg)
+
+			case "flac":
+				require.Equal(t, &message.DataAMF0{
+					ChunkStreamID:   4,
+					MessageStreamID: 0x1000000,
+					Payload: []any{
+						"@setDataFrame",
+						"onMetaData",
+						amf0.Object{
+							{Key: "videocodecid", Value: float64(0)},
+							{Key: "videodatarate", Value: float64(0)},
+							{Key: "audiocodecid", Value: float64(message.FourCCFLAC)},
 							{Key: "audiodatarate", Value: float64(0)},
 						},
 					},
@@ -626,6 +655,34 @@ func TestWriter(t *testing.T) {
 					ChunkStreamID:   message.AudioChunkStreamID,
 					MessageStreamID: 0x1000000,
 					FourCC:          message.FourCCAC3,
+					Payload:         []byte{1, 2},
+				}, msg)
+
+			case "flac":
+				msg, err = mrw.Read()
+				require.NoError(t, err)
+				require.Equal(t, &message.AudioExSequenceStart{
+					ChunkStreamID:   message.AudioChunkStreamID,
+					MessageStreamID: 0x1000000,
+					FourCC:          message.FourCCFLAC,
+					FlacConfig: &flac.StreamInfo{
+						MinBlockSize: 16,
+						MaxBlockSize: 65535,
+						SampleRate:   44100,
+						ChannelCount: 2,
+						BitDepth:     16,
+					},
+				}, msg)
+
+				err = w.WriteFLAC(tracks[0], 0, []byte{1, 2})
+				require.NoError(t, err)
+
+				msg, err = mrw.Read()
+				require.NoError(t, err)
+				require.Equal(t, &message.AudioExCodedFrames{
+					ChunkStreamID:   message.AudioChunkStreamID,
+					MessageStreamID: 0x1000000,
+					FourCC:          message.FourCCFLAC,
 					Payload:         []byte{1, 2},
 				}, msg)
 

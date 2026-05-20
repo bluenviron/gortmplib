@@ -455,6 +455,27 @@ func (w *Writer) writeTracks() error {
 				return err
 			}
 
+		case *codecs.FLAC:
+			var msg message.Message = &message.AudioExSequenceStart{
+				ChunkStreamID:   message.AudioChunkStreamID,
+				MessageStreamID: 0x1000000,
+				FourCC:          message.FourCCFLAC,
+				FlacConfig:      codec.StreamInfo,
+			}
+
+			if id != 0 {
+				msg = &message.AudioExMultitrack{
+					MultitrackType: 0x0,
+					TrackID:        uint8(id),
+					Wrapped:        msg,
+				}
+			}
+
+			err = w.Conn.Write(msg)
+			if err != nil {
+				return err
+			}
+
 		case *codecs.MPEG4Audio:
 			audioConf := codec.Config
 
@@ -681,6 +702,29 @@ func (w *Writer) WriteOpus(track *Track, pts time.Duration, pkt []byte) error {
 		DTS:             pts,
 		FourCC:          message.FourCCOpus,
 		Payload:         pkt,
+	}
+
+	id := w.audioTrackToID[track]
+
+	if id != 0 {
+		msg = &message.AudioExMultitrack{
+			MultitrackType: 0x0,
+			TrackID:        id,
+			Wrapped:        msg,
+		}
+	}
+
+	return w.Conn.Write(msg)
+}
+
+// WriteFLAC writes a FLAC frame.
+func (w *Writer) WriteFLAC(track *Track, pts time.Duration, frame []byte) error {
+	var msg message.Message = &message.AudioExCodedFrames{
+		ChunkStreamID:   message.AudioChunkStreamID,
+		MessageStreamID: 0x1000000,
+		FourCC:          message.FourCCFLAC,
+		Payload:         frame,
+		DTS:             pts,
 	}
 
 	id := w.audioTrackToID[track]
