@@ -41,6 +41,9 @@ const (
 	UserControlTypeStreamIsRecorded UserControlType = 4
 	UserControlTypePingRequest      UserControlType = 6
 	UserControlTypePingResponse     UserControlType = 7
+
+	userControlTypeUndocumented1 UserControlType = 31
+	userControlTypeUndocumented2 UserControlType = 32
 )
 
 // AudioExType is an audio message extended type.

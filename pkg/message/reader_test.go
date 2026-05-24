@@ -892,6 +892,36 @@ func TestReaderNonStandardControlChunkStreamID(t *testing.T) {
 	}, dec)
 }
 
+func TestReaderUserControlUndocumented(t *testing.T) {
+	for _, ca := range []struct {
+		name string
+		buf  []byte
+	}{
+		{
+			"type 31",
+			[]byte{
+				0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x04,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x1f,
+			},
+		},
+		{
+			"type 32",
+			[]byte{
+				0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x04,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x20,
+			},
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			bc := bytecounter.NewReader(bytes.NewReader(ca.buf))
+			r := NewReader(bc, bc, nil)
+			dec, err := r.Read()
+			require.NoError(t, err)
+			require.Equal(t, &UserControlUndocumented{}, dec)
+		})
+	}
+}
+
 func FuzzReader(f *testing.F) {
 	for _, ca := range readWriterCases {
 		f.Add(ca.enc)
