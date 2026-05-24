@@ -54,6 +54,10 @@ func allocateMessage(raw *rawmessage.Message) (Message, error) {
 		case UserControlTypePingResponse:
 			return &UserControlPingResponse{}, nil
 
+		// undocumented messages sent by Flash Media Server
+		case userControlTypeUndocumented1, userControlTypeUndocumented2:
+			return &UserControlUndocumented{}, nil
+
 		default:
 			return nil, fmt.Errorf("invalid user control type: %v", userControlType)
 		}
