@@ -11,6 +11,15 @@ import (
 	"github.com/bluenviron/gortmplib/pkg/chunk"
 )
 
+const (
+	// maxAckWindowSize is the upper bound for the RTMP acknowledgement window.
+	// Servers may request very large windows (e.g. 5MB), but on low-bitrate
+	// streams this prevents any Ack from being sent within the read timeout,
+	// causing the server to stop sending data. 64KB ensures at least one Ack
+	// per 60s for streams >= 10kbps.
+	maxAckWindowSize = 64000
+)
+
 var errMoreChunksNeeded = errors.New("more chunks are needed")
 
 const (
@@ -257,11 +266,12 @@ func NewReader(
 	onAckNeeded func(uint32) error,
 ) *Reader {
 	return &Reader{
-		bcr:          bcr,
-		br:           bufio.NewReader(r),
-		onAckNeeded:  onAckNeeded,
-		chunkSize:    128,
-		chunkStreams: make(map[byte]*readerChunkStream),
+		bcr:           bcr,
+		br:            bufio.NewReader(r),
+		onAckNeeded:   onAckNeeded,
+		ackWindowSize: 2500000,
+		chunkSize:     128,
+		chunkStreams:  make(map[byte]*readerChunkStream),
 	}
 }
 
@@ -277,6 +287,9 @@ func (r *Reader) SetChunkSize(v uint32) error {
 
 // SetWindowAckSize sets the window acknowledgement size.
 func (r *Reader) SetWindowAckSize(v uint32) {
+	if v > maxAckWindowSize {
+		v = maxAckWindowSize
+	}
 	r.ackWindowSize = v
 }
 
