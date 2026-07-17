@@ -1842,3 +1842,73 @@ func TestReaderRewind(t *testing.T) {
 
 	require.Equal(t, 3, receivedCount)
 }
+
+func TestReaderH264NegativeCompositionTime(t *testing.T) {
+	messages := []message.Message{
+		&message.Video{
+			ChunkStreamID:   message.VideoChunkStreamID,
+			MessageStreamID: 0x1000000,
+			Codec:           message.CodecH264,
+			IsKeyFrame:      true,
+			Type:            message.VideoTypeConfig,
+			AVCConfig:       generateAvcC(testCodecH264.SPS, testCodecH264.PPS),
+		},
+		&message.Video{
+			ChunkStreamID:   message.VideoChunkStreamID,
+			DTS:             100 * time.Millisecond,
+			MessageStreamID: 0x1000000,
+			Codec:           message.CodecH264,
+			IsKeyFrame:      true,
+			Type:            message.VideoTypeAU,
+			PTSDelta:        -34 * time.Millisecond,
+			AU:              []byte{0x00, 0x00, 0x00, 0x02, 0x09, 0xf0},
+		},
+		&message.Video{
+			ChunkStreamID:   message.VideoChunkStreamID,
+			DTS:             2 * time.Second,
+			MessageStreamID: 0x1000000,
+			Codec:           message.CodecH264,
+			Type:            message.VideoTypeAU,
+			AU:              []byte{0x00, 0x00, 0x00, 0x02, 0x09, 0xf0},
+		},
+	}
+
+	var buf bytes.Buffer
+	bc := bytecounter.NewReadWriter(&buf)
+	mrw := message.NewReadWriter(bc, bc, true)
+
+	for _, msg := range messages {
+		err := mrw.Write(msg)
+		require.NoError(t, err)
+	}
+
+	c := &dummyConn{rw: &buf}
+	c.initialize()
+
+	r := &Reader{Conn: c}
+	err := r.Initialize()
+	require.NoError(t, err)
+
+	tracks := r.Tracks()
+	require.Len(t, tracks, 1)
+
+	type timestampPair struct {
+		pts time.Duration
+		dts time.Duration
+	}
+	var received []timestampPair
+	r.OnDataH264(tracks[0], func(pts time.Duration, dts time.Duration, _ [][]byte) {
+		received = append(received, timestampPair{pts: pts, dts: dts})
+	})
+
+	for range messages {
+		err = r.Read()
+		require.NoError(t, err)
+	}
+
+	require.Len(t, received, len(messages))
+	require.Equal(t, timestampPair{
+		pts: 66 * time.Millisecond,
+		dts: 100 * time.Millisecond,
+	}, received[1])
+}
