@@ -1,17 +1,19 @@
-package bytecounter
+package bytecounter_test
 
 import (
 	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortmplib/pkg/bytecounter"
 )
 
 func TestReader(t *testing.T) {
 	var buf bytes.Buffer
 	buf.Write(bytes.Repeat([]byte{0x01}, 1024))
 
-	r := NewReader(&buf)
+	r := bytecounter.NewReader(&buf)
 	r.SetCount(100)
 
 	buf2 := make([]byte, 64)

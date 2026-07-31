@@ -1,9 +1,19 @@
-package amf0
+package amf0_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	amf0pkg "github.com/bluenviron/gortmplib/pkg/amf0"
+)
+
+type (
+	Data        = amf0pkg.Data
+	Object      = amf0pkg.Object
+	Undefined   = amf0pkg.Undefined
+	ECMAArray   = amf0pkg.ECMAArray
+	StrictArray = amf0pkg.StrictArray
 )
 
 var cases = []struct {
@@ -329,7 +339,7 @@ var cases = []struct {
 func TestUnmarshal(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			dec, err := Unmarshal(ca.enc)
+			dec, err := amf0pkg.Unmarshal(ca.enc)
 			require.NoError(t, err)
 			require.Equal(t, ca.dec, dec)
 		})
@@ -373,7 +383,7 @@ func FuzzUnmarshal(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, b []byte) {
-		what, err := Unmarshal(b)
+		what, err := amf0pkg.Unmarshal(b)
 		if err != nil {
 			return
 		}

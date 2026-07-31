@@ -1,4 +1,4 @@
-package chunk
+package chunk_test
 
 import (
 	"bytes"
@@ -6,6 +6,16 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	chunkpkg "github.com/bluenviron/gortmplib/pkg/chunk"
+)
+
+type (
+	Chunk  = chunkpkg.Chunk
+	Chunk0 = chunkpkg.Chunk0
+	Chunk1 = chunkpkg.Chunk1
+	Chunk2 = chunkpkg.Chunk2
+	Chunk3 = chunkpkg.Chunk3
 )
 
 var cases = []struct {
