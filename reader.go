@@ -294,6 +294,8 @@ func (r *Reader) readTracks() (map[uint8]*Track, map[uint8]*Track, error) {
 	videoTracks := make(map[uint8]*Track)
 	audioTracks := make(map[uint8]*Track)
 
+	loopStart := time.Now()
+
 	handleVideoSequenceStart := func(trackID uint8, msg *message.VideoExSequenceStart) error {
 		if videoTracks[trackID] != nil {
 			return fmt.Errorf("video track %d already setupped", trackID)
@@ -486,7 +488,7 @@ func (r *Reader) readTracks() (map[uint8]*Track, map[uint8]*Track, error) {
 			}
 		}
 
-		if (curTime - startTime) >= analyzePeriod {
+		if (curTime - startTime) >= analyzePeriod || time.Since(loopStart) >= analyzePeriod {
 			break
 		}
 	}

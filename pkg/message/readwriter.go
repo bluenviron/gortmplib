@@ -50,6 +50,14 @@ func (rw *ReadWriter) Read() (Message, error) {
 		if err != nil {
 			return nil, err
 		}
+
+	case *SetPeerBandwidth:
+		err = rw.w.Write(&SetWindowAckSize{
+			Value: tmsg.Value,
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return msg, nil
