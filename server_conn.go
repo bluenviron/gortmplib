@@ -63,7 +63,7 @@ func authResponse(user, pass, salt, opaque, challenge, challenge2 string) string
 	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }
 
-func buildURL(tcURL string, streamKey string) (*url.URL, error) {
+func joinURL(tcURL string, streamKey string) (*url.URL, error) {
 	if streamKey != "" && streamKey[0] != '?' {
 		tcURL += "/" + streamKey
 	}
@@ -349,7 +349,7 @@ func (c *ServerConn) Accept() error {
 				return fmt.Errorf("invalid play command arguments")
 			}
 
-			c.URL, err = buildURL(c.tcURL, streamKey)
+			c.URL, err = joinURL(c.tcURL, streamKey)
 			if err != nil {
 				return err
 			}
@@ -453,7 +453,7 @@ func (c *ServerConn) Accept() error {
 				return fmt.Errorf("invalid publish command arguments")
 			}
 
-			c.URL, err = buildURL(c.tcURL, streamKey)
+			c.URL, err = joinURL(c.tcURL, streamKey)
 			if err != nil {
 				return err
 			}
