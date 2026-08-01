@@ -501,16 +501,128 @@ func TestServerConn(t *testing.T) {
 	}
 }
 
-func TestServerConnPath(t *testing.T) {
-	for _, ca := range []string{
-		"standard",
-		"leading slash",
-		"query",
-		"stream key",
-		"stream key and query",
-		"neko",
+func TestServerConnURL(t *testing.T) {
+	for _, ca := range []struct {
+		name        string
+		tcurl       string
+		app         string
+		streamKey   string
+		expectedURL string
+	}{
+		{
+			name:        "ffmpeg, publish, single-component path",
+			tcurl:       "rtmp://localhost:1935/comp1",
+			app:         "comp1",
+			streamKey:   "",
+			expectedURL: "rtmp://localhost:1935/comp1",
+		},
+		{
+			name:        "ffmpeg, publish, single-component path, with query",
+			tcurl:       "rtmp://localhost:1935/comp1?key=val",
+			app:         "comp1?key=val",
+			streamKey:   "",
+			expectedURL: "rtmp://localhost:1935/comp1?key=val",
+		},
+		{
+			name:        "ffmpeg, publish, two-component path",
+			tcurl:       "rtmp://localhost:1935/comp1",
+			app:         "comp1",
+			streamKey:   "comp2",
+			expectedURL: "rtmp://localhost:1935/comp1/comp2",
+		},
+		{
+			name:        "ffmpeg, publish, two-component path, with query",
+			tcurl:       "rtmp://localhost:1935/comp1",
+			app:         "comp1",
+			streamKey:   "comp2?key=val",
+			expectedURL: "rtmp://localhost:1935/comp1/comp2?key=val",
+		},
+		{
+			name:        "gstreamer, publish, rtmpsink, single-component path",
+			tcurl:       "rtmp://localhost:1935/comp1",
+			app:         "comp1",
+			streamKey:   "",
+			expectedURL: "rtmp://localhost:1935/comp1",
+		},
+		{
+			name:        "gstreamer, publish, rtmpsink, single-component path, with query",
+			tcurl:       "rtmp://localhost/comp1?key=val",
+			app:         "comp1?key=val",
+			streamKey:   "",
+			expectedURL: "rtmp://localhost/comp1?key=val",
+		},
+		{
+			name:        "gstreamer, publish, rtmpsink, two-component path",
+			tcurl:       "rtmp://localhost/comp1",
+			app:         "comp1",
+			streamKey:   "comp2",
+			expectedURL: "rtmp://localhost/comp1/comp2",
+		},
+		{
+			name:        "gstreamer, publish, rtmpsink, two-component path, with query",
+			tcurl:       "rtmp://localhost/comp1",
+			app:         "comp1",
+			streamKey:   "comp2?key=val",
+			expectedURL: "rtmp://localhost/comp1/comp2?key=val",
+		},
+		{
+			name:        "OBS, single-component path",
+			tcurl:       "rtmp://localhost:1935/comp1",
+			app:         "comp1",
+			streamKey:   "",
+			expectedURL: "rtmp://localhost:1935/comp1",
+		},
+		{
+			name:        "OBS, single-component path, with query",
+			tcurl:       "rtmp://localhost:1935/comp1?key=val&tee=taa",
+			app:         "comp1?key=val&tee=taa",
+			streamKey:   "",
+			expectedURL: "rtmp://localhost:1935/comp1?key=val&tee=taa",
+		},
+		{
+			name:        "OBS, two-component path",
+			tcurl:       "rtmp://localhost:1935/comp1/comp2",
+			app:         "comp1/comp2",
+			streamKey:   "",
+			expectedURL: "rtmp://localhost:1935/comp1/comp2",
+		},
+		{
+			name:        "OBS, two-component path, with query",
+			tcurl:       "rtmp://localhost:1935/comp1/comp2?key=val",
+			app:         "comp1/comp2?key=val",
+			streamKey:   "",
+			expectedURL: "rtmp://localhost:1935/comp1/comp2?key=val",
+		},
+		{
+			name:        "OBS, multi-rendition, single-component path",
+			tcurl:       "rtmp://localhost/comp1",
+			app:         "comp1",
+			streamKey:   "",
+			expectedURL: "rtmp://localhost/comp1",
+		},
+		{
+			name:        "OBS, multi-rendition, two-component path",
+			tcurl:       "rtmp://localhost:1935/comp1/comp2",
+			app:         "comp1/comp2",
+			streamKey:   "",
+			expectedURL: "rtmp://localhost:1935/comp1/comp2",
+		},
+		{
+			name:        "OBS, multi-rendition, two-component path, with query",
+			tcurl:       "rtmp://localhost:1935/comp1/comp2?key=val",
+			app:         "comp1/comp2?key=val",
+			streamKey:   "?key=val",
+			expectedURL: "rtmp://localhost:1935/comp1/comp2?key=val",
+		},
+		{
+			name:        "Neko",
+			tcurl:       "'rtmp://localhost:1935/stream",
+			app:         "stream",
+			streamKey:   "",
+			expectedURL: "rtmp://localhost:1935/stream",
+		},
 	} {
-		t.Run(ca, func(t *testing.T) {
+		t.Run(ca.name, func(t *testing.T) {
 			ln, err := net.Listen("tcp", "127.0.0.1:9121")
 			require.NoError(t, err)
 			defer ln.Close()
@@ -533,44 +645,7 @@ func TestServerConnPath(t *testing.T) {
 				err2 = conn.Accept()
 				require.NoError(t, err2)
 
-				switch ca {
-				case "standard", "neko":
-					require.Equal(t, &url.URL{
-						Scheme: "rtmp",
-						Host:   "127.0.0.1:9121",
-						Path:   "/stream",
-					}, conn.URL)
-
-				case "leading slash":
-					require.Equal(t, &url.URL{
-						Scheme: "rtmp",
-						Host:   "127.0.0.1:9121",
-						Path:   "//stream",
-					}, conn.URL)
-
-				case "query":
-					require.Equal(t, &url.URL{
-						Scheme:   "rtmp",
-						Host:     "127.0.0.1:9121",
-						Path:     "/stream",
-						RawQuery: "key=val",
-					}, conn.URL)
-
-				case "stream key":
-					require.Equal(t, &url.URL{
-						Scheme: "rtmp",
-						Host:   "127.0.0.1:9121",
-						Path:   "/stream/key",
-					}, conn.URL)
-
-				case "stream key and query":
-					require.Equal(t, &url.URL{
-						Scheme:   "rtmp",
-						Host:     "127.0.0.1:9121",
-						Path:     "/stream/key",
-						RawQuery: "key=val",
-					}, conn.URL)
-				}
+				require.Equal(t, ca.expectedURL, conn.URL.String())
 			}()
 
 			conn, err := net.Dial("tcp", "127.0.0.1:9121")
@@ -583,44 +658,15 @@ func TestServerConnPath(t *testing.T) {
 
 			mrw := message.NewReadWriter(bc, bc, true)
 
-			var app string
-			var tcURL string
-
-			switch ca {
-			case "standard":
-				app = "stream"
-				tcURL = "rtmp://127.0.0.1:9121/stream"
-
-			case "leading slash":
-				app = "/stream"
-				tcURL = "rtmp://127.0.0.1:9121//stream"
-
-			case "query":
-				app = "stream?key=val"
-				tcURL = "rtmp://127.0.0.1:9121/stream?key=val"
-
-			case "stream key":
-				app = "stream"
-				tcURL = "rtmp://127.0.0.1:9121/stream"
-
-			case "stream key and query":
-				app = "stream"
-				tcURL = "rtmp://127.0.0.1:9121/stream"
-
-			case "neko":
-				app = "stream"
-				tcURL = "'rtmp://127.0.0.1:9121/stream"
-			}
-
 			err = mrw.Write(&message.CommandAMF0{
 				ChunkStreamID: 3,
 				Name:          "connect",
 				CommandID:     1,
 				Arguments: []any{
 					amf0.Object{
-						{Key: "app", Value: app},
+						{Key: "app", Value: ca.app},
 						{Key: "flashVer", Value: "LNX 9,0,124,2"},
-						{Key: "tcUrl", Value: tcURL},
+						{Key: "tcUrl", Value: ca.tcurl},
 						{Key: "fpad", Value: false},
 						{Key: "capabilities", Value: float64(15)},
 						{Key: "audioCodecs", Value: float64(4071)},
@@ -702,16 +748,6 @@ func TestServerConnPath(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			var streamKey string
-
-			switch ca {
-			case "stream key":
-				streamKey = "key"
-
-			case "stream key and query":
-				streamKey = "key?key=val"
-			}
-
 			err = mrw.Write(&message.CommandAMF0{
 				ChunkStreamID:   4,
 				MessageStreamID: 0x1000000,
@@ -719,7 +755,7 @@ func TestServerConnPath(t *testing.T) {
 				CommandID:       0,
 				Arguments: []any{
 					nil,
-					streamKey,
+					ca.streamKey,
 				},
 			})
 			require.NoError(t, err)
