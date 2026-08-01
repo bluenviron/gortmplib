@@ -1,4 +1,4 @@
-package message
+package message_test
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortmplib/pkg/bytecounter"
+	"github.com/bluenviron/gortmplib/pkg/message"
 )
 
 type duplexRW struct {
@@ -31,8 +32,8 @@ func TestReadWriterAcknowledge(t *testing.T) {
 		Reader: &buf2,
 		Writer: &buf1,
 	})
-	rw1 := NewReadWriter(bc1, bc1, true)
-	err := rw1.Write(&Acknowledge{
+	rw1 := message.NewReadWriter(bc1, bc1, true)
+	err := rw1.Write(&message.Acknowledge{
 		Value: 7863534,
 	})
 	require.NoError(t, err)
@@ -41,7 +42,7 @@ func TestReadWriterAcknowledge(t *testing.T) {
 		Reader: &buf1,
 		Writer: &buf2,
 	})
-	rw2 := NewReadWriter(bc2, bc2, true)
+	rw2 := message.NewReadWriter(bc2, bc2, true)
 	_, err = rw2.Read()
 	require.NoError(t, err)
 }
@@ -54,8 +55,8 @@ func TestReadWriterPing(t *testing.T) {
 		Reader: &buf2,
 		Writer: &buf1,
 	})
-	rw1 := NewReadWriter(bc1, bc1, true)
-	err := rw1.Write(&UserControlPingRequest{
+	rw1 := message.NewReadWriter(bc1, bc1, true)
+	err := rw1.Write(&message.UserControlPingRequest{
 		ServerTime: 143424312,
 	})
 	require.NoError(t, err)
@@ -64,13 +65,13 @@ func TestReadWriterPing(t *testing.T) {
 		Reader: &buf1,
 		Writer: &buf2,
 	})
-	rw2 := NewReadWriter(bc2, bc2, true)
+	rw2 := message.NewReadWriter(bc2, bc2, true)
 	_, err = rw2.Read()
 	require.NoError(t, err)
 
 	msg, err := rw1.Read()
 	require.NoError(t, err)
-	require.Equal(t, &UserControlPingResponse{
+	require.Equal(t, &message.UserControlPingResponse{
 		ServerTime: 143424312,
 	}, msg)
 }

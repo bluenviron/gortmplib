@@ -1,15 +1,17 @@
-package amf0
+package amf0_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortmplib/pkg/amf0"
 )
 
 var cases = []struct {
 	name string
 	enc  []byte
-	dec  Data
+	dec  amf0.Data
 }{
 	{
 		"all supported markers",
@@ -32,14 +34,14 @@ var cases = []struct {
 			true,
 			"mystring",
 			nil,
-			Object{
+			amf0.Object{
 				{Key: "mykey", Value: "myval"},
 			},
-			Undefined{},
-			ECMAArray{
+			amf0.Undefined{},
+			amf0.ECMAArray{
 				{Key: "mykey", Value: "myval"},
 			},
-			StrictArray{
+			amf0.StrictArray{
 				"random",
 				float64(20),
 			},
@@ -91,7 +93,7 @@ var cases = []struct {
 		[]any{
 			"@setDataFrame",
 			"onMetaData",
-			ECMAArray{
+			amf0.ECMAArray{
 				{
 					Key:   "duration",
 					Value: float64(0),
@@ -172,7 +174,7 @@ var cases = []struct {
 		[]any{
 			"connect",
 			float64(1),
-			Object{
+			amf0.Object{
 				{Key: "app", Value: "ap"},
 				{Key: "type", Value: "nonprivate"},
 				{Key: "flashVer", Value: "FMLE/3.0 (compatible; Lavf56.15.102)"},
@@ -275,19 +277,19 @@ var cases = []struct {
 		[]any{
 			"_result",
 			float64(1),
-			Object{
+			amf0.Object{
 				{Key: "fmsVer", Value: "FMS/3,5,3,888"},
 				{Key: "capabilities", Value: float64(127)},
 				{Key: "mode", Value: float64(1)},
 			},
-			Object{
+			amf0.Object{
 				{Key: "level", Value: "status"},
 				{Key: "code", Value: "NetConnection.Connect.Success"},
 				{Key: "description", Value: "Connection succeeded"},
 				{Key: "objectEncoding", Value: float64(0)},
 				{
 					Key: "data",
-					Value: ECMAArray{
+					Value: amf0.ECMAArray{
 						{Key: "version", Value: "3,5,3,888"},
 						{Key: "srs_sig", Value: "SRS"},
 						{Key: "srs_server", Value: "SRS 1.0.10 (github.com/winlinvip/simple-rtmp-server)"},
@@ -329,7 +331,7 @@ var cases = []struct {
 func TestUnmarshal(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			dec, err := Unmarshal(ca.enc)
+			dec, err := amf0.Unmarshal(ca.enc)
 			require.NoError(t, err)
 			require.Equal(t, ca.dec, dec)
 		})
@@ -347,21 +349,21 @@ func TestMarshal(t *testing.T) {
 }
 
 func TestObjectGet(t *testing.T) {
-	o := Object{{Key: "testme", Value: "ok"}}
+	o := amf0.Object{{Key: "testme", Value: "ok"}}
 	v, ok := o.Get("testme")
 	require.Equal(t, true, ok)
 	require.Equal(t, "ok", v)
 }
 
 func TestObjectGetString(t *testing.T) {
-	o := Object{{Key: "testme", Value: "ok"}}
+	o := amf0.Object{{Key: "testme", Value: "ok"}}
 	v, ok := o.GetString("testme")
 	require.Equal(t, true, ok)
 	require.Equal(t, "ok", v)
 }
 
 func TestObjectGetFloat64(t *testing.T) {
-	o := Object{{Key: "testme", Value: float64(123)}}
+	o := amf0.Object{{Key: "testme", Value: float64(123)}}
 	v, ok := o.GetFloat64("testme")
 	require.Equal(t, true, ok)
 	require.Equal(t, float64(123), v)
@@ -373,7 +375,7 @@ func FuzzUnmarshal(f *testing.F) {
 	}
 
 	f.Fuzz(func(t *testing.T, b []byte) {
-		what, err := Unmarshal(b)
+		what, err := amf0.Unmarshal(b)
 		if err != nil {
 			return
 		}

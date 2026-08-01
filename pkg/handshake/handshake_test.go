@@ -1,9 +1,11 @@
-package handshake
+package handshake_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortmplib/pkg/handshake"
 )
 
 type testReadWriter struct {
@@ -31,12 +33,12 @@ func TestHandshake(t *testing.T) {
 
 			go func() {
 				var err error
-				serverInKey, serverOutKey, err = DoServer(rw, true)
+				serverInKey, serverOutKey, err = handshake.DoServer(rw, true)
 				require.NoError(t, err)
 				close(done)
 			}()
 
-			clientInKey, clientOutKey, err := DoClient(rw, ca == "encrypted", true)
+			clientInKey, clientOutKey, err := handshake.DoClient(rw, ca == "encrypted", true)
 			require.NoError(t, err)
 
 			<-done

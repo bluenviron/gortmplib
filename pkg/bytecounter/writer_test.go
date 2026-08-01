@@ -1,16 +1,18 @@
-package bytecounter
+package bytecounter_test
 
 import (
 	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortmplib/pkg/bytecounter"
 )
 
 func TestWriter(t *testing.T) {
 	var buf bytes.Buffer
 
-	w := NewWriter(&buf)
+	w := bytecounter.NewWriter(&buf)
 	w.SetCount(100)
 
 	_, err := w.Write(bytes.Repeat([]byte{0x01}, 64))

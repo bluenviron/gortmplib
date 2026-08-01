@@ -1,20 +1,22 @@
-package handshake
+package handshake_test
 
 import (
 	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortmplib/pkg/handshake"
 )
 
 var c0s0enc = []byte{3}
 
-var c0s0dec = C0S0{
+var c0s0dec = handshake.C0S0{
 	Version: 3,
 }
 
 func TestC0S0Read(t *testing.T) {
-	var c0s0 C0S0
+	var c0s0 handshake.C0S0
 	err := c0s0.Read((bytes.NewReader(c0s0enc)))
 	require.NoError(t, err)
 	require.Equal(t, c0s0dec, c0s0)
