@@ -5,17 +5,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/bluenviron/gortmplib/pkg/chunk"
+
 	"github.com/stretchr/testify/require"
-
-	chunkpkg "github.com/bluenviron/gortmplib/pkg/chunk"
-)
-
-type (
-	Chunk  = chunkpkg.Chunk
-	Chunk0 = chunkpkg.Chunk0
-	Chunk1 = chunkpkg.Chunk1
-	Chunk2 = chunkpkg.Chunk2
-	Chunk3 = chunkpkg.Chunk3
 )
 
 var cases = []struct {
@@ -23,7 +15,7 @@ var cases = []struct {
 	enc                  []byte
 	bodyLen              uint32
 	hasExtendedTimestamp bool
-	dec                  Chunk
+	dec                  chunk.Chunk
 }{
 	{
 		"chunk0 standard",
@@ -33,7 +25,7 @@ var cases = []struct {
 		},
 		4,
 		false,
-		&Chunk0{
+		&chunk.Chunk0{
 			ChunkStreamID:   25,
 			Timestamp:       11641233,
 			Type:            20,
@@ -51,7 +43,7 @@ var cases = []struct {
 		},
 		4,
 		false,
-		&Chunk0{
+		&chunk.Chunk0{
 			ChunkStreamID:   25,
 			Timestamp:       0xFF3486a2,
 			Type:            15,
@@ -68,7 +60,7 @@ var cases = []struct {
 		},
 		4,
 		false,
-		&Chunk1{
+		&chunk.Chunk1{
 			ChunkStreamID:  25,
 			TimestampDelta: 11641233,
 			Type:           20,
@@ -84,7 +76,7 @@ var cases = []struct {
 		},
 		4,
 		false,
-		&Chunk1{
+		&chunk.Chunk1{
 			ChunkStreamID:  25,
 			TimestampDelta: 0xFF884B6C,
 			Type:           20,
@@ -99,7 +91,7 @@ var cases = []struct {
 		},
 		4,
 		false,
-		&Chunk2{
+		&chunk.Chunk2{
 			ChunkStreamID:  25,
 			TimestampDelta: 11641233,
 			Body:           []byte{1, 2, 3, 4},
@@ -113,7 +105,7 @@ var cases = []struct {
 		},
 		4,
 		false,
-		&Chunk2{
+		&chunk.Chunk2{
 			ChunkStreamID:  25,
 			TimestampDelta: 0xFFAABBCC,
 			Body:           []byte{5, 6, 7, 8},
@@ -126,7 +118,7 @@ var cases = []struct {
 		},
 		4,
 		false,
-		&Chunk3{
+		&chunk.Chunk3{
 			ChunkStreamID: 25,
 			Body:          []byte{1, 2, 3, 4},
 		},
@@ -139,7 +131,7 @@ var cases = []struct {
 		},
 		4,
 		true,
-		&Chunk3{
+		&chunk.Chunk3{
 			ChunkStreamID: 25,
 			Body:          []byte{5, 6, 7, 8},
 		},
@@ -149,7 +141,7 @@ var cases = []struct {
 func TestChunkRead(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			chunk := reflect.New(reflect.TypeOf(ca.dec).Elem()).Interface().(Chunk)
+			chunk := reflect.New(reflect.TypeOf(ca.dec).Elem()).Interface().(chunk.Chunk)
 			err := chunk.Read(bytes.NewReader(ca.enc), ca.bodyLen, ca.hasExtendedTimestamp)
 			require.NoError(t, err)
 			require.Equal(t, ca.dec, chunk)
@@ -169,7 +161,7 @@ func TestChunkMarshal(t *testing.T) {
 
 func FuzzChunk0Read(f *testing.F) {
 	f.Fuzz(func(t *testing.T, b []byte) {
-		var chunk Chunk0
+		var chunk chunk.Chunk0
 		err := chunk.Read(bytes.NewReader(b), 65536, false)
 		if err != nil {
 			return
@@ -182,7 +174,7 @@ func FuzzChunk0Read(f *testing.F) {
 
 func FuzzChunk1Read(f *testing.F) {
 	f.Fuzz(func(t *testing.T, b []byte) {
-		var chunk Chunk1
+		var chunk chunk.Chunk1
 		err := chunk.Read(bytes.NewReader(b), 65536, false)
 		if err != nil {
 			return
@@ -195,7 +187,7 @@ func FuzzChunk1Read(f *testing.F) {
 
 func FuzzChunk2Read(f *testing.F) {
 	f.Fuzz(func(t *testing.T, b []byte) {
-		var chunk Chunk2
+		var chunk chunk.Chunk2
 		err := chunk.Read(bytes.NewReader(b), 65536, false)
 		if err != nil {
 			return
@@ -208,7 +200,7 @@ func FuzzChunk2Read(f *testing.F) {
 
 func FuzzChunk3Read(f *testing.F) {
 	f.Fuzz(func(t *testing.T, b []byte) {
-		var chunk Chunk3
+		var chunk chunk.Chunk3
 		err := chunk.Read(bytes.NewReader(b), 65536, true)
 		if err != nil {
 			return
