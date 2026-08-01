@@ -69,127 +69,166 @@ NkxNic7oHgsZpIkZ8HK+QjAAWA==
 -----END PRIVATE KEY-----
 `)
 
-func TestClientRTMPS(t *testing.T) {
-	cert, err := tls.X509KeyPair(serverCert, serverKey)
-	require.NoError(t, err)
-
-	l, err := tls.Listen("tcp", "localhost:1936", &tls.Config{
-		Certificates: []tls.Certificate{cert},
-		VerifyConnection: func(cs tls.ConnectionState) error {
-			// check that SNI is correctly filled by client
-			require.Equal(t, "localhost", cs.ServerName)
-			return nil
+func TestClientURL(t *testing.T) {
+	for _, ca := range []struct {
+		name              string
+		url               string
+		expectedTcURL     string
+		expectedApp       string
+		expectedStreamKey string
+	}{
+		{
+			name:          "one component",
+			url:           "rtmp://localhost:9121/app",
+			expectedTcURL: "rtmp://localhost:9121/app",
+			expectedApp:   "app",
 		},
-	})
-	require.NoError(t, err)
-	defer l.Close()
-
-	serverDone := make(chan struct{})
-	defer func() { <-serverDone }()
-
-	go func() {
-		defer close(serverDone)
-
-		nconn, err2 := l.Accept()
-		require.NoError(t, err2)
-		defer nconn.Close()
-		bc := bytecounter.NewReadWriter(nconn)
-
-		_, _, err2 = handshake.DoServer(bc, false)
-		require.NoError(t, err2)
-
-		mrw := message.NewReadWriter(bc, bc, true)
-
-		for {
-			var msg message.Message
-			msg, err = mrw.Read()
-			require.NoError(t, err)
-
-			if msg, ok := msg.(*message.CommandAMF0); ok && msg.Name == "connect" {
-				break
-			}
-		}
-
-		err2 = mrw.Write(&message.CommandAMF0{
-			ChunkStreamID: 3,
-			Name:          "_result",
-			CommandID:     1,
-			Arguments: []any{
-				amf0.Object{
-					{Key: "fmsVer", Value: "LNX 9,0,124,2"},
-					{Key: "capabilities", Value: float64(31)},
-				},
-				amf0.Object{
-					{Key: "level", Value: "status"},
-					{Key: "code", Value: "NetConnection.Connect.Success"},
-					{Key: "description", Value: "Connection succeeded."},
-					{Key: "objectEncoding", Value: float64(0)},
-				},
-			},
-		})
-		require.NoError(t, err2)
-
-		for {
-			var msg message.Message
-			msg, err = mrw.Read()
-			require.NoError(t, err)
-
-			if msg, ok := msg.(*message.CommandAMF0); ok && msg.Name == "createStream" {
-				break
-			}
-		}
-
-		err2 = mrw.Write(&message.CommandAMF0{
-			ChunkStreamID: 3,
-			Name:          "_result",
-			CommandID:     4,
-			Arguments: []any{
-				nil,
-				float64(1),
-			},
-		})
-		require.NoError(t, err2)
-
-		for {
-			var msg message.Message
-			msg, err = mrw.Read()
-			require.NoError(t, err)
-
-			if msg, ok := msg.(*message.CommandAMF0); ok && msg.Name == "publish" {
-				break
-			}
-		}
-
-		err2 = mrw.Write(&message.CommandAMF0{
-			ChunkStreamID:   5,
-			MessageStreamID: 0x1000000,
-			Name:            "onStatus",
-			CommandID:       5,
-			Arguments: []any{
-				nil,
-				amf0.Object{
-					{Key: "level", Value: "status"},
-					{Key: "code", Value: "NetStream.Publish.Start"},
-					{Key: "description", Value: "publish start"},
-				},
-			},
-		})
-		require.NoError(t, err2)
-	}()
-
-	u, err := url.Parse("rtmps://localhost:1936/test")
-	require.NoError(t, err)
-
-	conn := &Client{
-		URL:     u,
-		Publish: true,
-		TLSConfig: &tls.Config{
-			InsecureSkipVerify: true,
+		{
+			name:          "one component with query",
+			url:           "rtmp://localhost:9121/app?query=1",
+			expectedTcURL: "rtmp://localhost:9121/app?query=1",
+			expectedApp:   "app?query=1",
 		},
+		{
+			name:          "two components",
+			url:           "rtmp://localhost:9121/app/stream",
+			expectedTcURL: "rtmp://localhost:9121/app/stream",
+			expectedApp:   "app/stream",
+		},
+		{
+			name:          "two components with query",
+			url:           "rtmp://localhost:9121/app/stream?query=1",
+			expectedTcURL: "rtmp://localhost:9121/app/stream?query=1",
+			expectedApp:   "app/stream?query=1",
+		},
+		{
+			name: "fragment",
+			url: "rtmp://localhost:9121/three/segment/path?delaycc=0.1" +
+				"#BigBuckBunny?audioLifetime=0.25&videoLifetime=2",
+			expectedTcURL:     "rtmp://localhost:9121/three/segment/path?delaycc=0.1",
+			expectedApp:       "three/segment/path?delaycc=0.1",
+			expectedStreamKey: "BigBuckBunny?audioLifetime=0.25&videoLifetime=2",
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			ln, err := net.Listen("tcp", "127.0.0.1:9121")
+			require.NoError(t, err)
+			defer ln.Close()
+
+			done := make(chan struct{})
+
+			go func() {
+				conn, err2 := ln.Accept()
+				require.NoError(t, err2)
+				defer conn.Close()
+				bc := bytecounter.NewReadWriter(conn)
+
+				_, _, err2 = handshake.DoServer(bc, false)
+				require.NoError(t, err2)
+
+				mrw := message.NewReadWriter(bc, bc, true)
+
+				msg, err2 := mrw.Read()
+				require.NoError(t, err2)
+				require.Equal(t, &message.SetWindowAckSize{Value: 2500000}, msg)
+
+				msg, err2 = mrw.Read()
+				require.NoError(t, err2)
+				require.Equal(t, &message.SetPeerBandwidth{Value: 2500000, Type: 2}, msg)
+
+				msg, err2 = mrw.Read()
+				require.NoError(t, err2)
+				require.Equal(t, &message.SetChunkSize{Value: 65536}, msg)
+
+				msg, err2 = mrw.Read()
+				require.NoError(t, err2)
+				connectMsg := msg.(*message.CommandAMF0)
+				require.Equal(t, "connect", connectMsg.Name)
+				obj := connectMsg.Arguments[0].(amf0.Object)
+				actualTcURL, _ := obj.GetString("tcUrl")
+				actualApp, _ := obj.GetString("app")
+				require.Equal(t, ca.expectedTcURL, actualTcURL)
+				require.Equal(t, ca.expectedApp, actualApp)
+
+				err2 = mrw.Write(&message.CommandAMF0{
+					ChunkStreamID: 3,
+					Name:          "_result",
+					CommandID:     1,
+					Arguments: []any{
+						amf0.Object{
+							{Key: "fmsVer", Value: "LNX 9,0,124,2"},
+							{Key: "capabilities", Value: float64(31)},
+						},
+						amf0.Object{
+							{Key: "level", Value: "status"},
+							{Key: "code", Value: "NetConnection.Connect.Success"},
+							{Key: "description", Value: "Connection succeeded."},
+							{Key: "objectEncoding", Value: float64(0)},
+						},
+					},
+				})
+				require.NoError(t, err2)
+
+				msg, err2 = mrw.Read()
+				require.NoError(t, err2)
+				require.Equal(t, &message.CommandAMF0{
+					ChunkStreamID: 3,
+					Name:          "createStream",
+					CommandID:     2,
+					Arguments:     []any{nil},
+				}, msg)
+
+				err2 = mrw.Write(&message.CommandAMF0{
+					ChunkStreamID: 3,
+					Name:          "_result",
+					CommandID:     2,
+					Arguments:     []any{nil, float64(1)},
+				})
+				require.NoError(t, err2)
+
+				msg, err2 = mrw.Read()
+				require.NoError(t, err2)
+				require.Equal(t, &message.UserControlSetBufferLength{BufferLength: 0x64}, msg)
+
+				msg, err2 = mrw.Read()
+				require.NoError(t, err2)
+				playMsg := msg.(*message.CommandAMF0)
+				require.Equal(t, "play", playMsg.Name)
+				actualStreamKey := playMsg.Arguments[1].(string)
+				require.Equal(t, ca.expectedStreamKey, actualStreamKey)
+
+				err2 = mrw.Write(&message.CommandAMF0{
+					ChunkStreamID:   5,
+					MessageStreamID: 0x1000000,
+					Name:            "onStatus",
+					CommandID:       3,
+					Arguments: []any{
+						nil,
+						amf0.Object{
+							{Key: "level", Value: "status"},
+							{Key: "code", Value: "NetStream.Play.Reset"},
+							{Key: "description", Value: "play reset"},
+						},
+					},
+				})
+				require.NoError(t, err2)
+
+				close(done)
+			}()
+
+			ur, err := url.Parse(ca.url)
+			require.NoError(t, err)
+
+			c := &Client{
+				URL: ur,
+			}
+			err = c.Initialize(context.Background())
+			require.NoError(t, err)
+			defer c.Close()
+
+			<-done
+		})
 	}
-	err = conn.Initialize(context.Background())
-	require.NoError(t, err)
-	defer conn.Close()
 }
 
 func TestClientReadPublish(t *testing.T) {
@@ -637,29 +676,152 @@ func TestClientReadPublish(t *testing.T) {
 			u, err := url.Parse(rawURL)
 			require.NoError(t, err)
 
-			conn := &Client{
+			c := &Client{
 				URL:     u,
 				Publish: (ca == "publish"),
 			}
-			err = conn.Initialize(context.Background())
+			err = c.Initialize(context.Background())
 			require.NoError(t, err)
-			defer conn.Close()
+			defer c.Close()
 
 			switch ca {
 			case "read", "read nginx rtmp":
-				require.Equal(t, uint64(3421), conn.BytesReceived())
-				require.Equal(t, uint64(0xdba), conn.BytesSent())
+				require.Equal(t, uint64(3421), c.BytesReceived())
+				require.Equal(t, uint64(0xdba), c.BytesSent())
 
 			case "read srs":
-				require.Equal(t, uint64(0xd7a), conn.BytesReceived())
-				require.Equal(t, uint64(0xdba), conn.BytesSent())
+				require.Equal(t, uint64(0xd7a), c.BytesReceived())
+				require.Equal(t, uint64(0xdba), c.BytesSent())
 
 			case "publish":
-				require.Equal(t, uint64(3427), conn.BytesReceived())
-				require.Equal(t, uint64(0xd40), conn.BytesSent())
+				require.Equal(t, uint64(3427), c.BytesReceived())
+				require.Equal(t, uint64(0xd40), c.BytesSent())
 			}
 
 			<-done
 		})
 	}
+}
+
+func TestClientRTMPS(t *testing.T) {
+	cert, err := tls.X509KeyPair(serverCert, serverKey)
+	require.NoError(t, err)
+
+	l, err := tls.Listen("tcp", "localhost:1936", &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		VerifyConnection: func(cs tls.ConnectionState) error {
+			// check that SNI is correctly filled by client
+			require.Equal(t, "localhost", cs.ServerName)
+			return nil
+		},
+	})
+	require.NoError(t, err)
+	defer l.Close()
+
+	serverDone := make(chan struct{})
+	defer func() { <-serverDone }()
+
+	go func() {
+		defer close(serverDone)
+
+		nconn, err2 := l.Accept()
+		require.NoError(t, err2)
+		defer nconn.Close()
+		bc := bytecounter.NewReadWriter(nconn)
+
+		_, _, err2 = handshake.DoServer(bc, false)
+		require.NoError(t, err2)
+
+		mrw := message.NewReadWriter(bc, bc, true)
+
+		for {
+			var msg message.Message
+			msg, err = mrw.Read()
+			require.NoError(t, err)
+
+			if msg, ok := msg.(*message.CommandAMF0); ok && msg.Name == "connect" {
+				break
+			}
+		}
+
+		err2 = mrw.Write(&message.CommandAMF0{
+			ChunkStreamID: 3,
+			Name:          "_result",
+			CommandID:     1,
+			Arguments: []any{
+				amf0.Object{
+					{Key: "fmsVer", Value: "LNX 9,0,124,2"},
+					{Key: "capabilities", Value: float64(31)},
+				},
+				amf0.Object{
+					{Key: "level", Value: "status"},
+					{Key: "code", Value: "NetConnection.Connect.Success"},
+					{Key: "description", Value: "Connection succeeded."},
+					{Key: "objectEncoding", Value: float64(0)},
+				},
+			},
+		})
+		require.NoError(t, err2)
+
+		for {
+			var msg message.Message
+			msg, err = mrw.Read()
+			require.NoError(t, err)
+
+			if msg, ok := msg.(*message.CommandAMF0); ok && msg.Name == "createStream" {
+				break
+			}
+		}
+
+		err2 = mrw.Write(&message.CommandAMF0{
+			ChunkStreamID: 3,
+			Name:          "_result",
+			CommandID:     4,
+			Arguments: []any{
+				nil,
+				float64(1),
+			},
+		})
+		require.NoError(t, err2)
+
+		for {
+			var msg message.Message
+			msg, err = mrw.Read()
+			require.NoError(t, err)
+
+			if msg, ok := msg.(*message.CommandAMF0); ok && msg.Name == "publish" {
+				break
+			}
+		}
+
+		err2 = mrw.Write(&message.CommandAMF0{
+			ChunkStreamID:   5,
+			MessageStreamID: 0x1000000,
+			Name:            "onStatus",
+			CommandID:       5,
+			Arguments: []any{
+				nil,
+				amf0.Object{
+					{Key: "level", Value: "status"},
+					{Key: "code", Value: "NetStream.Publish.Start"},
+					{Key: "description", Value: "publish start"},
+				},
+			},
+		})
+		require.NoError(t, err2)
+	}()
+
+	u, err := url.Parse("rtmps://localhost:1936/test")
+	require.NoError(t, err)
+
+	c := &Client{
+		URL:     u,
+		Publish: true,
+		TLSConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+	err = c.Initialize(context.Background())
+	require.NoError(t, err)
+	defer c.Close()
 }
