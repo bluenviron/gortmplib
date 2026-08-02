@@ -490,7 +490,7 @@ func TestServerConn(t *testing.T) {
 					Arguments: []any{
 						nil,
 						"",
-						"stream",
+						"live",
 					},
 				})
 				require.NoError(t, err)
