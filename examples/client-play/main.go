@@ -12,8 +12,8 @@ import (
 )
 
 // This example shows how to:
-// 1. connect to a RTMP server.
-// 2. read all tracks on a path.
+// 1. connect to a RTMP server through a URL.
+// 2. read all available tracks on the URL.
 
 func main() {
 	// URL format is rtmp://user:pass@host:port/path#streamKey
