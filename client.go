@@ -24,6 +24,9 @@ import (
 const (
 	schemeRTMP  = "rtmp"
 	schemeRTMPS = "rtmps"
+
+	defaultRTMPPort  = "1935"
+	defaultRTMPSPort = "443"
 )
 
 const (
@@ -147,6 +150,7 @@ type Client struct {
 	// Target
 	//
 	// URL of the RTMP server to connect to.
+	// Format is rtmp://user:pass@host:port/path#streamKey
 	URL *url.URL
 	// Whether to publish or play.
 	Publish bool
@@ -200,15 +204,30 @@ func (c *Client) Initialize(ctx context.Context) error {
 }
 
 func (c *Client) initialize2(ctx context.Context) error {
+	address := c.URL.Host
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		if strings.Contains(err.Error(), "missing port in address") {
+			switch c.URL.Scheme {
+			case schemeRTMP:
+				address = net.JoinHostPort(c.URL.Host, defaultRTMPPort)
+				host = c.URL.Host
+			default: // RTMPS
+				address = net.JoinHostPort(c.URL.Host, defaultRTMPSPort)
+				host = c.URL.Host
+			}
+		} else {
+			return err
+		}
+	}
+
 	if c.DialTLSContext != nil {
-		var err error
-		c.nconn, err = c.DialTLSContext(ctx, "tcp", c.URL.Host)
+		c.nconn, err = c.DialTLSContext(ctx, "tcp", address)
 		if err != nil {
 			return err
 		}
 	} else {
-		var err error
-		c.nconn, err = c.DialContext(ctx, "tcp", c.URL.Host)
+		c.nconn, err = c.DialContext(ctx, "tcp", address)
 		if err != nil {
 			return err
 		}
@@ -227,7 +246,6 @@ func (c *Client) initialize2(ctx context.Context) error {
 			}
 
 			if tlsConfig.ServerName == "" {
-				host, _, _ := net.SplitHostPort(c.URL.Host)
 				tlsConfig.ServerName = host
 			}
 
@@ -252,7 +270,7 @@ func (c *Client) initialize2(ctx context.Context) error {
 		}
 	}()
 
-	err := c.initialize3()
+	err = c.initialize3()
 	if err != nil {
 		c.nconn.Close()
 		return err

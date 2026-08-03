@@ -3,6 +3,7 @@ package gortmplib
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net"
 	"net/url"
 	"testing"
@@ -824,4 +825,41 @@ func TestClientRTMPS(t *testing.T) {
 	err = c.Initialize(context.Background())
 	require.NoError(t, err)
 	defer c.Close()
+}
+
+func TestClientDefaultPort(t *testing.T) {
+	for _, ca := range []struct {
+		name         string
+		url          string
+		expectedAddr string
+	}{
+		{
+			name:         "rtmp",
+			url:          "rtmp://localhost/app",
+			expectedAddr: "localhost:1935",
+		},
+		{
+			name:         "rtmps",
+			url:          "rtmps://localhost/app",
+			expectedAddr: "localhost:443",
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			var dialedAddr string
+
+			ur, err := url.Parse(ca.url)
+			require.NoError(t, err)
+
+			c := &Client{
+				URL: ur,
+				DialContext: func(_ context.Context, _, address string) (net.Conn, error) {
+					dialedAddr = address
+					return nil, fmt.Errorf("dial intercepted")
+				},
+			}
+			err = c.Initialize(context.Background())
+			require.Error(t, err)
+			require.Equal(t, ca.expectedAddr, dialedAddr)
+		})
+	}
 }
