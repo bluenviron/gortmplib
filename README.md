@@ -13,8 +13,8 @@ Go &ge; 1.25 is required.
 
 Features:
 
-* Read and write multiple video and audio tracks
-* Read and write tracks encoded with AV1, VP9, H265, H264, Opus, FLAC, MPEG-4 Audio (AAC), MPEG-1/2 Audio (MP3), AC-3, G711 (PCMA, PCMU), LPCM
+* Play and publish multiple video and audio tracks
+* Play and publish tracks encoded with AV1, VP9, H265, H264, Opus, FLAC, MPEG-4 Audio (AAC), MPEG-1/2 Audio (MP3), AC-3, G711 (PCMA, PCMU), LPCM
 * Support most Enhanced RTMP features
 * Support TLS encryption (RTMPS)
 * Support Diffie-hellman based encryption (RTMPE)
@@ -31,7 +31,7 @@ Features:
 
 ## Examples
 
-* [client-read](examples/client-read/main.go)
+* [client-play](examples/client-play/main.go)
 * [client-publish-h264](examples/client-publish-h264/main.go)
 * [client-publish-mpeg4audio](examples/client-publish-mpeg4audio/main.go)
 * [server](examples/server/main.go)

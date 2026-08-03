@@ -15,14 +15,14 @@ import (
 
 // This example shows how to:
 // 1. create a RTMP server
-// 2. accept a stream from a reader.
-// 3. broadcast the stream to readers.
+// 2. accept a stream from a publisher.
+// 3. broadcast the stream to players.
 
 var (
 	mutex     sync.Mutex
 	publisher *gortmplib.ServerConn
 	tracks    []*gortmplib.Track
-	readers   []*gortmplib.Writer
+	players   []*gortmplib.Writer
 )
 
 func handlePublisher(sc *gortmplib.ServerConn) error {
@@ -55,8 +55,8 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 		if publisher == sc {
 			publisher = nil
 
-			for _, reader := range readers {
-				reader.Conn.(*gortmplib.ServerConn).RW.(net.Conn).Close()
+			for _, player := range players {
+				player.Conn.(*gortmplib.ServerConn).RW.(net.Conn).Close()
 			}
 		}
 	}()
@@ -72,8 +72,8 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 				mutex.Lock()
 				defer mutex.Unlock()
 
-				for _, reader := range readers {
-					reader.WriteAV1(track, pts, tu) //nolint:errcheck
+				for _, player := range players {
+					player.WriteAV1(track, pts, tu) //nolint:errcheck
 				}
 			})
 
@@ -82,8 +82,8 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 				mutex.Lock()
 				defer mutex.Unlock()
 
-				for _, reader := range readers {
-					reader.WriteVP9(track, pts, frame) //nolint:errcheck
+				for _, player := range players {
+					player.WriteVP9(track, pts, frame) //nolint:errcheck
 				}
 			})
 
@@ -92,8 +92,8 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 				mutex.Lock()
 				defer mutex.Unlock()
 
-				for _, reader := range readers {
-					reader.WriteH265(track, pts, dts, au) //nolint:errcheck
+				for _, player := range players {
+					player.WriteH265(track, pts, dts, au) //nolint:errcheck
 				}
 			})
 
@@ -102,8 +102,8 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 				mutex.Lock()
 				defer mutex.Unlock()
 
-				for _, reader := range readers {
-					reader.WriteH264(track, pts, dts, au) //nolint:errcheck
+				for _, player := range players {
+					player.WriteH264(track, pts, dts, au) //nolint:errcheck
 				}
 			})
 
@@ -112,8 +112,8 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 				mutex.Lock()
 				defer mutex.Unlock()
 
-				for _, reader := range readers {
-					reader.WriteOpus(track, pts, packet) //nolint:errcheck
+				for _, player := range players {
+					player.WriteOpus(track, pts, packet) //nolint:errcheck
 				}
 			})
 
@@ -122,8 +122,8 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 				mutex.Lock()
 				defer mutex.Unlock()
 
-				for _, reader := range readers {
-					reader.WriteFLAC(track, pts, frame) //nolint:errcheck
+				for _, player := range players {
+					player.WriteFLAC(track, pts, frame) //nolint:errcheck
 				}
 			})
 
@@ -132,8 +132,8 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 				mutex.Lock()
 				defer mutex.Unlock()
 
-				for _, reader := range readers {
-					reader.WriteMPEG4Audio(track, pts, au) //nolint:errcheck
+				for _, player := range players {
+					player.WriteMPEG4Audio(track, pts, au) //nolint:errcheck
 				}
 			})
 
@@ -142,8 +142,8 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 				mutex.Lock()
 				defer mutex.Unlock()
 
-				for _, reader := range readers {
-					reader.WriteMPEG1Audio(track, pts, frame) //nolint:errcheck
+				for _, player := range players {
+					player.WriteMPEG1Audio(track, pts, frame) //nolint:errcheck
 				}
 			})
 
@@ -152,8 +152,8 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 				mutex.Lock()
 				defer mutex.Unlock()
 
-				for _, reader := range readers {
-					reader.WriteAC3(track, pts, frame) //nolint:errcheck
+				for _, player := range players {
+					player.WriteAC3(track, pts, frame) //nolint:errcheck
 				}
 			})
 
@@ -162,8 +162,8 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 				mutex.Lock()
 				defer mutex.Unlock()
 
-				for _, reader := range readers {
-					reader.WriteG711(track, pts, samples) //nolint:errcheck
+				for _, player := range players {
+					player.WriteG711(track, pts, samples) //nolint:errcheck
 				}
 			})
 
@@ -172,8 +172,8 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 				mutex.Lock()
 				defer mutex.Unlock()
 
-				for _, reader := range readers {
-					reader.WriteLPCM(track, pts, samples) //nolint:errcheck
+				for _, player := range players {
+					player.WriteLPCM(track, pts, samples) //nolint:errcheck
 				}
 			})
 		}
@@ -188,7 +188,7 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 	}
 }
 
-func handleReader(sc *gortmplib.ServerConn) error {
+func handlePlayer(sc *gortmplib.ServerConn) error {
 	mutex.Lock()
 
 	if publisher == nil {
@@ -207,7 +207,7 @@ func handleReader(sc *gortmplib.ServerConn) error {
 		return err
 	}
 
-	readers = append(readers, w)
+	players = append(players, w)
 
 	mutex.Unlock()
 
@@ -217,7 +217,7 @@ func handleReader(sc *gortmplib.ServerConn) error {
 		mutex.Lock()
 		defer mutex.Unlock()
 
-		readers = slices.DeleteFunc(readers, func(el *gortmplib.Writer) bool {
+		players = slices.DeleteFunc(players, func(el *gortmplib.Writer) bool {
 			return (el == w)
 		})
 	}()
@@ -252,7 +252,7 @@ func handleConnInner(conn net.Conn) error {
 	if sc.Publish {
 		return handlePublisher(sc)
 	}
-	return handleReader(sc)
+	return handlePlayer(sc)
 }
 
 func handleConn(conn net.Conn) {
