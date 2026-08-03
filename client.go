@@ -550,7 +550,7 @@ func (c *Client) initialize3() error {
 			Arguments: []any{
 				nil,
 				streamKey,
-				app,
+				"live",
 			},
 		})
 		if err != nil {

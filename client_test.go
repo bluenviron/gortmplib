@@ -639,7 +639,7 @@ func TestClientReadPublish(t *testing.T) {
 							Arguments: []any{
 								nil,
 								"",
-								"stream",
+								"live",
 							},
 						}, msg)
 
@@ -695,7 +695,7 @@ func TestClientReadPublish(t *testing.T) {
 
 			case "publish":
 				require.Equal(t, uint64(3427), c.BytesReceived())
-				require.Equal(t, uint64(0xd40), c.BytesSent())
+				require.Equal(t, uint64(0xd3e), c.BytesSent())
 			}
 
 			<-done
