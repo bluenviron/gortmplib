@@ -30,6 +30,7 @@ func multiplyAndDivide(v, m, d int64) int64 {
 }
 
 func main() {
+	// URL format is rtmp://user:pass@host:port/path#streamKey
 	u, err := url.Parse("rtmp://127.0.0.1:1935/stream/test")
 	if err != nil {
 		panic(err)

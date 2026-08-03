@@ -147,6 +147,7 @@ type Client struct {
 	// Target
 	//
 	// URL of the RTMP server to connect to.
+	// Format is rtmp://user:pass@host:port/path#streamKey
 	URL *url.URL
 	// Whether to publish or play.
 	Publish bool

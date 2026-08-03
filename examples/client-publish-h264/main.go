@@ -23,7 +23,8 @@ import (
 // apt install -y libavcodec-dev libswscale-dev gcc pkg-config
 
 func main() {
-	u, err := url.Parse("rtmp://127.0.0.1:1935/stream/test")
+	// URL format is rtmp://user:pass@host:port/path#streamKey
+	u, err := url.Parse("rtmp://127.0.0.1:1935/stream")
 	if err != nil {
 		panic(err)
 	}
