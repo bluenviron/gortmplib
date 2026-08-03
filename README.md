@@ -34,6 +34,7 @@ Features:
 * [client-play](examples/client-play/main.go)
 * [client-publish-h264](examples/client-publish-h264/main.go)
 * [client-publish-mpeg4audio](examples/client-publish-mpeg4audio/main.go)
+* [client-republish](examples/client-republish/main.go)
 * [server](examples/server/main.go)
 
 ## API Documentation

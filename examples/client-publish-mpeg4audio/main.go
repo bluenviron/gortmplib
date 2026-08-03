@@ -15,7 +15,7 @@ import (
 )
 
 // This example shows how to:
-// 1. connect to a RTMP server, announce a MPEG-4 Audio (AAC) track.
+// 1. connect to a RTMP server through a URL, announce a MPEG-4 Audio (AAC) track.
 // 2. generate dummy LPCM audio samples.
 // 3. encode audio samples with MPEG-4 Audio (AAC).
 // 4. send MPEG-4 Audio access units to the server.

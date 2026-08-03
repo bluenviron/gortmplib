@@ -14,7 +14,7 @@ import (
 )
 
 // This example shows how to:
-// 1. connect to a RTMP server, announce a H264 track.
+// 1. connect to a RTMP server through a URL, announce a H264 track.
 // 2. generate dummy RGBA images.
 // 3. encode images with H264.
 // 4. send H264 access units to the server.
