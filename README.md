@@ -20,8 +20,6 @@ Features:
 * Support Diffie-hellman based encryption (RTMPE)
 * Support encoding and decoding data with the AMF0 format
 
-**WARNING**: API is not stable and might be subjected to breaking changes.
-
 ## Table of contents
 
 * [Examples](#examples)
