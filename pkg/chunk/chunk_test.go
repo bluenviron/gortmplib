@@ -5,9 +5,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/bluenviron/gortmplib/pkg/chunk"
-
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortmplib/pkg/chunk"
 )
 
 var cases = []struct {

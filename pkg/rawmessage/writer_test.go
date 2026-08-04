@@ -6,9 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bluenviron/gortmplib/pkg/bytecounter"
 	"github.com/bluenviron/gortmplib/pkg/chunk"
-	"github.com/stretchr/testify/require"
 )
 
 func chunkBodySize(ch chunk.Chunk) uint32 {

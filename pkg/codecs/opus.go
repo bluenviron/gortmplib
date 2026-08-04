@@ -1,8 +1,9 @@
 package codecs
 
 import (
-	"github.com/bluenviron/gortmplib/pkg/message"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/opus"
+
+	"github.com/bluenviron/gortmplib/pkg/message"
 )
 
 // Opus is the Opus codec.

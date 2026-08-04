@@ -1,8 +1,9 @@
 package codecs
 
 import (
-	"github.com/bluenviron/gortmplib/pkg/message"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
+
+	"github.com/bluenviron/gortmplib/pkg/message"
 )
 
 // MPEG4Audio is a MPEG-4 Audio codec.
