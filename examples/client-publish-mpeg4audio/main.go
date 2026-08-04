@@ -9,9 +9,10 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
+
 	"github.com/bluenviron/gortmplib"
 	"github.com/bluenviron/gortmplib/pkg/codecs"
-	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 )
 
 // This example shows how to:

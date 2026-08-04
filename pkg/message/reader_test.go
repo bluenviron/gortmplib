@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/abema/go-mp4"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/flac"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/opus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortmplib/pkg/amf0"
 	"github.com/bluenviron/gortmplib/pkg/bytecounter"
-	"github.com/bluenviron/mediacommon/v2/pkg/codecs/flac"
-	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
-	"github.com/bluenviron/mediacommon/v2/pkg/codecs/opus"
 )
 
 var readWriterCases = []struct {
