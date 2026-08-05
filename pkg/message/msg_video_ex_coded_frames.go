@@ -32,7 +32,7 @@ func (m *VideoExCodedFrames) unmarshal(raw *rawmessage.Message) error {
 		if len(raw.Body) < 8 {
 			return fmt.Errorf("not enough bytes")
 		}
-		m.PTSDelta = time.Duration(uint32(raw.Body[5])<<16|uint32(raw.Body[6])<<8|uint32(raw.Body[7])) * time.Millisecond
+		m.PTSDelta = time.Duration(readSigned24(raw.Body[5:8])) * time.Millisecond
 		m.Payload = raw.Body[8:]
 
 	case FourCCAV1, FourCCVP9:
