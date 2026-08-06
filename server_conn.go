@@ -176,8 +176,7 @@ func (c *ServerConn) Initialize() error {
 	return nil
 }
 
-// CheckCredentials checks credentials.
-func (c *ServerConn) CheckCredentials(expectedUser string, expectedPass string) error {
+func (c *ServerConn) checkCredentials(expectedUser string, expectedPass string) error {
 	i := strings.Index(c.tcURL, "?authmod=adobe")
 	if i < 0 {
 		err := c.mrw.Write(&message.CommandAMF0{
@@ -270,6 +269,23 @@ func (c *ServerConn) CheckCredentials(expectedUser string, expectedPass string) 
 	}
 
 	return nil
+}
+
+// CheckCredentials checks credentials.
+//
+// Deprecated: use AcceptIfCredentialsMatch instead.
+func (c *ServerConn) CheckCredentials(expectedUser string, expectedPass string) error {
+	return c.checkCredentials(expectedUser, expectedPass)
+}
+
+// AcceptIfCredentialsMatch accepts the connection if credentials match.
+func (c *ServerConn) AcceptIfCredentialsMatch(expectedUser, expectedPass string) error {
+	err := c.checkCredentials(expectedUser, expectedPass)
+	if err != nil {
+		return err
+	}
+
+	return c.Accept()
 }
 
 // Accept accepts the connection.
