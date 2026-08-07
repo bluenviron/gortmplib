@@ -44,7 +44,7 @@ func TestServerConn(t *testing.T) {
 				require.NoError(t, err2)
 
 				if ca == "auth 1" || ca == "auth 2" || ca == "auth 3" {
-					err2 = conn.CheckCredentials("myuser", "mypass")
+					err2 = conn.AcceptIfCredentialsMatch("myuser", "mypass")
 					switch ca {
 					case "auth 1":
 						require.Error(t, err2, "need auth")
@@ -55,10 +55,10 @@ func TestServerConn(t *testing.T) {
 					case "auth 3":
 						require.NoError(t, err2)
 					}
+				} else {
+					err2 = conn.Accept()
+					require.NoError(t, err2)
 				}
-
-				err2 = conn.Accept()
-				require.NoError(t, err2)
 
 				require.Equal(t, &url.URL{
 					Scheme:   "rtmp",
