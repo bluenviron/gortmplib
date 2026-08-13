@@ -269,6 +269,13 @@ type Reader struct {
 
 // Initialize initializes Reader.
 func (r *Reader) Initialize() error {
+	if sc, ok := r.Conn.(*ServerConn); ok && !sc.actionAccepted {
+		err := sc.AcceptAction()
+		if err != nil {
+			return err
+		}
+	}
+
 	rc := &rewindableConn{Conn: r.Conn}
 	r.Conn = rc
 

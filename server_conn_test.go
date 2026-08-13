@@ -7,7 +7,9 @@ import (
 	"net"
 	"net/url"
 	"testing"
+	"time"
 
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
@@ -77,7 +79,7 @@ func TestServerConn(t *testing.T) {
 						require.NoError(t, err2)
 					}
 				} else {
-					err2 = conn.Accept()
+					err2 = conn.AcceptConn()
 					require.NoError(t, err2)
 				}
 
@@ -89,6 +91,9 @@ func TestServerConn(t *testing.T) {
 				}, conn.URL)
 				require.Equal(t, (ca == "publish"), conn.Publish)
 				require.Equal(t, "LNX 9,0,124,2", conn.FlashVer)
+
+				err2 = conn.AcceptAction()
+				require.NoError(t, err2)
 			}()
 
 			conn, err := net.Dial("tcp", "127.0.0.1:9121")
@@ -752,7 +757,7 @@ func TestServerConnURL(t *testing.T) {
 				err2 = conn.Initialize()
 				require.NoError(t, err2)
 
-				err2 = conn.Accept()
+				err2 = conn.AcceptConn()
 				require.NoError(t, err2)
 
 				require.Equal(t, ca.expectedURL, conn.URL.String())
@@ -935,4 +940,448 @@ func TestServerConnFourCcList(t *testing.T) {
 	require.NoError(t, err)
 
 	<-done
+}
+
+func TestServerConnImplicitAcceptAction(t *testing.T) {
+	for _, ca := range []string{
+		"read",
+		"publish",
+	} {
+		t.Run(ca, func(t *testing.T) {
+			serverConn, clientConn := net.Pipe()
+			defer clientConn.Close()
+
+			done := make(chan struct{})
+
+			go func() {
+				defer close(done)
+				defer serverConn.Close()
+
+				conn := &gortmplib.ServerConn{RW: serverConn}
+				err := conn.Initialize()
+				require.NoError(t, err)
+
+				err = conn.AcceptConn()
+				require.NoError(t, err)
+
+				switch ca {
+				case "read":
+					w := &gortmplib.Writer{Conn: conn}
+					err = w.Initialize()
+					require.NoError(t, err)
+
+				case "publish":
+					r := &gortmplib.Reader{Conn: conn}
+					err = r.Initialize()
+					require.NoError(t, err)
+				}
+			}()
+
+			bc := bytecounter.NewReadWriter(clientConn)
+			_, _, err := handshake.DoClient(bc, false, false)
+			require.NoError(t, err)
+
+			mrw := message.NewReadWriter(bc, bc, true)
+
+			err = mrw.Write(&message.CommandAMF0{
+				ChunkStreamID: 3,
+				Name:          "connect",
+				CommandID:     1,
+				Arguments: []any{
+					amf0.Object{
+						{Key: "app", Value: "stream"},
+						{Key: "flashVer", Value: "LNX 9,0,124,2"},
+						{Key: "tcUrl", Value: "rtmp://127.0.0.1:9121/stream"},
+						{Key: "fpad", Value: false},
+						{Key: "capabilities", Value: float64(15)},
+						{Key: "audioCodecs", Value: float64(4071)},
+						{Key: "videoCodecs", Value: float64(252)},
+						{Key: "videoFunction", Value: float64(1)},
+					},
+				},
+			})
+			require.NoError(t, err)
+
+			var msg message.Message
+			msg, err = mrw.Read()
+			require.NoError(t, err)
+			require.Equal(t, &message.SetWindowAckSize{Value: 2500000}, msg)
+
+			msg, err = mrw.Read()
+			require.NoError(t, err)
+			require.Equal(t, &message.SetPeerBandwidth{Value: 2500000, Type: 2}, msg)
+
+			msg, err = mrw.Read()
+			require.NoError(t, err)
+			require.Equal(t, &message.SetChunkSize{Value: 65536}, msg)
+
+			msg, err = mrw.Read()
+			require.NoError(t, err)
+			require.Equal(t, &message.CommandAMF0{
+				ChunkStreamID: 3,
+				Name:          "_result",
+				CommandID:     1,
+				Arguments: []any{
+					amf0.Object{
+						{Key: "fmsVer", Value: "LNX 9,0,124,2"},
+						{Key: "capabilities", Value: float64(31)},
+					},
+					amf0.Object{
+						{Key: "level", Value: "status"},
+						{Key: "code", Value: "NetConnection.Connect.Success"},
+						{Key: "description", Value: "Connection succeeded."},
+						{Key: "objectEncoding", Value: float64(0)},
+					},
+				},
+			}, msg)
+
+			err = mrw.Write(&message.SetChunkSize{Value: 65536})
+			require.NoError(t, err)
+
+			err = mrw.Write(&message.CommandAMF0{
+				ChunkStreamID: 3,
+				Name:          "createStream",
+				CommandID:     2,
+				Arguments:     []any{nil},
+			})
+			require.NoError(t, err)
+
+			msg, err = mrw.Read()
+			require.NoError(t, err)
+			require.Equal(t, &message.CommandAMF0{
+				ChunkStreamID: 3,
+				Name:          "_result",
+				CommandID:     2,
+				Arguments:     []any{nil, float64(1)},
+			}, msg)
+
+			switch ca {
+			case "read":
+				err = mrw.Write(&message.CommandAMF0{
+					ChunkStreamID:   4,
+					MessageStreamID: 0x1000000,
+					Name:            "play",
+					CommandID:       0,
+					Arguments:       []any{nil, ""},
+				})
+				require.NoError(t, err)
+
+				msg, err = mrw.Read()
+				require.NoError(t, err)
+				require.Equal(t, &message.UserControlStreamIsRecorded{StreamID: 1}, msg)
+
+				msg, err = mrw.Read()
+				require.NoError(t, err)
+				require.Equal(t, &message.UserControlStreamBegin{StreamID: 1}, msg)
+
+				msg, err = mrw.Read()
+				require.NoError(t, err)
+				require.Equal(t, &message.CommandAMF0{
+					ChunkStreamID:   5,
+					MessageStreamID: 0x1000000,
+					Name:            "onStatus",
+					CommandID:       0,
+					Arguments: []any{
+						nil,
+						amf0.Object{
+							{Key: "level", Value: "status"},
+							{Key: "code", Value: "NetStream.Play.Reset"},
+							{Key: "description", Value: "play reset"},
+						},
+					},
+				}, msg)
+
+				msg, err = mrw.Read()
+				require.NoError(t, err)
+				require.Equal(t, &message.CommandAMF0{
+					ChunkStreamID:   5,
+					MessageStreamID: 0x1000000,
+					Name:            "onStatus",
+					CommandID:       0,
+					Arguments: []any{
+						nil,
+						amf0.Object{
+							{Key: "level", Value: "status"},
+							{Key: "code", Value: "NetStream.Play.Start"},
+							{Key: "description", Value: "play start"},
+						},
+					},
+				}, msg)
+
+				msg, err = mrw.Read()
+				require.NoError(t, err)
+				require.Equal(t, &message.CommandAMF0{
+					ChunkStreamID:   5,
+					MessageStreamID: 0x1000000,
+					Name:            "onStatus",
+					CommandID:       0,
+					Arguments: []any{
+						nil,
+						amf0.Object{
+							{Key: "level", Value: "status"},
+							{Key: "code", Value: "NetStream.Data.Start"},
+							{Key: "description", Value: "data start"},
+						},
+					},
+				}, msg)
+
+				msg, err = mrw.Read()
+				require.NoError(t, err)
+				require.Equal(t, &message.CommandAMF0{
+					ChunkStreamID:   5,
+					MessageStreamID: 0x1000000,
+					Name:            "onStatus",
+					CommandID:       0,
+					Arguments: []any{
+						nil,
+						amf0.Object{
+							{Key: "level", Value: "status"},
+							{Key: "code", Value: "NetStream.Play.PublishNotify"},
+							{Key: "description", Value: "publish notify"},
+						},
+					},
+				}, msg)
+
+				msg, err = mrw.Read()
+				require.NoError(t, err)
+				require.Equal(t, &message.DataAMF0{
+					ChunkStreamID:   4,
+					MessageStreamID: 0x1000000,
+					Payload: []any{
+						"@setDataFrame",
+						"onMetaData",
+						amf0.Object{
+							{Key: "videocodecid", Value: float64(0)},
+							{Key: "videodatarate", Value: float64(0)},
+							{Key: "audiocodecid", Value: float64(0)},
+							{Key: "audiodatarate", Value: float64(0)},
+						},
+					},
+				}, msg)
+
+			case "publish":
+				err = mrw.Write(&message.CommandAMF0{
+					ChunkStreamID:   4,
+					MessageStreamID: 0x1000000,
+					Name:            "publish",
+					CommandID:       0,
+					Arguments:       []any{nil, "", "live"},
+				})
+				require.NoError(t, err)
+
+				msg, err = mrw.Read()
+				require.NoError(t, err)
+				require.Equal(t, &message.CommandAMF0{
+					ChunkStreamID:   5,
+					MessageStreamID: 0x1000000,
+					Name:            "onStatus",
+					CommandID:       0,
+					Arguments: []any{
+						nil,
+						amf0.Object{
+							{Key: "level", Value: "status"},
+							{Key: "code", Value: "NetStream.Publish.Start"},
+							{Key: "description", Value: "publish start"},
+						},
+					},
+				}, msg)
+
+				err = mrw.Write(&message.Audio{
+					ChunkStreamID:   message.AudioChunkStreamID,
+					MessageStreamID: 0x1000000,
+					Codec:           message.CodecMPEG4Audio,
+					Rate:            message.AudioRate44100,
+					Depth:           message.AudioDepth16,
+					IsStereo:        true,
+					AACType:         message.AudioAACTypeConfig,
+					AACConfig: &mpeg4audio.AudioSpecificConfig{
+						Type:         2,
+						SampleRate:   44100,
+						ChannelCount: 2,
+					},
+				})
+				require.NoError(t, err)
+
+				err = mrw.Write(&message.Audio{
+					ChunkStreamID:   message.AudioChunkStreamID,
+					DTS:             2 * time.Second,
+					MessageStreamID: 0x1000000,
+					Codec:           message.CodecMPEG4Audio,
+					Rate:            message.AudioRate44100,
+					Depth:           message.AudioDepth16,
+					IsStereo:        true,
+					AACType:         message.AudioAACTypeAU,
+					AU:              []byte{0x11, 0x88},
+				})
+				require.NoError(t, err)
+			}
+
+			<-done
+		})
+	}
+}
+
+func TestServerConnRejectAction(t *testing.T) {
+	for _, ca := range []string{
+		"read",
+		"publish",
+	} {
+		t.Run(ca, func(t *testing.T) {
+			serverConn, clientConn := net.Pipe()
+			defer clientConn.Close()
+
+			done := make(chan struct{})
+
+			go func() {
+				defer close(done)
+				defer serverConn.Close()
+
+				conn := &gortmplib.ServerConn{RW: serverConn}
+				err := conn.Initialize()
+				require.NoError(t, err)
+
+				err = conn.AcceptConn()
+				require.NoError(t, err)
+
+				err = conn.RejectAction()
+				require.NoError(t, err)
+			}()
+
+			bc := bytecounter.NewReadWriter(clientConn)
+			_, _, err := handshake.DoClient(bc, false, false)
+			require.NoError(t, err)
+
+			mrw := message.NewReadWriter(bc, bc, true)
+
+			err = mrw.Write(&message.CommandAMF0{
+				ChunkStreamID: 3,
+				Name:          "connect",
+				CommandID:     1,
+				Arguments: []any{
+					amf0.Object{
+						{Key: "app", Value: "stream"},
+						{Key: "flashVer", Value: "LNX 9,0,124,2"},
+						{Key: "tcUrl", Value: "rtmp://127.0.0.1:9121/stream"},
+						{Key: "fpad", Value: false},
+						{Key: "capabilities", Value: float64(15)},
+						{Key: "audioCodecs", Value: float64(4071)},
+						{Key: "videoCodecs", Value: float64(252)},
+						{Key: "videoFunction", Value: float64(1)},
+					},
+				},
+			})
+			require.NoError(t, err)
+
+			var msg message.Message
+			msg, err = mrw.Read()
+			require.NoError(t, err)
+			require.Equal(t, &message.SetWindowAckSize{Value: 2500000}, msg)
+
+			msg, err = mrw.Read()
+			require.NoError(t, err)
+			require.Equal(t, &message.SetPeerBandwidth{Value: 2500000, Type: 2}, msg)
+
+			msg, err = mrw.Read()
+			require.NoError(t, err)
+			require.Equal(t, &message.SetChunkSize{Value: 65536}, msg)
+
+			msg, err = mrw.Read()
+			require.NoError(t, err)
+			require.Equal(t, &message.CommandAMF0{
+				ChunkStreamID: 3,
+				Name:          "_result",
+				CommandID:     1,
+				Arguments: []any{
+					amf0.Object{
+						{Key: "fmsVer", Value: "LNX 9,0,124,2"},
+						{Key: "capabilities", Value: float64(31)},
+					},
+					amf0.Object{
+						{Key: "level", Value: "status"},
+						{Key: "code", Value: "NetConnection.Connect.Success"},
+						{Key: "description", Value: "Connection succeeded."},
+						{Key: "objectEncoding", Value: float64(0)},
+					},
+				},
+			}, msg)
+
+			err = mrw.Write(&message.SetChunkSize{Value: 65536})
+			require.NoError(t, err)
+
+			err = mrw.Write(&message.CommandAMF0{
+				ChunkStreamID: 3,
+				Name:          "createStream",
+				CommandID:     2,
+				Arguments:     []any{nil},
+			})
+			require.NoError(t, err)
+
+			msg, err = mrw.Read()
+			require.NoError(t, err)
+			require.Equal(t, &message.CommandAMF0{
+				ChunkStreamID: 3,
+				Name:          "_result",
+				CommandID:     2,
+				Arguments:     []any{nil, float64(1)},
+			}, msg)
+
+			switch ca {
+			case "read":
+				err = mrw.Write(&message.CommandAMF0{
+					ChunkStreamID:   4,
+					MessageStreamID: 0x1000000,
+					Name:            "play",
+					CommandID:       0,
+					Arguments:       []any{nil, ""},
+				})
+				require.NoError(t, err)
+
+				msg, err = mrw.Read()
+				require.NoError(t, err)
+				require.Equal(t, &message.CommandAMF0{
+					ChunkStreamID:   5,
+					MessageStreamID: 0x1000000,
+					Name:            "onStatus",
+					CommandID:       0,
+					Arguments: []any{
+						nil,
+						amf0.Object{
+							{Key: "level", Value: "error"},
+							{Key: "code", Value: "NetStream.Play.Failed"},
+							{Key: "description", Value: "authentication failed"},
+						},
+					},
+				}, msg)
+
+			case "publish":
+				err = mrw.Write(&message.CommandAMF0{
+					ChunkStreamID:   4,
+					MessageStreamID: 0x1000000,
+					Name:            "publish",
+					CommandID:       0,
+					Arguments:       []any{nil, "", "live"},
+				})
+				require.NoError(t, err)
+
+				msg, err = mrw.Read()
+				require.NoError(t, err)
+				require.Equal(t, &message.CommandAMF0{
+					ChunkStreamID:   5,
+					MessageStreamID: 0x1000000,
+					Name:            "onStatus",
+					CommandID:       0,
+					Arguments: []any{
+						nil,
+						amf0.Object{
+							{Key: "level", Value: "error"},
+							{Key: "code", Value: "NetStream.Publish.Unauthorized"},
+							{Key: "description", Value: "authentication failed"},
+						},
+					},
+				}, msg)
+			}
+
+			<-done
+		})
+	}
 }

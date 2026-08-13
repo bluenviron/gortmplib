@@ -186,6 +186,13 @@ type Writer struct {
 
 // Initialize initializes Writer.
 func (w *Writer) Initialize() error {
+	if sc, ok := w.Conn.(*ServerConn); ok && !sc.actionAccepted {
+		err := sc.AcceptAction()
+		if err != nil {
+			return err
+		}
+	}
+
 	err := w.writeTracks()
 	if err != nil {
 		return err
