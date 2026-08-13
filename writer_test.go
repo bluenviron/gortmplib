@@ -1,4 +1,4 @@
-package gortmplib
+package gortmplib_test
 
 import (
 	"bytes"
@@ -11,10 +11,42 @@ import (
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/opus"
 	"github.com/stretchr/testify/require"
 
+	"github.com/bluenviron/gortmplib"
 	"github.com/bluenviron/gortmplib/pkg/amf0"
 	"github.com/bluenviron/gortmplib/pkg/bytecounter"
 	"github.com/bluenviron/gortmplib/pkg/codecs"
 	"github.com/bluenviron/gortmplib/pkg/message"
+)
+
+var (
+	h265DefaultVPS = []byte{
+		0x40, 0x01, 0x0c, 0x01, 0xff, 0xff, 0x02, 0x20,
+		0x00, 0x00, 0x03, 0x00, 0xb0, 0x00, 0x00, 0x03,
+		0x00, 0x00, 0x03, 0x00, 0x7b, 0x18, 0xb0, 0x24,
+	}
+
+	h265DefaultSPS = []byte{
+		0x42, 0x01, 0x01, 0x02, 0x20, 0x00, 0x00, 0x03,
+		0x00, 0xb0, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03,
+		0x00, 0x7b, 0xa0, 0x07, 0x82, 0x00, 0x88, 0x7d,
+		0xb6, 0x71, 0x8b, 0x92, 0x44, 0x80, 0x53, 0x88,
+		0x88, 0x92, 0xcf, 0x24, 0xa6, 0x92, 0x72, 0xc9,
+		0x12, 0x49, 0x22, 0xdc, 0x91, 0xaa, 0x48, 0xfc,
+		0xa2, 0x23, 0xff, 0x00, 0x01, 0x00, 0x01, 0x6a,
+		0x02, 0x02, 0x02, 0x01,
+	}
+
+	h265DefaultPPS = []byte{
+		0x44, 0x01, 0xc0, 0x25, 0x2f, 0x05, 0x32, 0x40,
+	}
+
+	h264DefaultSPS = []byte{ // 1920x1080 baseline
+		0x67, 0x42, 0xc0, 0x28, 0xd9, 0x00, 0x78, 0x02,
+		0x27, 0xe5, 0x84, 0x00, 0x00, 0x03, 0x00, 0x04,
+		0x00, 0x00, 0x03, 0x00, 0xf0, 0x3c, 0x60, 0xc9, 0x20,
+	}
+
+	h264DefaultPPS = []byte{0x08, 0x06, 0x07, 0x08}
 )
 
 func TestWriter(t *testing.T) {
@@ -34,11 +66,11 @@ func TestWriter(t *testing.T) {
 		"lpcm",
 	} {
 		t.Run(ca, func(t *testing.T) {
-			var tracks []*Track
+			var tracks []*gortmplib.Track
 
 			switch ca {
 			case "h264 + aac":
-				tracks = append(tracks, &Track{Codec: &codecs.H264{
+				tracks = append(tracks, &gortmplib.Track{Codec: &codecs.H264{
 					SPS: []byte{
 						0x67, 0x64, 0x00, 0x0c, 0xac, 0x3b, 0x50, 0xb0,
 						0x4b, 0x42, 0x00, 0x00, 0x03, 0x00, 0x02, 0x00,
@@ -49,7 +81,7 @@ func TestWriter(t *testing.T) {
 					},
 				}})
 
-				tracks = append(tracks, &Track{Codec: &codecs.MPEG4Audio{
+				tracks = append(tracks, &gortmplib.Track{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
 						Type:         2,
 						SampleRate:   44100,
@@ -58,22 +90,22 @@ func TestWriter(t *testing.T) {
 				}})
 
 			case "av1":
-				tracks = append(tracks, &Track{Codec: &codecs.AV1{}})
+				tracks = append(tracks, &gortmplib.Track{Codec: &codecs.AV1{}})
 
 			case "vp9":
-				tracks = append(tracks, &Track{Codec: &codecs.VP9{}})
+				tracks = append(tracks, &gortmplib.Track{Codec: &codecs.VP9{}})
 
 			case "h265":
-				tracks = append(tracks, &Track{Codec: testCodecH265})
+				tracks = append(tracks, &gortmplib.Track{Codec: testCodecH265})
 
 			case "h265 no params":
-				tracks = append(tracks, &Track{Codec: &codecs.H265{}})
+				tracks = append(tracks, &gortmplib.Track{Codec: &codecs.H265{}})
 
 			case "h264 no params":
-				tracks = append(tracks, &Track{Codec: &codecs.H264{}})
+				tracks = append(tracks, &gortmplib.Track{Codec: &codecs.H264{}})
 
 			case "opus":
-				tracks = append(tracks, &Track{Codec: &codecs.Opus{
+				tracks = append(tracks, &gortmplib.Track{Codec: &codecs.Opus{
 					IDHeader: &opus.IDHeader{
 						Version:      0x1,
 						ChannelCount: 2,
@@ -82,16 +114,16 @@ func TestWriter(t *testing.T) {
 				}})
 
 			case "mp3":
-				tracks = append(tracks, &Track{Codec: &codecs.MPEG1Audio{}})
+				tracks = append(tracks, &gortmplib.Track{Codec: &codecs.MPEG1Audio{}})
 
 			case "ac-3":
-				tracks = append(tracks, &Track{Codec: &codecs.AC3{
+				tracks = append(tracks, &gortmplib.Track{Codec: &codecs.AC3{
 					SampleRate:   44100,
 					ChannelCount: 2,
 				}})
 
 			case "flac":
-				tracks = append(tracks, &Track{Codec: &codecs.FLAC{
+				tracks = append(tracks, &gortmplib.Track{Codec: &codecs.FLAC{
 					StreamInfo: &flac.StreamInfo{
 						MinBlockSize: 16,
 						MaxBlockSize: 65535,
@@ -102,19 +134,19 @@ func TestWriter(t *testing.T) {
 				}})
 
 			case "pcma":
-				tracks = append(tracks, &Track{Codec: &codecs.G711{
+				tracks = append(tracks, &gortmplib.Track{Codec: &codecs.G711{
 					MULaw:        false,
 					ChannelCount: 1,
 				}})
 
 			case "pcmu":
-				tracks = append(tracks, &Track{Codec: &codecs.G711{
+				tracks = append(tracks, &gortmplib.Track{Codec: &codecs.G711{
 					MULaw:        true,
 					ChannelCount: 1,
 				}})
 
 			case "lpcm":
-				tracks = append(tracks, &Track{Codec: &codecs.LPCM{
+				tracks = append(tracks, &gortmplib.Track{Codec: &codecs.LPCM{
 					BitDepth:     16,
 					SampleRate:   44100,
 					ChannelCount: 1,
@@ -127,7 +159,7 @@ func TestWriter(t *testing.T) {
 			}
 			c.initialize()
 
-			w := &Writer{
+			w := &gortmplib.Writer{
 				Conn:   c,
 				Tracks: tracks,
 			}

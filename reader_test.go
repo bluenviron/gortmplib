@@ -1,4 +1,4 @@
-package gortmplib
+package gortmplib_test
 
 import (
 	"bytes"
@@ -8,11 +8,13 @@ import (
 
 	"github.com/abema/go-mp4"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/flac"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h265"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/opus"
 	"github.com/stretchr/testify/require"
 
+	"github.com/bluenviron/gortmplib"
 	"github.com/bluenviron/gortmplib/pkg/amf0"
 	"github.com/bluenviron/gortmplib/pkg/bytecounter"
 	"github.com/bluenviron/gortmplib/pkg/codecs"
@@ -47,6 +49,102 @@ var testCodecH265 = &codecs.H265{
 	PPS: []byte{
 		0x44, 0x01, 0xc0, 0x25, 0x2f, 0x05, 0x32, 0x40,
 	},
+}
+
+func generateAvcC(sps, pps []byte) *mp4.AVCDecoderConfiguration {
+	var psps h264.SPS
+	err := psps.Unmarshal(sps)
+	if err != nil {
+		panic(err)
+	}
+
+	return &mp4.AVCDecoderConfiguration{ // <avcc/>
+		AnyTypeBox: mp4.AnyTypeBox{
+			Type: mp4.BoxTypeAvcC(),
+		},
+		ConfigurationVersion:       1,
+		Profile:                    psps.ProfileIdc,
+		ProfileCompatibility:       sps[2],
+		Level:                      psps.LevelIdc,
+		Reserved:                   0b111111,
+		LengthSizeMinusOne:         3,
+		Reserved2:                  0b111,
+		NumOfSequenceParameterSets: 1,
+		SequenceParameterSets: []mp4.AVCParameterSet{
+			{
+				Length:  uint16(len(sps)),
+				NALUnit: sps,
+			},
+		},
+		NumOfPictureParameterSets: 1,
+		PictureParameterSets: []mp4.AVCParameterSet{
+			{
+				Length:  uint16(len(pps)),
+				NALUnit: pps,
+			},
+		},
+	}
+}
+
+func generateHvcC(vps, sps, pps []byte) *mp4.HvcC {
+	var psps h265.SPS
+	err := psps.Unmarshal(sps)
+	if err != nil {
+		panic(err)
+	}
+
+	return &mp4.HvcC{
+		ConfigurationVersion:        1,
+		GeneralProfileIdc:           psps.ProfileTierLevel.GeneralProfileIdc,
+		GeneralProfileCompatibility: psps.ProfileTierLevel.GeneralProfileCompatibilityFlag,
+		GeneralConstraintIndicator: [6]uint8{
+			sps[7], sps[8], sps[9],
+			sps[10], sps[11], sps[12],
+		},
+		GeneralLevelIdc: psps.ProfileTierLevel.GeneralLevelIdc,
+		Reserved1:       0b1111,
+		// MinSpatialSegmentationIdc
+		Reserved2: 0b111111,
+		// ParallelismType
+		Reserved3:            0b111111,
+		ChromaFormatIdc:      uint8(psps.ChromaFormatIdc),
+		Reserved4:            0b11111,
+		BitDepthLumaMinus8:   uint8(psps.BitDepthLumaMinus8),
+		Reserved5:            0b11111,
+		BitDepthChromaMinus8: uint8(psps.BitDepthChromaMinus8),
+		// AvgFrameRate
+		// ConstantFrameRate
+		NumTemporalLayers: 1,
+		// TemporalIdNested
+		LengthSizeMinusOne: 3,
+		NumOfNaluArrays:    3,
+		NaluArrays: []mp4.HEVCNaluArray{
+			{
+				NaluType: byte(h265.NALUType_VPS_NUT),
+				NumNalus: 1,
+				Nalus: []mp4.HEVCNalu{{
+					Length:  uint16(len(vps)),
+					NALUnit: vps,
+				}},
+			},
+			{
+				NaluType: byte(h265.NALUType_SPS_NUT),
+				NumNalus: 1,
+				Nalus: []mp4.HEVCNalu{{
+					Length:  uint16(len(sps)),
+					NALUnit: sps,
+				}},
+			},
+			{
+				NaluType: byte(h265.NALUType_PPS_NUT),
+				NumNalus: 1,
+				Nalus: []mp4.HEVCNalu{{
+					Length:  uint16(len(pps)),
+					NALUnit: pps,
+				}},
+			},
+		},
+	}
 }
 
 type dummyConn struct {
@@ -86,12 +184,12 @@ func TestReadTracks(t *testing.T) {
 
 	for _, ca := range []struct {
 		name     string
-		tracks   []*Track
+		tracks   []*gortmplib.Track
 		messages []message.Message
 	}{
 		{
 			"h264 + aac",
-			[]*Track{
+			[]*gortmplib.Track{
 				{Codec: &codecs.H264{
 					SPS: testCodecH264.SPS,
 					PPS: testCodecH264.PPS,
@@ -160,7 +258,7 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"h264",
-			[]*Track{{Codec: &codecs.H264{
+			[]*gortmplib.Track{{Codec: &codecs.H264{
 				SPS: testCodecH264.SPS,
 				PPS: testCodecH264.PPS,
 			}}},
@@ -211,7 +309,7 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"issue mediamtx/5105 (h265, codec id 12)",
-			[]*Track{{Codec: &codecs.H265{
+			[]*gortmplib.Track{{Codec: &codecs.H265{
 				VPS: testCodecH265.VPS,
 				SPS: testCodecH265.SPS,
 				PPS: testCodecH265.PPS,
@@ -263,7 +361,7 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"issue mediamtx/386 (missing metadata)",
-			[]*Track{
+			[]*gortmplib.Track{
 				{Codec: &codecs.H264{
 					SPS: testCodecH264.SPS,
 					PPS: testCodecH264.PPS,
@@ -306,7 +404,7 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"issue mediamtx/3301 (metadata without tracks)",
-			[]*Track{
+			[]*gortmplib.Track{
 				{Codec: &codecs.H264{
 					SPS: testCodecH264.SPS,
 					PPS: testCodecH264.PPS,
@@ -367,7 +465,7 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"issue mediamtx/386 (missing metadata)",
-			[]*Track{
+			[]*gortmplib.Track{
 				{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
 						Type:          2,
@@ -406,7 +504,7 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"issue mediamtx/3414 (empty audio payload)",
-			[]*Track{
+			[]*gortmplib.Track{
 				{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
 						Type:          2,
@@ -481,7 +579,7 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"issue mediamtx/2232 (xsplit broadcaster)",
-			[]*Track{
+			[]*gortmplib.Track{
 				{Codec: &codecs.H265{
 					VPS: testCodecH265.VPS,
 					SPS: testCodecH265.SPS,
@@ -536,7 +634,7 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"h265, obs 30.0",
-			[]*Track{
+			[]*gortmplib.Track{
 				{Codec: &codecs.H265{
 					VPS: testCodecH265.VPS,
 					SPS: testCodecH265.SPS,
@@ -591,7 +689,7 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"av1, ffmpeg",
-			[]*Track{
+			[]*gortmplib.Track{
 				{Codec: &codecs.AV1{}},
 			},
 			[]message.Message{
@@ -665,7 +763,7 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"issue mediamtx/2289 (missing videocodecid)",
-			[]*Track{
+			[]*gortmplib.Track{
 				{Codec: &codecs.H264{
 					SPS: []byte{
 						0x67, 0x64, 0x00, 0x1f, 0xac, 0x2c, 0x6a, 0x81,
@@ -757,7 +855,7 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"issue mediamtx/2352 (streamlabs)",
-			[]*Track{
+			[]*gortmplib.Track{
 				{Codec: &codecs.H264{
 					SPS: testCodecH264.SPS,
 					PPS: testCodecH264.PPS,
@@ -831,7 +929,7 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"mpeg-1 audio, ffmpeg",
-			[]*Track{
+			[]*gortmplib.Track{
 				{Codec: &codecs.MPEG1Audio{}},
 			},
 			[]message.Message{
@@ -872,7 +970,7 @@ func TestReadTracks(t *testing.T) {
 		},
 		{ //nolint:dupl
 			"pcma, ffmpeg",
-			[]*Track{
+			[]*gortmplib.Track{
 				{Codec: &codecs.G711{
 					MULaw:        false,
 					ChannelCount: 1,
@@ -916,7 +1014,7 @@ func TestReadTracks(t *testing.T) {
 		},
 		{ //nolint:dupl
 			"pcmu, ffmpeg",
-			[]*Track{
+			[]*gortmplib.Track{
 				{Codec: &codecs.G711{
 					MULaw:        true,
 					ChannelCount: 1,
@@ -960,7 +1058,7 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"lpcm, gstreamer",
-			[]*Track{
+			[]*gortmplib.Track{
 				{Codec: &codecs.LPCM{
 					BitDepth:     16,
 					SampleRate:   44100,
@@ -1004,7 +1102,7 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"h264+aac+aac, obs 31 vod track",
-			[]*Track{
+			[]*gortmplib.Track{
 				{Codec: &codecs.H264{
 					SPS: []byte{
 						0x67, 0x64, 0x00, 0x2a, 0xac, 0x2b, 0x20, 0x0f,
@@ -1125,7 +1223,7 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"h264+h264+aac, obs 31 multitrack video",
-			[]*Track{
+			[]*gortmplib.Track{
 				{Codec: &codecs.H264{
 					SPS: []byte{
 						0x67, 0x64, 0x00, 0x2a, 0xac, 0x2c, 0xac, 0x07,
@@ -1276,7 +1374,7 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"ac-3, ffmpeg",
-			[]*Track{
+			[]*gortmplib.Track{
 				{Codec: &codecs.AC3{
 					SampleRate:   48000,
 					ChannelCount: 3,
@@ -1398,7 +1496,7 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"opus, ffmpeg",
-			[]*Track{
+			[]*gortmplib.Track{
 				{Codec: &codecs.Opus{
 					IDHeader: &opus.IDHeader{
 						Version:             0x1,
@@ -1530,7 +1628,7 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"flac, ffmpeg",
-			[]*Track{
+			[]*gortmplib.Track{
 				{Codec: &codecs.FLAC{
 					StreamInfo: &flac.StreamInfo{
 						MinBlockSize: 4096,
@@ -1590,7 +1688,7 @@ func TestReadTracks(t *testing.T) {
 		},
 		{
 			"issue mediamtx/3802 (double video config)",
-			[]*Track{
+			[]*gortmplib.Track{
 				{Codec: &codecs.H264{
 					SPS: testCodecH264.SPS,
 					PPS: testCodecH264.PPS,
@@ -1665,7 +1763,7 @@ func TestReadTracks(t *testing.T) {
 			}
 			c.initialize()
 
-			r := &Reader{
+			r := &gortmplib.Reader{
 				Conn: c,
 			}
 			err = r.Initialize()
@@ -1757,7 +1855,7 @@ func TestReadTracksErrors(t *testing.T) {
 			c := &dummyConn{rw: &buf}
 			c.initialize()
 
-			r := &Reader{Conn: c}
+			r := &gortmplib.Reader{Conn: c}
 			err := r.Initialize()
 			require.EqualError(t, err, ca.errMsg)
 		})
@@ -1817,7 +1915,7 @@ func TestReaderRewind(t *testing.T) {
 	}
 	c.initialize()
 
-	r := &Reader{
+	r := &gortmplib.Reader{
 		Conn: c,
 	}
 
@@ -1825,7 +1923,7 @@ func TestReaderRewind(t *testing.T) {
 	require.NoError(t, err)
 
 	tracks := r.Tracks()
-	require.Equal(t, []*Track{{Codec: &codecs.H264{
+	require.Equal(t, []*gortmplib.Track{{Codec: &codecs.H264{
 		SPS: testCodecH264.SPS,
 		PPS: testCodecH264.PPS,
 	}}}, tracks)

@@ -1,4 +1,4 @@
-package gortmplib
+package gortmplib_test
 
 import (
 	"context"
@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/bluenviron/gortmplib"
 	"github.com/bluenviron/gortmplib/pkg/amf0"
 	"github.com/bluenviron/gortmplib/pkg/bytecounter"
 	"github.com/bluenviron/gortmplib/pkg/handshake"
@@ -69,6 +71,20 @@ kabimVOvrOAWlnvznqXEHPNx6mbbKs08jh+uRRmrOmMrxAobpTqarL2Sdxb6afID
 NkxNic7oHgsZpIkZ8HK+QjAAWA==
 -----END PRIVATE KEY-----
 `)
+
+func queryDecode(enc string) map[string]string {
+	// do not use url.ParseQuery since values are not URL-encoded
+	vals := make(map[string]string)
+
+	for kv := range strings.SplitSeq(enc, "&") {
+		tmp := strings.SplitN(kv, "=", 2)
+		if len(tmp) == 2 {
+			vals[tmp[0]] = tmp[1]
+		}
+	}
+
+	return vals
+}
 
 func TestClientURL(t *testing.T) {
 	for _, ca := range []struct {
@@ -220,7 +236,7 @@ func TestClientURL(t *testing.T) {
 			ur, err := url.Parse(ca.url)
 			require.NoError(t, err)
 
-			c := &Client{
+			c := &gortmplib.Client{
 				URL: ur,
 			}
 			err = c.Initialize(context.Background())
@@ -677,7 +693,7 @@ func TestClientReadPublish(t *testing.T) {
 			u, err := url.Parse(rawURL)
 			require.NoError(t, err)
 
-			c := &Client{
+			c := &gortmplib.Client{
 				URL:     u,
 				Publish: (ca == "publish"),
 			}
@@ -815,7 +831,7 @@ func TestClientRTMPS(t *testing.T) {
 	u, err := url.Parse("rtmps://localhost:1936/test")
 	require.NoError(t, err)
 
-	c := &Client{
+	c := &gortmplib.Client{
 		URL:     u,
 		Publish: true,
 		TLSConfig: &tls.Config{
@@ -850,7 +866,7 @@ func TestClientDefaultPort(t *testing.T) {
 			ur, err := url.Parse(ca.url)
 			require.NoError(t, err)
 
-			c := &Client{
+			c := &gortmplib.Client{
 				URL: ur,
 				DialContext: func(_ context.Context, _, address string) (net.Conn, error) {
 					dialedAddr = address

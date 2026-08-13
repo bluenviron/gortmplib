@@ -1,6 +1,8 @@
-package gortmplib
+package gortmplib_test
 
 import (
+	"crypto/md5"
+	"encoding/base64"
 	"fmt"
 	"net"
 	"net/url"
@@ -9,11 +11,30 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
+	"github.com/bluenviron/gortmplib"
 	"github.com/bluenviron/gortmplib/pkg/amf0"
 	"github.com/bluenviron/gortmplib/pkg/bytecounter"
 	"github.com/bluenviron/gortmplib/pkg/handshake"
 	"github.com/bluenviron/gortmplib/pkg/message"
 )
+
+func authResponse(user, pass, salt, opaque, challenge, challenge2 string) string {
+	h := md5.New()
+	h.Write([]byte(user))
+	h.Write([]byte(salt))
+	h.Write([]byte(pass))
+	str := base64.StdEncoding.EncodeToString(h.Sum(nil))
+
+	h = md5.New()
+	h.Write([]byte(str))
+	if opaque != "" {
+		h.Write([]byte(opaque))
+	} else {
+		h.Write([]byte(challenge))
+	}
+	h.Write([]byte(challenge2))
+	return base64.StdEncoding.EncodeToString(h.Sum(nil))
+}
 
 func TestServerConn(t *testing.T) {
 	for _, ca := range []string{
@@ -37,7 +58,7 @@ func TestServerConn(t *testing.T) {
 				require.NoError(t, err2)
 				defer nconn.Close()
 
-				conn := &ServerConn{
+				conn := &gortmplib.ServerConn{
 					RW: nconn,
 				}
 				err2 = conn.Initialize()
@@ -157,7 +178,7 @@ func TestServerConn(t *testing.T) {
 
 			case "auth 3":
 				clientChallenge := uuid.New().String()
-				response := authResponse("myuser", "mypass", serverSalt, "", serverChallenge, clientChallenge)
+				response := authResponse("myuser", "mypass", "testsalt", "", "testchallenge", clientChallenge)
 
 				err = mrw.Write(&message.CommandAMF0{
 					ChunkStreamID: 3,
@@ -366,13 +387,84 @@ func TestServerConn(t *testing.T) {
 					ChunkStreamID:   4,
 					MessageStreamID: 0x1000000,
 					Name:            "play",
-					CommandID:       0,
 					Arguments: []any{
 						nil,
 						"",
 					},
 				})
 				require.NoError(t, err)
+
+				msg, err = mrw.Read()
+				require.NoError(t, err)
+				require.Equal(t, &message.UserControlStreamIsRecorded{StreamID: 1}, msg)
+
+				msg, err = mrw.Read()
+				require.NoError(t, err)
+				require.Equal(t, &message.UserControlStreamBegin{StreamID: 1}, msg)
+
+				msg, err = mrw.Read()
+				require.NoError(t, err)
+				require.Equal(t, &message.CommandAMF0{
+					ChunkStreamID:   5,
+					MessageStreamID: 0x1000000,
+					Name:            "onStatus",
+					Arguments: []any{
+						nil,
+						amf0.Object{
+							{Key: "level", Value: "status"},
+							{Key: "code", Value: "NetStream.Play.Reset"},
+							{Key: "description", Value: "play reset"},
+						},
+					},
+				}, msg)
+
+				msg, err = mrw.Read()
+				require.NoError(t, err)
+				require.Equal(t, &message.CommandAMF0{
+					ChunkStreamID:   5,
+					MessageStreamID: 0x1000000,
+					Name:            "onStatus",
+					Arguments: []any{
+						nil,
+						amf0.Object{
+							{Key: "level", Value: "status"},
+							{Key: "code", Value: "NetStream.Play.Start"},
+							{Key: "description", Value: "play start"},
+						},
+					},
+				}, msg)
+
+				msg, err = mrw.Read()
+				require.NoError(t, err)
+				require.Equal(t, &message.CommandAMF0{
+					ChunkStreamID:   5,
+					MessageStreamID: 0x1000000,
+					Name:            "onStatus",
+					Arguments: []any{
+						nil,
+						amf0.Object{
+							{Key: "level", Value: "status"},
+							{Key: "code", Value: "NetStream.Data.Start"},
+							{Key: "description", Value: "data start"},
+						},
+					},
+				}, msg)
+
+				msg, err = mrw.Read()
+				require.NoError(t, err)
+				require.Equal(t, &message.CommandAMF0{
+					ChunkStreamID:   5,
+					MessageStreamID: 0x1000000,
+					Name:            "onStatus",
+					Arguments: []any{
+						nil,
+						amf0.Object{
+							{Key: "level", Value: "status"},
+							{Key: "code", Value: "NetStream.Play.PublishNotify"},
+							{Key: "description", Value: "publish notify"},
+						},
+					},
+				}, msg)
 
 			case "publish":
 				err = mrw.Write(&message.CommandAMF0{
@@ -495,6 +587,23 @@ func TestServerConn(t *testing.T) {
 					},
 				})
 				require.NoError(t, err)
+
+				msg, err = mrw.Read()
+				require.NoError(t, err)
+				require.Equal(t, &message.CommandAMF0{
+					ChunkStreamID:   5,
+					MessageStreamID: 0x1000000,
+					Name:            "onStatus",
+					CommandID:       5,
+					Arguments: []any{
+						nil,
+						amf0.Object{
+							{Key: "level", Value: "status"},
+							{Key: "code", Value: "NetStream.Publish.Start"},
+							{Key: "description", Value: "publish start"},
+						},
+					},
+				}, msg)
 			}
 
 			<-done
@@ -637,7 +746,7 @@ func TestServerConnURL(t *testing.T) {
 				require.NoError(t, err2)
 				defer nconn.Close()
 
-				conn := &ServerConn{
+				conn := &gortmplib.ServerConn{
 					RW: nconn,
 				}
 				err2 = conn.Initialize()
@@ -780,7 +889,7 @@ func TestServerConnFourCcList(t *testing.T) {
 		require.NoError(t, err2)
 		defer nconn.Close()
 
-		conn := &ServerConn{
+		conn := &gortmplib.ServerConn{
 			RW: nconn,
 		}
 		err2 = conn.Initialize()
