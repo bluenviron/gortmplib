@@ -244,7 +244,7 @@ func handleConnInner(conn net.Conn) error {
 		return err
 	}
 
-	err = sc.Accept()
+	err = sc.AcceptConn()
 	if err != nil {
 		return err
 	}

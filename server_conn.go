@@ -105,8 +105,10 @@ type ServerConn struct {
 	URL     *url.URL
 	Publish bool
 
-	bc  *bytecounter.ReadWriter
-	mrw *message.ReadWriter
+	bc             *bytecounter.ReadWriter
+	mrw            *message.ReadWriter
+	actionCommand  *message.CommandAMF0
+	actionAccepted bool
 }
 
 // Initialize initializes ServerConn.
@@ -279,7 +281,21 @@ func (c *ServerConn) CheckCredentials(expectedUser string, expectedPass string) 
 }
 
 // AcceptIfCredentialsMatch accepts the connection if credentials match.
+//
+// Deprecated: use AcceptConnIfCredentialsMatch instead.
 func (c *ServerConn) AcceptIfCredentialsMatch(expectedUser, expectedPass string) error {
+	return c.AcceptConnIfCredentialsMatch(expectedUser, expectedPass)
+}
+
+// Accept accepts the connection.
+//
+// Deprecated: use AcceptConn instead.
+func (c *ServerConn) Accept() error {
+	return c.AcceptConn()
+}
+
+// AcceptConnIfCredentialsMatch accepts the connection if credentials match.
+func (c *ServerConn) AcceptConnIfCredentialsMatch(expectedUser, expectedPass string) error {
 	err := c.checkCredentials(expectedUser, expectedPass)
 	if err != nil {
 		return err
@@ -288,8 +304,8 @@ func (c *ServerConn) AcceptIfCredentialsMatch(expectedUser, expectedPass string)
 	return c.Accept()
 }
 
-// Accept accepts the connection.
-func (c *ServerConn) Accept() error {
+// AcceptConn accepts the connection.
+func (c *ServerConn) AcceptConn() error {
 	err := c.mrw.Write(&message.SetWindowAckSize{
 		Value: 2500000,
 	})
@@ -370,93 +386,9 @@ func (c *ServerConn) Accept() error {
 				return err
 			}
 
-			err = c.mrw.Write(&message.UserControlStreamIsRecorded{
-				StreamID: 1,
-			})
-			if err != nil {
-				return err
-			}
-
-			err = c.mrw.Write(&message.UserControlStreamBegin{
-				StreamID: 1,
-			})
-			if err != nil {
-				return err
-			}
-
-			err = c.mrw.Write(&message.CommandAMF0{
-				ChunkStreamID:   5,
-				MessageStreamID: 0x1000000,
-				Name:            "onStatus",
-				CommandID:       cmd.CommandID,
-				Arguments: []any{
-					nil,
-					amf0.Object{
-						{Key: "level", Value: "status"},
-						{Key: "code", Value: "NetStream.Play.Reset"},
-						{Key: "description", Value: "play reset"},
-					},
-				},
-			})
-			if err != nil {
-				return err
-			}
-
-			err = c.mrw.Write(&message.CommandAMF0{
-				ChunkStreamID:   5,
-				MessageStreamID: 0x1000000,
-				Name:            "onStatus",
-				CommandID:       cmd.CommandID,
-				Arguments: []any{
-					nil,
-					amf0.Object{
-						{Key: "level", Value: "status"},
-						{Key: "code", Value: "NetStream.Play.Start"},
-						{Key: "description", Value: "play start"},
-					},
-				},
-			})
-			if err != nil {
-				return err
-			}
-
-			err = c.mrw.Write(&message.CommandAMF0{
-				ChunkStreamID:   5,
-				MessageStreamID: 0x1000000,
-				Name:            "onStatus",
-				CommandID:       cmd.CommandID,
-				Arguments: []any{
-					nil,
-					amf0.Object{
-						{Key: "level", Value: "status"},
-						{Key: "code", Value: "NetStream.Data.Start"},
-						{Key: "description", Value: "data start"},
-					},
-				},
-			})
-			if err != nil {
-				return err
-			}
-
-			err = c.mrw.Write(&message.CommandAMF0{
-				ChunkStreamID:   5,
-				MessageStreamID: 0x1000000,
-				Name:            "onStatus",
-				CommandID:       cmd.CommandID,
-				Arguments: []any{
-					nil,
-					amf0.Object{
-						{Key: "level", Value: "status"},
-						{Key: "code", Value: "NetStream.Play.PublishNotify"},
-						{Key: "description", Value: "publish notify"},
-					},
-				},
-			})
-			if err != nil {
-				return err
-			}
-
+			c.actionCommand = cmd
 			c.Publish = false
+
 			return nil
 
 		case "publish":
@@ -474,28 +406,156 @@ func (c *ServerConn) Accept() error {
 				return err
 			}
 
-			err = c.mrw.Write(&message.CommandAMF0{
-				ChunkStreamID:   5,
-				Name:            "onStatus",
-				CommandID:       cmd.CommandID,
-				MessageStreamID: 0x1000000,
-				Arguments: []any{
-					nil,
-					amf0.Object{
-						{Key: "level", Value: "status"},
-						{Key: "code", Value: "NetStream.Publish.Start"},
-						{Key: "description", Value: "publish start"},
-					},
-				},
-			})
-			if err != nil {
-				return err
-			}
-
+			c.actionCommand = cmd
 			c.Publish = true
+
 			return nil
 		}
 	}
+}
+
+// AcceptAction accepts the action (play or publish) command.
+func (c *ServerConn) AcceptAction() error {
+	c.actionAccepted = true
+
+	if !c.Publish {
+		err := c.mrw.Write(&message.UserControlStreamIsRecorded{
+			StreamID: 1,
+		})
+		if err != nil {
+			return err
+		}
+
+		err = c.mrw.Write(&message.UserControlStreamBegin{
+			StreamID: 1,
+		})
+		if err != nil {
+			return err
+		}
+
+		err = c.mrw.Write(&message.CommandAMF0{
+			ChunkStreamID:   5,
+			MessageStreamID: 0x1000000,
+			Name:            "onStatus",
+			CommandID:       c.actionCommand.CommandID,
+			Arguments: []any{
+				nil,
+				amf0.Object{
+					{Key: "level", Value: "status"},
+					{Key: "code", Value: "NetStream.Play.Reset"},
+					{Key: "description", Value: "play reset"},
+				},
+			},
+		})
+		if err != nil {
+			return err
+		}
+
+		err = c.mrw.Write(&message.CommandAMF0{
+			ChunkStreamID:   5,
+			MessageStreamID: 0x1000000,
+			Name:            "onStatus",
+			CommandID:       c.actionCommand.CommandID,
+			Arguments: []any{
+				nil,
+				amf0.Object{
+					{Key: "level", Value: "status"},
+					{Key: "code", Value: "NetStream.Play.Start"},
+					{Key: "description", Value: "play start"},
+				},
+			},
+		})
+		if err != nil {
+			return err
+		}
+
+		err = c.mrw.Write(&message.CommandAMF0{
+			ChunkStreamID:   5,
+			MessageStreamID: 0x1000000,
+			Name:            "onStatus",
+			CommandID:       c.actionCommand.CommandID,
+			Arguments: []any{
+				nil,
+				amf0.Object{
+					{Key: "level", Value: "status"},
+					{Key: "code", Value: "NetStream.Data.Start"},
+					{Key: "description", Value: "data start"},
+				},
+			},
+		})
+		if err != nil {
+			return err
+		}
+
+		err = c.mrw.Write(&message.CommandAMF0{
+			ChunkStreamID:   5,
+			MessageStreamID: 0x1000000,
+			Name:            "onStatus",
+			CommandID:       c.actionCommand.CommandID,
+			Arguments: []any{
+				nil,
+				amf0.Object{
+					{Key: "level", Value: "status"},
+					{Key: "code", Value: "NetStream.Play.PublishNotify"},
+					{Key: "description", Value: "publish notify"},
+				},
+			},
+		})
+		if err != nil {
+			return err
+		}
+	} else {
+		err := c.mrw.Write(&message.CommandAMF0{
+			ChunkStreamID:   5,
+			Name:            "onStatus",
+			CommandID:       c.actionCommand.CommandID,
+			MessageStreamID: 0x1000000,
+			Arguments: []any{
+				nil,
+				amf0.Object{
+					{Key: "level", Value: "status"},
+					{Key: "code", Value: "NetStream.Publish.Start"},
+					{Key: "description", Value: "publish start"},
+				},
+			},
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// RejectAction rejects the action (play or publish) command.
+func (c *ServerConn) RejectAction() error {
+	code := "NetStream.Play.Failed"
+	description := "authentication failed"
+
+	if c.Publish {
+		code = "NetStream.Publish.Unauthorized"
+		description = "authentication failed"
+	}
+
+	err := c.mrw.Write(&message.CommandAMF0{
+		ChunkStreamID:   5,
+		MessageStreamID: 0x1000000,
+		Name:            "onStatus",
+		CommandID:       c.actionCommand.CommandID,
+		Arguments: []any{
+			nil,
+			amf0.Object{
+				{Key: "level", Value: "error"},
+				{Key: "code", Value: code},
+				{Key: "description", Value: description},
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // BytesReceived returns the number of bytes received.
