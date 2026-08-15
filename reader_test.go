@@ -304,6 +304,7 @@ func TestReadTracks(t *testing.T) {
 					Codec:           message.CodecH264,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeAU,
+					AU:              []byte{1},
 				},
 			},
 		},
@@ -356,11 +357,12 @@ func TestReadTracks(t *testing.T) {
 					Codec:           message.CodecH265,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeAU,
+					AU:              []byte{1},
 				},
 			},
 		},
 		{
-			"issue mediamtx/386 (missing metadata)",
+			"issue mediamtx/386 (missing metadata, video + audio)",
 			[]*gortmplib.Track{
 				{Codec: &codecs.H264{
 					SPS: testCodecH264.SPS,
@@ -464,7 +466,7 @@ func TestReadTracks(t *testing.T) {
 			},
 		},
 		{
-			"issue mediamtx/386 (missing metadata)",
+			"issue mediamtx/386 (missing metadata, audio only)",
 			[]*gortmplib.Track{
 				{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
@@ -499,11 +501,12 @@ func TestReadTracks(t *testing.T) {
 					Depth:           message.AudioDepth16,
 					IsStereo:        true,
 					AACType:         message.AudioAACTypeAU,
+					AU:              []byte{1},
 				},
 			},
 		},
 		{
-			"issue mediamtx/3414 (empty audio payload)",
+			"issue mediamtx/3414 (empty AAC config)",
 			[]*gortmplib.Track{
 				{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
@@ -574,6 +577,7 @@ func TestReadTracks(t *testing.T) {
 					Depth:           message.AudioDepth16,
 					IsStereo:        true,
 					AACType:         message.AudioAACTypeAU,
+					AU:              []byte{1},
 				},
 			},
 		},
@@ -623,12 +627,14 @@ func TestReadTracks(t *testing.T) {
 					ChunkStreamID:   4,
 					MessageStreamID: 0x1000000,
 					FourCC:          message.FourCCHEVC,
+					Payload:         []byte{1},
 				},
 				&message.VideoExCodedFrames{
 					ChunkStreamID:   4,
 					MessageStreamID: 0x1000000,
 					FourCC:          message.FourCCHEVC,
 					DTS:             2 * time.Second,
+					Payload:         []byte{1},
 				},
 			},
 		},
@@ -678,12 +684,14 @@ func TestReadTracks(t *testing.T) {
 					ChunkStreamID:   6,
 					MessageStreamID: 0x1000000,
 					FourCC:          message.FourCCHEVC,
+					Payload:         []byte{1},
 				},
 				&message.VideoExCodedFrames{
 					ChunkStreamID:   6,
 					MessageStreamID: 0x1000000,
 					FourCC:          message.FourCCHEVC,
 					DTS:             2 * time.Second,
+					Payload:         []byte{1},
 				},
 			},
 		},
@@ -752,12 +760,14 @@ func TestReadTracks(t *testing.T) {
 					ChunkStreamID:   6,
 					MessageStreamID: 0x1000000,
 					FourCC:          message.FourCCAV1,
+					Payload:         []byte{1},
 				},
 				&message.VideoExCodedFrames{
 					ChunkStreamID:   6,
 					MessageStreamID: 0x1000000,
 					FourCC:          message.FourCCAV1,
 					DTS:             2 * time.Second,
+					Payload:         []byte{1},
 				},
 			},
 		},
@@ -1217,6 +1227,7 @@ func TestReadTracks(t *testing.T) {
 						MessageStreamID: 0x1000000,
 						FourCC:          0x6d703461,
 						DTS:             2 * time.Second,
+						Payload:         []byte{1},
 					},
 				},
 			},
@@ -1368,6 +1379,7 @@ func TestReadTracks(t *testing.T) {
 						MessageStreamID: 0x1000000,
 						FourCC:          0x61766331,
 						PTSDelta:        100000000,
+						Payload:         []byte{1},
 					},
 				},
 			},
@@ -1744,6 +1756,7 @@ func TestReadTracks(t *testing.T) {
 					Codec:           message.CodecH264,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeAU,
+					AU:              []byte{1},
 				},
 			},
 		},
@@ -1793,6 +1806,7 @@ func TestReadTracksErrors(t *testing.T) {
 						MessageStreamID: 0x1000000,
 						FourCC:          message.FourCCAVC,
 						DTS:             0,
+						Payload:         []byte{1},
 					},
 				},
 				&message.VideoExMultitrack{
@@ -1803,6 +1817,7 @@ func TestReadTracksErrors(t *testing.T) {
 						MessageStreamID: 0x1000000,
 						FourCC:          message.FourCCAVC,
 						DTS:             2 * time.Second,
+						Payload:         []byte{1},
 					},
 				},
 			},
@@ -1817,6 +1832,7 @@ func TestReadTracksErrors(t *testing.T) {
 					Codec:           message.CodecH264,
 					Type:            message.VideoTypeAU,
 					DTS:             0,
+					AU:              []byte{1},
 				},
 				&message.AudioExMultitrack{
 					MultitrackType: 0,
@@ -1838,6 +1854,7 @@ func TestReadTracksErrors(t *testing.T) {
 					Codec:           message.CodecH264,
 					Type:            message.VideoTypeAU,
 					DTS:             2 * time.Second,
+					AU:              []byte{1},
 				},
 			},
 		},

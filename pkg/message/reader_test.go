@@ -940,6 +940,31 @@ func FuzzReader(f *testing.F) {
 			return
 		}
 
+		switch msg := msg.(type) {
+		case *AudioExCodedFrames:
+			require.NotEmpty(t, msg.Payload)
+
+		case *Audio:
+			if msg.Codec != CodecMPEG4Audio || msg.AACType != AudioAACTypeConfig {
+				require.NotEmpty(t, msg.AU)
+			}
+
+		case *VideoExCodedFrames:
+			require.NotEmpty(t, msg.Payload)
+
+		case *VideoExFramesX:
+			require.NotEmpty(t, msg.Payload)
+
+		case *Video:
+			if msg.Type == VideoTypeAU {
+				require.NotEmpty(t, msg.AU)
+			}
+		}
+
+		if _, ok := msg.(*UserControlUndocumented); ok {
+			return
+		}
+
 		err = w.Write(msg)
 		require.NoError(t, err)
 	})

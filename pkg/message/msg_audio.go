@@ -106,6 +106,9 @@ func (m *Audio) unmarshal(raw *rawmessage.Message) error {
 				}
 			}
 		} else {
+			if len(raw.Body) < 3 {
+				return fmt.Errorf("invalid body size")
+			}
 			m.AU = raw.Body[2:]
 		}
 	} else {

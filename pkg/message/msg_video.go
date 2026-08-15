@@ -92,6 +92,9 @@ func (m *Video) unmarshal(raw *rawmessage.Message) error {
 		}
 
 	case VideoTypeAU:
+		if len(raw.Body) < 6 {
+			return fmt.Errorf("invalid body size")
+		}
 		m.AU = raw.Body[5:]
 	}
 
