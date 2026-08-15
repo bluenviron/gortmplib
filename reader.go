@@ -53,6 +53,7 @@ type OnDataLPCMFunc func(pts time.Duration, samples []byte)
 func h265FindNALU(array []mp4.HEVCNaluArray, typ h265.NALUType) []byte {
 	for _, entry := range array {
 		if entry.NaluType == byte(typ) && entry.NumNalus == 1 &&
+			len(entry.Nalus[0].NALUnit) >= 2 &&
 			h265.NALUType((entry.Nalus[0].NALUnit[0]>>1)&0b111111) == typ {
 			return entry.Nalus[0].NALUnit
 		}
@@ -607,11 +608,7 @@ func (r *Reader) OnDataH265(track *Track, cb OnDataH26xFunc) {
 					return fmt.Errorf("VPS, SPS or PPS not found")
 				}
 
-				au := [][]byte{
-					vps,
-					sps,
-					pps,
-				}
+				au := [][]byte{vps, sps, pps}
 
 				cb(msg.DTS+msg.PTSDelta, msg.DTS, au)
 
@@ -623,6 +620,12 @@ func (r *Reader) OnDataH265(track *Track, cb OnDataH26xFunc) {
 						return nil
 					}
 					return fmt.Errorf("unable to decode AVCC: %w", err)
+				}
+
+				for _, nalu := range au {
+					if len(nalu) < 2 {
+						return fmt.Errorf("invalid H265 NALU size (%d)", len(nalu))
+					}
 				}
 
 				cb(msg.DTS+msg.PTSDelta, msg.DTS, au)
@@ -640,6 +643,12 @@ func (r *Reader) OnDataH265(track *Track, cb OnDataH26xFunc) {
 				return fmt.Errorf("unable to decode AVCC: %w", err)
 			}
 
+			for _, nalu := range au {
+				if len(nalu) < 2 {
+					return fmt.Errorf("invalid H265 NALU size (%d)", len(nalu))
+				}
+			}
+
 			cb(msg.DTS, msg.DTS, au)
 
 		case *message.VideoExCodedFrames:
@@ -650,6 +659,12 @@ func (r *Reader) OnDataH265(track *Track, cb OnDataH26xFunc) {
 					return nil
 				}
 				return fmt.Errorf("unable to decode AVCC: %w", err)
+			}
+
+			for _, nalu := range au {
+				if len(nalu) < 2 {
+					return fmt.Errorf("invalid H265 NALU size (%d)", len(nalu))
+				}
 			}
 
 			cb(msg.DTS+msg.PTSDelta, msg.DTS, au)
