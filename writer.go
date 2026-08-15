@@ -876,10 +876,6 @@ func (w *Writer) WriteLPCM(track *Track, pts time.Duration, samples []byte) erro
 	rate, _ := audioRateIntToRTMP(codec.SampleRate)
 
 	le := len(samples)
-	if le%2 != 0 {
-		return fmt.Errorf("invalid payload length: %d", le)
-	}
-
 	samplesCopy := append([]byte(nil), samples...)
 
 	// convert from big endian to little endian
