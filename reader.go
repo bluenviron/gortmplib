@@ -607,11 +607,7 @@ func (r *Reader) OnDataH265(track *Track, cb OnDataH26xFunc) {
 					return fmt.Errorf("VPS, SPS or PPS not found")
 				}
 
-				au := [][]byte{
-					vps,
-					sps,
-					pps,
-				}
+				au := [][]byte{vps, sps, pps}
 
 				cb(msg.DTS+msg.PTSDelta, msg.DTS, au)
 

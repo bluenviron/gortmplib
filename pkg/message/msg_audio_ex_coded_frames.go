@@ -17,7 +17,7 @@ type AudioExCodedFrames struct {
 }
 
 func (m *AudioExCodedFrames) unmarshal(raw *rawmessage.Message) error {
-	if len(raw.Body) < 5 {
+	if len(raw.Body) < 6 {
 		return fmt.Errorf("not enough bytes")
 	}
 
