@@ -15,10 +15,6 @@ const (
 	VideoChunkStreamID = 6
 )
 
-func readSigned24(buf []byte) int32 {
-	return int32(uint32(buf[0])<<24|uint32(buf[1])<<16|uint32(buf[2])<<8) >> 8
-}
-
 // video codecs
 const (
 	CodecH264 = 7
@@ -74,7 +70,7 @@ func (m *Video) unmarshal(raw *rawmessage.Message) error {
 		return fmt.Errorf("unsupported video message type: %d", m.Type)
 	}
 
-	m.PTSDelta = time.Duration(readSigned24(raw.Body[2:5])) * time.Millisecond
+	m.PTSDelta = time.Duration(int32(uint32(raw.Body[2])<<24|uint32(raw.Body[3])<<16|uint32(raw.Body[4])<<8)>>8) * time.Millisecond
 
 	switch m.Type {
 	case VideoTypeConfig:
