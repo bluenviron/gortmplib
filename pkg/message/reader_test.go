@@ -1,4 +1,4 @@
-package message
+package message_test
 
 import (
 	"bytes"
@@ -13,16 +13,17 @@ import (
 
 	"github.com/bluenviron/gortmplib/pkg/amf0"
 	"github.com/bluenviron/gortmplib/pkg/bytecounter"
+	"github.com/bluenviron/gortmplib/pkg/message"
 )
 
 var readWriterCases = []struct {
 	name string
-	dec  Message
+	dec  message.Message
 	enc  []byte
 }{
 	{
 		"acknowledge",
-		&Acknowledge{
+		&message.Acknowledge{
 			Value: 45953968,
 		},
 		[]byte{
@@ -32,7 +33,7 @@ var readWriterCases = []struct {
 	},
 	{
 		"abort message",
-		&AbortMessage{
+		&message.AbortMessage{
 			ChunkStreamID: 7,
 		},
 		[]byte{
@@ -42,13 +43,13 @@ var readWriterCases = []struct {
 	},
 	{
 		"audio mpeg1",
-		&Audio{
+		&message.Audio{
 			ChunkStreamID:   7,
 			DTS:             6013806 * time.Millisecond,
 			MessageStreamID: 4534543,
-			Codec:           CodecMPEG1Audio,
-			Rate:            AudioRate44100,
-			Depth:           AudioDepth16,
+			Codec:           message.CodecMPEG1Audio,
+			Rate:            message.AudioRate44100,
+			Depth:           message.AudioDepth16,
 			IsStereo:        true,
 			AU:              []byte{0x01, 0x02, 0x03, 0x04},
 		},
@@ -60,15 +61,15 @@ var readWriterCases = []struct {
 	},
 	{
 		"audio mpeg4",
-		&Audio{
+		&message.Audio{
 			ChunkStreamID:   7,
 			DTS:             6013806 * time.Millisecond,
 			MessageStreamID: 4534543,
-			Codec:           CodecMPEG4Audio,
-			Rate:            AudioRate44100,
-			Depth:           AudioDepth16,
+			Codec:           message.CodecMPEG4Audio,
+			Rate:            message.AudioRate44100,
+			Depth:           message.AudioDepth16,
 			IsStereo:        true,
-			AACType:         AudioAACTypeAU,
+			AACType:         message.AudioAACTypeAU,
 			AU:              []byte{0x5A, 0xC0, 0x77, 0x40},
 		},
 		[]byte{
@@ -79,15 +80,15 @@ var readWriterCases = []struct {
 	},
 	{
 		"audio mpeg4 config",
-		&Audio{
+		&message.Audio{
 			ChunkStreamID:   7,
 			DTS:             6013806 * time.Millisecond,
 			MessageStreamID: 4534543,
-			Codec:           CodecMPEG4Audio,
-			Rate:            AudioRate44100,
-			Depth:           AudioDepth16,
+			Codec:           message.CodecMPEG4Audio,
+			Rate:            message.AudioRate44100,
+			Depth:           message.AudioDepth16,
 			IsStereo:        true,
-			AACType:         AudioAACTypeConfig,
+			AACType:         message.AudioAACTypeConfig,
 			AACConfig: &mpeg4audio.AudioSpecificConfig{
 				Type:          mpeg4audio.ObjectTypeAACLC,
 				SampleRate:    44100,
@@ -102,15 +103,15 @@ var readWriterCases = []struct {
 	},
 	{
 		"audio mpeg4 nil config",
-		&Audio{
+		&message.Audio{
 			ChunkStreamID:   7,
 			DTS:             6013806 * time.Millisecond,
 			MessageStreamID: 4534543,
-			Codec:           CodecMPEG4Audio,
-			Rate:            AudioRate44100,
-			Depth:           AudioDepth16,
+			Codec:           message.CodecMPEG4Audio,
+			Rate:            message.AudioRate44100,
+			Depth:           message.AudioDepth16,
 			IsStereo:        true,
-			AACType:         AudioAACTypeConfig,
+			AACType:         message.AudioAACTypeConfig,
 			AACConfig:       nil,
 		},
 		[]byte{
@@ -120,10 +121,10 @@ var readWriterCases = []struct {
 	},
 	{
 		"audio ex sequence start opus",
-		&AudioExSequenceStart{
+		&message.AudioExSequenceStart{
 			ChunkStreamID:   0x4,
 			MessageStreamID: 0x1000000,
-			FourCC:          FourCCOpus,
+			FourCC:          message.FourCCOpus,
 			OpusConfig: &opus.IDHeader{
 				Version:             0x1,
 				ChannelCount:        0x2,
@@ -142,10 +143,10 @@ var readWriterCases = []struct {
 	},
 	{
 		"audio ex sequence start aac",
-		&AudioExSequenceStart{
+		&message.AudioExSequenceStart{
 			ChunkStreamID:   0x4,
 			MessageStreamID: 0x1000000,
-			FourCC:          FourCCMP4A,
+			FourCC:          message.FourCCMP4A,
 			AACConfig: &mpeg4audio.AudioSpecificConfig{
 				Type:          mpeg4audio.ObjectTypeAACLC,
 				SampleRate:    48000,
@@ -161,10 +162,10 @@ var readWriterCases = []struct {
 	},
 	{
 		"audio ex sequence start ac3",
-		&AudioExSequenceStart{
+		&message.AudioExSequenceStart{
 			ChunkStreamID:   0x4,
 			MessageStreamID: 0x1000000,
-			FourCC:          FourCCAC3,
+			FourCC:          message.FourCCAC3,
 		},
 		[]byte{
 			0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x08,
@@ -174,10 +175,10 @@ var readWriterCases = []struct {
 	},
 	{
 		"audio ex sequence start flac",
-		&AudioExSequenceStart{
+		&message.AudioExSequenceStart{
 			ChunkStreamID:   0x4,
 			MessageStreamID: 0x1000000,
-			FourCC:          FourCCFLAC,
+			FourCC:          message.FourCCFLAC,
 			FlacConfig: &flac.StreamInfo{
 				MinBlockSize: 16,
 				MaxBlockSize: 65535,
@@ -198,10 +199,10 @@ var readWriterCases = []struct {
 	},
 	{
 		"audio ex sequence end",
-		&AudioExSequenceEnd{
+		&message.AudioExSequenceEnd{
 			ChunkStreamID:   4,
 			MessageStreamID: 0x1000000,
-			FourCC:          FourCCOpus,
+			FourCC:          message.FourCCOpus,
 		},
 		[]byte{
 			0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x08,
@@ -211,11 +212,11 @@ var readWriterCases = []struct {
 	},
 	{
 		"audio ex coded frames",
-		&AudioExCodedFrames{
+		&message.AudioExCodedFrames{
 			ChunkStreamID:   4,
 			DTS:             15100 * time.Millisecond,
 			MessageStreamID: 0x1000000,
-			FourCC:          FourCCOpus,
+			FourCC:          message.FourCCOpus,
 			Payload:         []byte{1, 2, 3},
 		},
 		[]byte{
@@ -226,7 +227,7 @@ var readWriterCases = []struct {
 	},
 	{
 		"audio ex multichannel config",
-		&AudioExMultichannelConfig{
+		&message.AudioExMultichannelConfig{
 			ChunkStreamID:       0x4,
 			MessageStreamID:     0x1000000,
 			FourCC:              0x4f707573,
@@ -243,13 +244,13 @@ var readWriterCases = []struct {
 	},
 	{
 		"audio ex multitrack",
-		&AudioExMultitrack{
-			MultitrackType: AudioExMultitrackTypeOneTrack,
+		&message.AudioExMultitrack{
+			MultitrackType: message.AudioExMultitrackTypeOneTrack,
 			TrackID:        1,
-			Wrapped: &AudioExSequenceStart{
+			Wrapped: &message.AudioExSequenceStart{
 				ChunkStreamID:   0x4,
 				MessageStreamID: 0x1000000,
-				FourCC:          FourCCAC3,
+				FourCC:          message.FourCCAC3,
 			},
 		},
 		[]byte{
@@ -260,7 +261,7 @@ var readWriterCases = []struct {
 	},
 	{
 		"command amf0",
-		&CommandAMF0{
+		&message.CommandAMF0{
 			ChunkStreamID:   3,
 			MessageStreamID: 345243,
 			Name:            "i8yythrergre",
@@ -286,7 +287,7 @@ var readWriterCases = []struct {
 	},
 	{
 		"data amf0",
-		&DataAMF0{
+		&message.DataAMF0{
 			ChunkStreamID:   3,
 			MessageStreamID: 345243,
 			Payload: []any{
@@ -304,7 +305,7 @@ var readWriterCases = []struct {
 	},
 	{
 		"set chunk size",
-		&SetChunkSize{
+		&message.SetChunkSize{
 			Value: 10000,
 		},
 		[]byte{
@@ -314,7 +315,7 @@ var readWriterCases = []struct {
 	},
 	{
 		"set peer bandwidth",
-		&SetChunkSize{
+		&message.SetChunkSize{
 			Value: 10000,
 		},
 		[]byte{
@@ -324,7 +325,7 @@ var readWriterCases = []struct {
 	},
 	{
 		"set window ack size",
-		&SetChunkSize{
+		&message.SetChunkSize{
 			Value: 10000,
 		},
 		[]byte{
@@ -334,7 +335,7 @@ var readWriterCases = []struct {
 	},
 	{
 		"user control ping request",
-		&UserControlPingRequest{
+		&message.UserControlPingRequest{
 			ServerTime: 569834435,
 		},
 		[]byte{
@@ -345,7 +346,7 @@ var readWriterCases = []struct {
 	},
 	{
 		"user control ping response",
-		&UserControlPingResponse{
+		&message.UserControlPingResponse{
 			ServerTime: 569834435,
 		},
 		[]byte{
@@ -356,7 +357,7 @@ var readWriterCases = []struct {
 	},
 	{
 		"user control set buffer length",
-		&UserControlSetBufferLength{
+		&message.UserControlSetBufferLength{
 			StreamID:     35534,
 			BufferLength: 235345,
 		},
@@ -368,7 +369,7 @@ var readWriterCases = []struct {
 	},
 	{
 		"user control stream begin",
-		&UserControlStreamBegin{
+		&message.UserControlStreamBegin{
 			StreamID: 35534,
 		},
 		[]byte{
@@ -379,7 +380,7 @@ var readWriterCases = []struct {
 	},
 	{
 		"user control stream dry",
-		&UserControlStreamDry{
+		&message.UserControlStreamDry{
 			StreamID: 35534,
 		},
 		[]byte{
@@ -390,7 +391,7 @@ var readWriterCases = []struct {
 	},
 	{
 		"user control stream eof",
-		&UserControlStreamEOF{
+		&message.UserControlStreamEOF{
 			StreamID: 35534,
 		},
 		[]byte{
@@ -401,7 +402,7 @@ var readWriterCases = []struct {
 	},
 	{
 		"user control stream is recorded",
-		&UserControlStreamIsRecorded{
+		&message.UserControlStreamIsRecorded{
 			StreamID: 35534,
 		},
 		[]byte{
@@ -412,13 +413,13 @@ var readWriterCases = []struct {
 	},
 	{
 		"video",
-		&Video{
+		&message.Video{
 			ChunkStreamID:   6,
 			DTS:             2543534 * time.Millisecond,
 			MessageStreamID: 0x1000000,
-			Codec:           CodecH264,
+			Codec:           message.CodecH264,
 			IsKeyFrame:      true,
-			Type:            VideoTypeAU,
+			Type:            message.VideoTypeAU,
 			PTSDelta:        10 * time.Millisecond,
 			AU:              []byte{0x01, 0x02, 0x03},
 		},
@@ -430,13 +431,13 @@ var readWriterCases = []struct {
 	},
 	{
 		"video negative composition time",
-		&Video{
+		&message.Video{
 			ChunkStreamID:   6,
 			DTS:             2543534 * time.Millisecond,
 			MessageStreamID: 0x1000000,
-			Codec:           CodecH264,
+			Codec:           message.CodecH264,
 			IsKeyFrame:      true,
-			Type:            VideoTypeAU,
+			Type:            message.VideoTypeAU,
 			PTSDelta:        -34 * time.Millisecond,
 			AU:              []byte{0x01, 0x02, 0x03},
 		},
@@ -448,13 +449,13 @@ var readWriterCases = []struct {
 	},
 	{
 		"video h264 config",
-		&Video{
+		&message.Video{
 			ChunkStreamID:   6,
 			DTS:             2543534 * time.Millisecond,
 			MessageStreamID: 0x1000000,
-			Codec:           CodecH264,
+			Codec:           message.CodecH264,
 			IsKeyFrame:      true,
-			Type:            VideoTypeConfig,
+			Type:            message.VideoTypeConfig,
 			AVCConfig: &mp4.AVCDecoderConfiguration{
 				AnyTypeBox:                 mp4.AnyTypeBox{Type: mp4.BoxType{0x61, 0x76, 0x63, 0x43}},
 				ConfigurationVersion:       0x1,
@@ -500,13 +501,13 @@ var readWriterCases = []struct {
 	},
 	{
 		"video h265 config",
-		&Video{
+		&message.Video{
 			ChunkStreamID:   6,
 			DTS:             2543534 * time.Millisecond,
 			MessageStreamID: 0x1000000,
-			Codec:           CodecH265,
+			Codec:           message.CodecH265,
 			IsKeyFrame:      true,
-			Type:            VideoTypeConfig,
+			Type:            message.VideoTypeConfig,
 			HEVCConfig: &mp4.HvcC{
 				ConfigurationVersion: 0x1,
 				GeneralProfileIdc:    0x1,
@@ -554,13 +555,13 @@ var readWriterCases = []struct {
 	},
 	{
 		"video eos",
-		&Video{
+		&message.Video{
 			ChunkStreamID:   6,
 			DTS:             2543534 * time.Millisecond,
 			MessageStreamID: 0x1000000,
-			Codec:           CodecH264,
+			Codec:           message.CodecH264,
 			IsKeyFrame:      false,
-			Type:            VideoTypeEOS,
+			Type:            message.VideoTypeEOS,
 		},
 		[]byte{
 			0x06, 0x26, 0xcf, 0xae, 0x00, 0x00, 0x05, 0x09,
@@ -570,10 +571,10 @@ var readWriterCases = []struct {
 	},
 	{
 		"video ex sequence start av1",
-		&VideoExSequenceStart{
+		&message.VideoExSequenceStart{
 			ChunkStreamID:   6,
 			MessageStreamID: 0x1000000,
-			FourCC:          FourCCAV1,
+			FourCC:          message.FourCCAV1,
 			AV1Config: &mp4.Av1C{
 				Marker:             0x1,
 				Version:            0x1,
@@ -593,10 +594,10 @@ var readWriterCases = []struct {
 	},
 	{
 		"video ex sequence start hevc",
-		&VideoExSequenceStart{
+		&message.VideoExSequenceStart{
 			ChunkStreamID:   4,
 			MessageStreamID: 0x1000000,
-			FourCC:          FourCCHEVC,
+			FourCC:          message.FourCCHEVC,
 			HEVCConfig: &mp4.HvcC{
 				ConfigurationVersion: 0x1,
 				GeneralProfileIdc:    0x1,
@@ -687,10 +688,10 @@ var readWriterCases = []struct {
 	},
 	{
 		"video ex sequence start vp9",
-		&VideoExSequenceStart{
+		&message.VideoExSequenceStart{
 			ChunkStreamID:   6,
 			MessageStreamID: 0x1000000,
-			FourCC:          FourCCVP9,
+			FourCC:          message.FourCCVP9,
 			VP9Config: &mp4.VpcC{
 				FullBox:                 mp4.FullBox{Version: 0x1},
 				Level:                   0x28,
@@ -711,10 +712,10 @@ var readWriterCases = []struct {
 	},
 	{
 		"video ex sequence start h264",
-		&VideoExSequenceStart{
+		&message.VideoExSequenceStart{
 			ChunkStreamID:   0x4,
 			MessageStreamID: 0x1000000,
-			FourCC:          FourCCAVC,
+			FourCC:          message.FourCCAVC,
 			AVCConfig: &mp4.AVCDecoderConfiguration{
 				AnyTypeBox:                 mp4.AnyTypeBox{Type: mp4.BoxType{0x61, 0x76, 0x63, 0x43}},
 				ConfigurationVersion:       0x1,
@@ -760,10 +761,10 @@ var readWriterCases = []struct {
 	},
 	{
 		"video ex sequence end",
-		&VideoExSequenceEnd{
+		&message.VideoExSequenceEnd{
 			ChunkStreamID:   4,
 			MessageStreamID: 0x1000000,
-			FourCC:          FourCCAV1,
+			FourCC:          message.FourCCAV1,
 		},
 		[]byte{
 			0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x09,
@@ -773,11 +774,11 @@ var readWriterCases = []struct {
 	},
 	{
 		"video ex coded frames",
-		&VideoExCodedFrames{
+		&message.VideoExCodedFrames{
 			ChunkStreamID:   4,
 			DTS:             15100 * time.Millisecond,
 			MessageStreamID: 0x1000000,
-			FourCC:          FourCCHEVC,
+			FourCC:          message.FourCCHEVC,
 			PTSDelta:        30 * time.Millisecond,
 			Payload:         []byte{0x01, 0x02, 0x03},
 		},
@@ -789,11 +790,11 @@ var readWriterCases = []struct {
 	},
 	{
 		"video ex coded frames h264",
-		&VideoExCodedFrames{
+		&message.VideoExCodedFrames{
 			ChunkStreamID:   4,
 			DTS:             15100 * time.Millisecond,
 			MessageStreamID: 0x1000000,
-			FourCC:          FourCCAVC,
+			FourCC:          message.FourCCAVC,
 			PTSDelta:        30 * time.Millisecond,
 			Payload:         []byte{0x01, 0x02, 0x03},
 		},
@@ -805,11 +806,11 @@ var readWriterCases = []struct {
 	},
 	{
 		"video ex coded frames negative composition time",
-		&VideoExCodedFrames{
+		&message.VideoExCodedFrames{
 			ChunkStreamID:   4,
 			DTS:             15100 * time.Millisecond,
 			MessageStreamID: 0x1000000,
-			FourCC:          FourCCAVC,
+			FourCC:          message.FourCCAVC,
 			PTSDelta:        -34 * time.Millisecond,
 			Payload:         []byte{0x01, 0x02, 0x03},
 		},
@@ -821,11 +822,11 @@ var readWriterCases = []struct {
 	},
 	{
 		"video ex frames x",
-		&VideoExFramesX{
+		&message.VideoExFramesX{
 			ChunkStreamID:   4,
 			DTS:             15100 * time.Millisecond,
 			MessageStreamID: 0x1000000,
-			FourCC:          FourCCHEVC,
+			FourCC:          message.FourCCHEVC,
 			Payload:         []byte{0x01, 0x02, 0x03},
 		},
 		[]byte{
@@ -836,11 +837,11 @@ var readWriterCases = []struct {
 	},
 	{
 		"video ex frames x h264",
-		&VideoExFramesX{
+		&message.VideoExFramesX{
 			ChunkStreamID:   4,
 			DTS:             15100 * time.Millisecond,
 			MessageStreamID: 0x1000000,
-			FourCC:          FourCCAVC,
+			FourCC:          message.FourCCAVC,
 			Payload:         []byte{0x01, 0x02, 0x03},
 		},
 		[]byte{
@@ -851,7 +852,7 @@ var readWriterCases = []struct {
 	},
 	{
 		"video ex metadata",
-		&VideoExMetadata{
+		&message.VideoExMetadata{
 			ChunkStreamID:   0x6,
 			DTS:             0,
 			MessageStreamID: 0x1000000,
@@ -870,13 +871,13 @@ var readWriterCases = []struct {
 	},
 	{
 		"video ex multitrack",
-		&VideoExMultitrack{
-			MultitrackType: VideoExMultitrackTypeOneTrack,
+		&message.VideoExMultitrack{
+			MultitrackType: message.VideoExMultitrackTypeOneTrack,
 			TrackID:        1,
-			Wrapped: &VideoExSequenceStart{
+			Wrapped: &message.VideoExSequenceStart{
 				ChunkStreamID:   6,
 				MessageStreamID: 0x1000000,
-				FourCC:          FourCCVP9,
+				FourCC:          message.FourCCVP9,
 				VP9Config: &mp4.VpcC{
 					FullBox:                 mp4.FullBox{Version: 0x1},
 					Level:                   0x28,
@@ -902,7 +903,7 @@ func TestReader(t *testing.T) {
 	for _, ca := range readWriterCases {
 		t.Run(ca.name, func(t *testing.T) {
 			bc := bytecounter.NewReader(bytes.NewReader(ca.enc))
-			r := NewReader(bc, bc, nil)
+			r := message.NewReader(bc, bc, nil)
 			dec, err := r.Read()
 			require.NoError(t, err)
 			require.Equal(t, ca.dec, dec)
@@ -918,10 +919,10 @@ func TestReaderNonStandardControlChunkStreamID(t *testing.T) {
 	}
 
 	bc := bytecounter.NewReader(bytes.NewReader(buf))
-	r := NewReader(bc, bc, nil)
+	r := message.NewReader(bc, bc, nil)
 	dec, err := r.Read()
 	require.NoError(t, err)
-	require.Equal(t, &UserControlStreamDry{
+	require.Equal(t, &message.UserControlStreamDry{
 		StreamID: 35534,
 	}, dec)
 }
@@ -948,10 +949,10 @@ func TestReaderUserControlUndocumented(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			bc := bytecounter.NewReader(bytes.NewReader(ca.buf))
-			r := NewReader(bc, bc, nil)
+			r := message.NewReader(bc, bc, nil)
 			dec, err := r.Read()
 			require.NoError(t, err)
-			require.Equal(t, &UserControlUndocumented{}, dec)
+			require.Equal(t, &message.UserControlUndocumented{}, dec)
 		})
 	}
 }
@@ -963,11 +964,11 @@ func FuzzReader(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, b []byte) {
 		bcr := bytecounter.NewReader(bytes.NewReader(b))
-		r := NewReader(bcr, bcr, nil)
+		r := message.NewReader(bcr, bcr, nil)
 
 		var buf bytes.Buffer
 		bcw := bytecounter.NewWriter(&buf)
-		w := NewWriter(bcw, bcw, true)
+		w := message.NewWriter(bcw, bcw, true)
 
 		msg, err := r.Read()
 		if err != nil {
@@ -975,27 +976,27 @@ func FuzzReader(f *testing.F) {
 		}
 
 		switch msg := msg.(type) {
-		case *AudioExCodedFrames:
+		case *message.AudioExCodedFrames:
 			require.NotEmpty(t, msg.Payload)
 
-		case *Audio:
-			if msg.Codec != CodecMPEG4Audio || msg.AACType != AudioAACTypeConfig {
+		case *message.Audio:
+			if msg.Codec != message.CodecMPEG4Audio || msg.AACType != message.AudioAACTypeConfig {
 				require.NotEmpty(t, msg.AU)
 			}
 
-		case *VideoExCodedFrames:
+		case *message.VideoExCodedFrames:
 			require.NotEmpty(t, msg.Payload)
 
-		case *VideoExFramesX:
+		case *message.VideoExFramesX:
 			require.NotEmpty(t, msg.Payload)
 
-		case *Video:
-			if msg.Type == VideoTypeAU {
+		case *message.Video:
+			if msg.Type == message.VideoTypeAU {
 				require.NotEmpty(t, msg.AU)
 			}
 		}
 
-		if _, ok := msg.(*UserControlUndocumented); ok {
+		if _, ok := msg.(*message.UserControlUndocumented); ok {
 			return
 		}
 
