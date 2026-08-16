@@ -792,18 +792,13 @@ func (r *Reader) OnDataG711(track *Track, cb OnDataG711Func) {
 func (r *Reader) OnDataLPCM(track *Track, cb OnDataLPCMFunc) {
 	codec := track.Codec.(*codecs.LPCM)
 	bitDepth := codec.BitDepth
-	sampleSize := codec.BitDepth * codec.ChannelCount / 8
 
 	r.onAudioData[r.audioTrackID(track)] = func(msg message.Message) error {
 		if msg, ok := msg.(*message.Audio); ok {
-			le := len(msg.AU)
-			if le%sampleSize != 0 {
-				return fmt.Errorf("invalid payload length: %d", le)
-			}
-
 			if bitDepth == 16 {
 				// convert from little endian to big endian
-				for i := 0; i < le; i += 2 {
+				le := len(msg.AU)
+				for i := 0; i+2 <= le; i += 2 {
 					msg.AU[i], msg.AU[i+1] = msg.AU[i+1], msg.AU[i]
 				}
 			}
