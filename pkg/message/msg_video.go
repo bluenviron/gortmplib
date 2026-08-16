@@ -70,7 +70,8 @@ func (m *Video) unmarshal(raw *rawmessage.Message) error {
 		return fmt.Errorf("unsupported video message type: %d", m.Type)
 	}
 
-	m.PTSDelta = time.Duration(uint32(raw.Body[2])<<16|uint32(raw.Body[3])<<8|uint32(raw.Body[4])) * time.Millisecond
+	m.PTSDelta = time.Duration(int32(uint32(raw.Body[2])<<24|uint32(raw.Body[3])<<16|
+		uint32(raw.Body[4])<<8)>>8) * time.Millisecond
 
 	switch m.Type {
 	case VideoTypeConfig:
