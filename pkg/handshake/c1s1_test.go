@@ -19,7 +19,7 @@ var c1s1dec = handshake.C1S1{
 
 func TestC1S1Read(t *testing.T) {
 	var c1s1 handshake.C1S1
-	err := c1s1.Read((bytes.NewReader(c1s1enc)))
+	err := c1s1.Read(bytes.NewReader(c1s1enc))
 	require.NoError(t, err)
 	require.Equal(t, c1s1dec, c1s1)
 }

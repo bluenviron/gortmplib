@@ -19,7 +19,7 @@ var c2s2dec = handshake.C2S2{
 
 func TestC2S2Read(t *testing.T) {
 	var c2s2 handshake.C2S2
-	err := c2s2.Read((bytes.NewReader(c2s2enc)))
+	err := c2s2.Read(bytes.NewReader(c2s2enc))
 	require.NoError(t, err)
 	require.Equal(t, c2s2dec, c2s2)
 }
