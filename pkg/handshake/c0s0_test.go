@@ -17,7 +17,7 @@ var c0s0dec = handshake.C0S0{
 
 func TestC0S0Read(t *testing.T) {
 	var c0s0 handshake.C0S0
-	err := c0s0.Read((bytes.NewReader(c0s0enc)))
+	err := c0s0.Read(bytes.NewReader(c0s0enc))
 	require.NoError(t, err)
 	require.Equal(t, c0s0dec, c0s0)
 }

@@ -1195,9 +1195,10 @@ func TestServerConnImplicitAcceptAction(t *testing.T) {
 					IsStereo:        true,
 					AACType:         message.AudioAACTypeConfig,
 					AACConfig: &mpeg4audio.AudioSpecificConfig{
-						Type:         2,
-						SampleRate:   44100,
-						ChannelCount: 2,
+						Type:          2,
+						SampleRate:    44100,
+						ChannelConfig: 2,
+						ChannelCount:  2, //nolint:staticcheck
 					},
 				})
 				require.NoError(t, err)

@@ -199,7 +199,7 @@ func TestReadTracks(t *testing.T) {
 						Type:          2,
 						SampleRate:    44100,
 						ChannelConfig: 2,
-						ChannelCount:  2,
+						ChannelCount:  2, //nolint:staticcheck
 					},
 				}},
 			},
@@ -251,7 +251,7 @@ func TestReadTracks(t *testing.T) {
 						Type:          2,
 						SampleRate:    44100,
 						ChannelConfig: 2,
-						ChannelCount:  2,
+						ChannelCount:  2, //nolint:staticcheck
 					},
 				},
 			},
@@ -373,7 +373,7 @@ func TestReadTracks(t *testing.T) {
 						Type:          2,
 						SampleRate:    44100,
 						ChannelConfig: 2,
-						ChannelCount:  2,
+						ChannelCount:  2, //nolint:staticcheck
 					},
 				}},
 			},
@@ -399,7 +399,7 @@ func TestReadTracks(t *testing.T) {
 						Type:          2,
 						SampleRate:    44100,
 						ChannelConfig: 2,
-						ChannelCount:  2,
+						ChannelCount:  2, //nolint:staticcheck
 					},
 				},
 			},
@@ -416,7 +416,7 @@ func TestReadTracks(t *testing.T) {
 						Type:          2,
 						SampleRate:    44100,
 						ChannelConfig: 2,
-						ChannelCount:  2,
+						ChannelCount:  2, //nolint:staticcheck
 					},
 				}},
 			},
@@ -460,7 +460,7 @@ func TestReadTracks(t *testing.T) {
 						Type:          2,
 						SampleRate:    44100,
 						ChannelConfig: 2,
-						ChannelCount:  2,
+						ChannelCount:  2, //nolint:staticcheck
 					},
 				},
 			},
@@ -473,7 +473,7 @@ func TestReadTracks(t *testing.T) {
 						Type:          2,
 						SampleRate:    44100,
 						ChannelConfig: 2,
-						ChannelCount:  2,
+						ChannelCount:  2, //nolint:staticcheck
 					},
 				}},
 			},
@@ -489,7 +489,7 @@ func TestReadTracks(t *testing.T) {
 					AACConfig: &mpeg4audio.AudioSpecificConfig{
 						Type:         2,
 						SampleRate:   44100,
-						ChannelCount: 2,
+						ChannelCount: 2, //nolint:staticcheck
 					},
 				},
 				&message.Audio{
@@ -513,7 +513,7 @@ func TestReadTracks(t *testing.T) {
 						Type:          2,
 						SampleRate:    44100,
 						ChannelConfig: 2,
-						ChannelCount:  2,
+						ChannelCount:  2, //nolint:staticcheck
 					},
 				}},
 			},
@@ -563,9 +563,10 @@ func TestReadTracks(t *testing.T) {
 					IsStereo:        true,
 					AACType:         message.AudioAACTypeConfig,
 					AACConfig: &mpeg4audio.AudioSpecificConfig{
-						Type:         2,
-						SampleRate:   44100,
-						ChannelCount: 2,
+						Type:          2,
+						SampleRate:    44100,
+						ChannelConfig: 2,
+						ChannelCount:  2, //nolint:staticcheck
 					},
 				},
 				&message.Audio{
@@ -788,7 +789,7 @@ func TestReadTracks(t *testing.T) {
 						Type:          2,
 						SampleRate:    48000,
 						ChannelConfig: 1,
-						ChannelCount:  1,
+						ChannelCount:  1, //nolint:staticcheck
 					},
 				}},
 			},
@@ -1130,7 +1131,7 @@ func TestReadTracks(t *testing.T) {
 						Type:          2,
 						SampleRate:    48000,
 						ChannelConfig: 2,
-						ChannelCount:  2,
+						ChannelCount:  2, //nolint:staticcheck
 					},
 				}},
 				{Codec: &codecs.MPEG4Audio{
@@ -1138,7 +1139,7 @@ func TestReadTracks(t *testing.T) {
 						Type:          2,
 						SampleRate:    48000,
 						ChannelConfig: 2,
-						ChannelCount:  2,
+						ChannelCount:  2, //nolint:staticcheck
 					},
 				}},
 			},
@@ -1213,9 +1214,10 @@ func TestReadTracks(t *testing.T) {
 						MessageStreamID: 0x1000000,
 						FourCC:          0x6d703461,
 						AACConfig: &mpeg4audio.AudioSpecificConfig{
-							Type:         mpeg4audio.ObjectTypeAACLC,
-							SampleRate:   48000,
-							ChannelCount: 2,
+							Type:          mpeg4audio.ObjectTypeAACLC,
+							SampleRate:    48000,
+							ChannelConfig: 2,
+							ChannelCount:  2, //nolint:staticcheck
 						},
 					},
 				},
@@ -1264,7 +1266,7 @@ func TestReadTracks(t *testing.T) {
 						Type:          2,
 						SampleRate:    48000,
 						ChannelConfig: 2,
-						ChannelCount:  2,
+						ChannelCount:  2, //nolint:staticcheck
 					},
 				}},
 			},
@@ -1842,9 +1844,10 @@ func TestReadTracksErrors(t *testing.T) {
 						MessageStreamID: 0x1000000,
 						FourCC:          message.FourCCMP4A,
 						AACConfig: &mpeg4audio.AudioSpecificConfig{
-							Type:         mpeg4audio.ObjectTypeAACLC,
-							SampleRate:   48000,
-							ChannelCount: 2,
+							Type:          mpeg4audio.ObjectTypeAACLC,
+							SampleRate:    48000,
+							ChannelConfig: 2,
+							ChannelCount:  2, //nolint:staticcheck
 						},
 					},
 				},

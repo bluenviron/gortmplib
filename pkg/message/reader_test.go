@@ -93,7 +93,7 @@ var readWriterCases = []struct {
 				Type:          mpeg4audio.ObjectTypeAACLC,
 				SampleRate:    44100,
 				ChannelConfig: 2,
-				ChannelCount:  2,
+				ChannelCount:  2, //nolint:staticcheck
 			},
 		},
 		[]byte{
@@ -151,7 +151,7 @@ var readWriterCases = []struct {
 				Type:          mpeg4audio.ObjectTypeAACLC,
 				SampleRate:    48000,
 				ChannelConfig: 2,
-				ChannelCount:  2,
+				ChannelCount:  2, //nolint:staticcheck
 			},
 		},
 		[]byte{

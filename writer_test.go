@@ -83,9 +83,10 @@ func TestWriter(t *testing.T) {
 
 				tracks = append(tracks, &gortmplib.Track{Codec: &codecs.MPEG4Audio{
 					Config: &mpeg4audio.AudioSpecificConfig{
-						Type:         2,
-						SampleRate:   44100,
-						ChannelCount: 2,
+						Type:          2,
+						SampleRate:    44100,
+						ChannelConfig: 2,
+						ChannelCount:  2, //nolint:staticcheck
 					},
 				}})
 
@@ -418,7 +419,7 @@ func TestWriter(t *testing.T) {
 						Type:          2,
 						SampleRate:    44100,
 						ChannelConfig: 2,
-						ChannelCount:  2,
+						ChannelCount:  2, //nolint:staticcheck
 					},
 				}, msg)
 

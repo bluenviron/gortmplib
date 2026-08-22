@@ -76,7 +76,7 @@ func (wc *writerChunkStream) writeMessage(msg *Message) error {
 					Timestamp:       ts,
 					Type:            msg.Type,
 					MessageStreamID: msg.MessageStreamID,
-					BodyLen:         (bodyLen),
+					BodyLen:         bodyLen,
 					Body:            msg.Body[pos : pos+chunkBodyLen],
 				}, false)
 				if err != nil {
@@ -90,7 +90,7 @@ func (wc *writerChunkStream) writeMessage(msg *Message) error {
 					ChunkStreamID:  msg.ChunkStreamID,
 					TimestampDelta: ts,
 					Type:           msg.Type,
-					BodyLen:        (bodyLen),
+					BodyLen:        bodyLen,
 					Body:           msg.Body[pos : pos+chunkBodyLen],
 				}, false)
 				if err != nil {
