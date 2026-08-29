@@ -2,7 +2,6 @@ package handshake
 
 import (
 	"bytes"
-	"crypto/rand"
 	"fmt"
 	"math/big"
 )
@@ -85,7 +84,7 @@ func dhValidatePublicKey(key []byte) error {
 
 func dhGenerateKeyPair() ([]byte, []byte, error) {
 	priv := make([]byte, dhKeyLength)
-	_, err := rand.Read(priv)
+	_, err := cryptoRandRead(priv)
 	if err != nil {
 		return nil, nil, err
 	}

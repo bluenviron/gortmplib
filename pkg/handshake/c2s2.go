@@ -2,7 +2,6 @@ package handshake
 
 import (
 	"bytes"
-	"crypto/rand"
 	"fmt"
 	"io"
 )
@@ -81,7 +80,7 @@ func (c C2S2) validate(isS2 bool, prevDigest []byte) error {
 
 func (c *C2S2) fillPlain() error {
 	c.Data = make([]byte, c2s2Size-8)
-	_, err := rand.Read(c.Data)
+	_, err := cryptoRandRead(c.Data)
 	return err
 }
 

@@ -3,7 +3,6 @@ package handshake
 import (
 	"bytes"
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/sha256"
 	"fmt"
 	"io"
@@ -137,7 +136,7 @@ func (c C1S1) validate(isS1 bool) ([]byte, []byte, error) {
 
 func (c *C1S1) fillPlain() error {
 	c.Data = make([]byte, c1s1Size-8)
-	_, err := rand.Read(c.Data)
+	_, err := cryptoRandRead(c.Data)
 	return err
 }
 
@@ -148,7 +147,7 @@ func (c *C1S1) fill(isS1 bool, publicKey []byte) ([]byte, error) {
 	}
 
 	var r [1]byte
-	_, err = rand.Read(r[:])
+	_, err = cryptoRandRead(r[:])
 	if err != nil {
 		return nil, err
 	}
