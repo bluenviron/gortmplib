@@ -3,6 +3,7 @@ package handshake
 
 import (
 	"bytes"
+	"crypto/rand"
 	"fmt"
 	"io"
 )
@@ -10,6 +11,8 @@ import (
 const (
 	encryptedVersion = 3<<24 | 5<<16 | 1<<8 | 1
 )
+
+var cryptoRandRead = rand.Read
 
 func doClientEncrypted(rw io.ReadWriter) ([]byte, []byte, error) {
 	var c0 C0S0
@@ -294,5 +297,6 @@ func DoServer(rw io.ReadWriter, strict bool) ([]byte, []byte, error) {
 	if c0.Version == 6 {
 		return doServerEncrypted(rw)
 	}
+
 	return nil, nil, doServerPlain(rw, strict)
 }
