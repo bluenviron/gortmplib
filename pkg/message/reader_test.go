@@ -500,6 +500,23 @@ var readWriterCases = []struct {
 		},
 	},
 	{
+		"video h264 nil config",
+		&message.Video{
+			ChunkStreamID:   6,
+			DTS:             2543534 * time.Millisecond,
+			MessageStreamID: 0x1000000,
+			Codec:           message.CodecH264,
+			IsKeyFrame:      true,
+			Type:            message.VideoTypeConfig,
+			AVCConfig:       nil,
+		},
+		[]byte{
+			0x06, 0x26, 0xcf, 0xae, 0x00, 0x00, 0x05, 0x09,
+			0x01, 0x00, 0x00, 0x00, 0x17, 0x00, 0x00, 0x00,
+			0x00,
+		},
+	},
+	{
 		"video h265 config",
 		&message.Video{
 			ChunkStreamID:   6,
