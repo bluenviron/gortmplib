@@ -583,6 +583,40 @@ func TestReadTracks(t *testing.T) {
 			},
 		},
 		{
+			"issue mediamtx/6132 (empty H264 config)",
+			[]*gortmplib.Track{{Codec: &codecs.H264{
+				SPS: testCodecH264.SPS,
+				PPS: testCodecH264.PPS,
+			}}},
+			[]message.Message{
+				&message.Video{
+					ChunkStreamID:   message.VideoChunkStreamID,
+					MessageStreamID: 0x1000000,
+					Codec:           message.CodecH264,
+					IsKeyFrame:      true,
+					Type:            message.VideoTypeConfig,
+					AVCConfig:       nil,
+				},
+				&message.Video{
+					ChunkStreamID:   message.VideoChunkStreamID,
+					MessageStreamID: 0x1000000,
+					Codec:           message.CodecH264,
+					IsKeyFrame:      true,
+					Type:            message.VideoTypeConfig,
+					AVCConfig:       generateAvcC(testCodecH264.SPS, testCodecH264.PPS),
+				},
+				&message.Video{
+					ChunkStreamID:   message.VideoChunkStreamID,
+					DTS:             2 * time.Second,
+					MessageStreamID: 0x1000000,
+					Codec:           message.CodecH264,
+					IsKeyFrame:      true,
+					Type:            message.VideoTypeAU,
+					AU:              []byte{1},
+				},
+			},
+		},
+		{
 			"issue mediamtx/2232 (xsplit broadcaster)",
 			[]*gortmplib.Track{
 				{Codec: &codecs.H265{
@@ -1959,4 +1993,68 @@ func TestReaderRewind(t *testing.T) {
 	}
 
 	require.Equal(t, 3, receivedCount)
+}
+
+func TestReaderEmptyH264Config(t *testing.T) {
+	messages := []message.Message{
+		&message.Video{
+			ChunkStreamID:   message.VideoChunkStreamID,
+			MessageStreamID: 0x1000000,
+			Codec:           message.CodecH264,
+			IsKeyFrame:      true,
+			Type:            message.VideoTypeConfig,
+			AVCConfig:       nil,
+		},
+		&message.Video{
+			ChunkStreamID:   message.VideoChunkStreamID,
+			MessageStreamID: 0x1000000,
+			Codec:           message.CodecH264,
+			IsKeyFrame:      true,
+			Type:            message.VideoTypeConfig,
+			AVCConfig:       generateAvcC(testCodecH264.SPS, testCodecH264.PPS),
+		},
+		&message.Video{
+			ChunkStreamID:   message.VideoChunkStreamID,
+			DTS:             2 * time.Second,
+			MessageStreamID: 0x1000000,
+			Codec:           message.CodecH264,
+			IsKeyFrame:      true,
+			Type:            message.VideoTypeAU,
+			AU:              []byte{0x00, 0x00, 0x00, 0x02, 0x09, 0xf0},
+		},
+	}
+
+	var buf bytes.Buffer
+	bc := bytecounter.NewReadWriter(&buf)
+	mrw := message.NewReadWriter(bc, bc, true)
+
+	for _, msg := range messages {
+		err := mrw.Write(msg)
+		require.NoError(t, err)
+	}
+
+	c := &dummyConn{rw: &buf}
+	c.initialize()
+
+	r := &gortmplib.Reader{Conn: c}
+	err := r.Initialize()
+	require.NoError(t, err)
+
+	tracks := r.Tracks()
+	require.Equal(t, []*gortmplib.Track{{Codec: &codecs.H264{
+		SPS: testCodecH264.SPS,
+		PPS: testCodecH264.PPS,
+	}}}, tracks)
+
+	receivedCount := 0
+	r.OnDataH264(tracks[0], func(_ time.Duration, _ time.Duration, _ [][]byte) {
+		receivedCount++
+	})
+
+	for range 3 {
+		err = r.Read()
+		require.NoError(t, err)
+	}
+
+	require.Equal(t, 2, receivedCount)
 }

@@ -77,11 +77,13 @@ func (m *Video) unmarshal(raw *rawmessage.Message) error {
 	case VideoTypeConfig:
 		switch m.Codec {
 		case CodecH264:
-			m.AVCConfig = &mp4.AVCDecoderConfiguration{}
-			m.AVCConfig.SetType(mp4.BoxTypeAvcC())
-			_, err := mp4.Unmarshal(bytes.NewReader(raw.Body[5:]), uint64(len(raw.Body[5:])), m.AVCConfig, mp4.Context{})
-			if err != nil {
-				return fmt.Errorf("unable to parse H264 config: %w", err)
+			if len(raw.Body) > 5 {
+				m.AVCConfig = &mp4.AVCDecoderConfiguration{}
+				m.AVCConfig.SetType(mp4.BoxTypeAvcC())
+				_, err := mp4.Unmarshal(bytes.NewReader(raw.Body[5:]), uint64(len(raw.Body[5:])), m.AVCConfig, mp4.Context{})
+				if err != nil {
+					return fmt.Errorf("unable to parse H264 config: %w", err)
+				}
 			}
 
 		case CodecH265:
@@ -109,12 +111,14 @@ func (m Video) marshal() (*rawmessage.Message, error) {
 	case VideoTypeConfig:
 		switch m.Codec {
 		case CodecH264:
-			var buf bytes.Buffer
-			_, err := mp4.Marshal(&buf, m.AVCConfig, mp4.Context{})
-			if err != nil {
-				return nil, err
+			if m.AVCConfig != nil {
+				var buf bytes.Buffer
+				_, err := mp4.Marshal(&buf, m.AVCConfig, mp4.Context{})
+				if err != nil {
+					return nil, err
+				}
+				bodyData = buf.Bytes()
 			}
-			bodyData = buf.Bytes()
 
 		case CodecH265:
 			var buf bytes.Buffer

@@ -381,9 +381,11 @@ func (r *Reader) readTracks() (map[uint8]*Track, map[uint8]*Track, error) {
 			if msg.Type == message.VideoTypeConfig && videoTracks[0] == nil {
 				switch msg.Codec {
 				case message.CodecH264:
-					videoTracks[0], err = h264TrackFromConfig(msg.AVCConfig)
-					if err != nil {
-						return nil, nil, err
+					if msg.AVCConfig != nil {
+						videoTracks[0], err = h264TrackFromConfig(msg.AVCConfig)
+						if err != nil {
+							return nil, nil, err
+						}
 					}
 
 				case message.CodecH265:
@@ -661,6 +663,10 @@ func (r *Reader) OnDataH264(track *Track, cb OnDataH26xFunc) {
 		case *message.Video:
 			switch msg.Type {
 			case message.VideoTypeConfig:
+				if msg.AVCConfig == nil {
+					return nil
+				}
+
 				if msg.AVCConfig.NumOfSequenceParameterSets < 1 {
 					return fmt.Errorf("no SPS found")
 				}
