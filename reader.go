@@ -155,28 +155,10 @@ func videoTrackFromSequenceStart(msg *message.VideoExSequenceStart) (*Track, err
 		return &Track{Codec: &codecs.VP9{}}, nil
 
 	case message.FourCCHEVC:
-		vps := h265FindNALU(msg.HEVCConfig.NaluArrays, h265.NALUType_VPS_NUT)
-		sps := h265FindNALU(msg.HEVCConfig.NaluArrays, h265.NALUType_SPS_NUT)
-		pps := h265FindNALU(msg.HEVCConfig.NaluArrays, h265.NALUType_PPS_NUT)
-		if vps == nil || sps == nil || pps == nil {
-			return nil, fmt.Errorf("H265 parameters are missing")
-		}
-
-		return &Track{Codec: &codecs.H265{
-			VPS: vps,
-			SPS: sps,
-			PPS: pps,
-		}}, nil
+		return h265TrackFromConfig(msg.HEVCConfig)
 
 	case message.FourCCAVC:
-		if len(msg.AVCConfig.SequenceParameterSets) != 1 || len(msg.AVCConfig.PictureParameterSets) != 1 {
-			return nil, fmt.Errorf("H264 parameters are missing")
-		}
-
-		return &Track{Codec: &codecs.H264{
-			SPS: msg.AVCConfig.SequenceParameterSets[0].NALUnit,
-			PPS: msg.AVCConfig.PictureParameterSets[0].NALUnit,
-		}}, nil
+		return h264TrackFromConfig(msg.AVCConfig)
 
 	default:
 		panic("should not happen")
