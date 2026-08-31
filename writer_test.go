@@ -393,7 +393,7 @@ func TestWriter(t *testing.T) {
 					Codec:           message.CodecH264,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					AVCConfig: generateAvcC(
+					AVCConfig: generateAvcC(t,
 						[]byte{
 							0x67, 0x64, 0x00, 0x0c, 0xac, 0x3b, 0x50, 0xb0,
 							0x4b, 0x42, 0x00, 0x00, 0x03, 0x00, 0x02, 0x00,
@@ -580,7 +580,7 @@ func TestWriter(t *testing.T) {
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
 					FourCC:          message.FourCCHEVC,
-					HEVCConfig: generateHvcC(h265DefaultVPS,
+					HEVCConfig: generateHvcC(t, h265DefaultVPS,
 						h265DefaultSPS, h265DefaultPPS),
 				}, msg)
 
@@ -605,7 +605,7 @@ func TestWriter(t *testing.T) {
 					Codec:           message.CodecH264,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					AVCConfig:       generateAvcC(h264DefaultSPS, h264DefaultPPS),
+					AVCConfig:       generateAvcC(t, h264DefaultSPS, h264DefaultPPS),
 				}, msg)
 
 				err = w.WriteH264(tracks[0], 0, 0, [][]byte{{1, 2}})

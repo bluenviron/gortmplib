@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/abema/go-mp4"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h265"
 
 	"github.com/bluenviron/gortmplib/pkg/rawmessage"
 )
@@ -31,6 +32,64 @@ const (
 	VideoTypeEOS    VideoType = 2
 )
 
+func h264FindParams(avcc *mp4.AVCDecoderConfiguration) ([]byte, []byte, error) {
+	if len(avcc.SequenceParameterSets) > 1 || len(avcc.PictureParameterSets) > 1 {
+		return nil, nil, fmt.Errorf("multiple H264 parameters are not supported")
+	}
+
+	if len(avcc.SequenceParameterSets) == 0 || len(avcc.SequenceParameterSets[0].NALUnit) == 0 ||
+		len(avcc.PictureParameterSets) == 0 || len(avcc.PictureParameterSets[0].NALUnit) == 0 {
+		return nil, nil, fmt.Errorf("H264 parameters not provided")
+	}
+
+	return avcc.SequenceParameterSets[0].NALUnit, avcc.PictureParameterSets[0].NALUnit, nil
+}
+
+func h265FindParams(hvcc *mp4.HvcC) ([]byte, []byte, []byte, error) {
+	var vps []byte
+	var sps []byte
+	var pps []byte
+
+	for _, arr := range hvcc.NaluArrays {
+		switch h265.NALUType(arr.NaluType) {
+		case h265.NALUType_VPS_NUT, h265.NALUType_SPS_NUT, h265.NALUType_PPS_NUT:
+			if len(arr.Nalus) != 1 {
+				return nil, nil, nil, fmt.Errorf("multiple H265 parameters are not supported")
+			}
+
+			if len(arr.Nalus[0].NALUnit) == 0 {
+				return nil, nil, nil, fmt.Errorf("H265 parameter not provided")
+			}
+
+			switch h265.NALUType(arr.NaluType) {
+			case h265.NALUType_VPS_NUT:
+				if vps != nil {
+					return nil, nil, nil, fmt.Errorf("multiple H265 VPS are not supported")
+				}
+				vps = arr.Nalus[0].NALUnit
+
+			case h265.NALUType_SPS_NUT:
+				if sps != nil {
+					return nil, nil, nil, fmt.Errorf("multiple H265 SPS are not supported")
+				}
+				sps = arr.Nalus[0].NALUnit
+
+			case h265.NALUType_PPS_NUT:
+				if pps != nil {
+					return nil, nil, nil, fmt.Errorf("multiple H265 PPS are not supported")
+				}
+				pps = arr.Nalus[0].NALUnit
+			}
+		}
+	}
+
+	if vps == nil || sps == nil || pps == nil {
+		return nil, nil, nil, fmt.Errorf("H265 parameters not provided")
+	}
+
+	return vps, sps, pps, nil
+}
+
 // Video is a video message.
 type Video struct {
 	ChunkStreamID   byte
@@ -40,9 +99,18 @@ type Video struct {
 	IsKeyFrame      bool
 	Type            VideoType
 	PTSDelta        time.Duration
-	HEVCConfig      *mp4.HvcC                    // Type = VideoTypeConfig, Codec = CodecH265
-	AVCConfig       *mp4.AVCDecoderConfiguration // Type = VideoTypeConfig, Codec = CodecH264
-	AU              []byte                       // Type = VideoTypeAU
+
+	// only in case of Type = VideoTypeConfig, Codec = CodecH265.
+	// Guaranteed to contain non-empty VPS, SPS and PPS NALUs.
+	HEVCConfig *mp4.HvcC
+
+	// only in case of Type = VideoTypeConfig, Codec = CodecH264.
+	// Might be nil.
+	// When non-nil, guaranteed to contain non-empty SPS and PPS NALUs.
+	AVCConfig *mp4.AVCDecoderConfiguration
+
+	// only in case of Type = VideoTypeAU.
+	AU []byte
 }
 
 func (m *Video) unmarshal(raw *rawmessage.Message) error {
@@ -84,11 +152,21 @@ func (m *Video) unmarshal(raw *rawmessage.Message) error {
 				if err != nil {
 					return fmt.Errorf("unable to parse H264 config: %w", err)
 				}
+
+				_, _, err = h264FindParams(m.AVCConfig)
+				if err != nil {
+					return fmt.Errorf("unable to parse H264 config: %w", err)
+				}
 			}
 
 		case CodecH265:
 			m.HEVCConfig = &mp4.HvcC{}
 			_, err := mp4.Unmarshal(bytes.NewReader(raw.Body[5:]), uint64(len(raw.Body[5:])), m.HEVCConfig, mp4.Context{})
+			if err != nil {
+				return fmt.Errorf("unable to parse H265 config: %w", err)
+			}
+
+			_, _, _, err = h265FindParams(m.HEVCConfig)
 			if err != nil {
 				return fmt.Errorf("unable to parse H265 config: %w", err)
 			}

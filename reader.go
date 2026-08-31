@@ -21,73 +21,88 @@ const (
 )
 
 // OnDataAV1Func is the prototype of the callback passed to OnDataAV1().
+// tu (temporal unit) is guaranteed to contain at least 1 element, each with at least 1 byte.
 type OnDataAV1Func func(pts time.Duration, tu [][]byte)
 
 // OnDataVP9Func is the prototype of the callback passed to OnDataVP9().
+// frame is guaranteed to contain at least 1 byte.
 type OnDataVP9Func func(pts time.Duration, frame []byte)
 
 // OnDataH26xFunc is the prototype of the callback passed to OnDataH26x().
+// au (access unit) is guaranteed to contain at least 1 element, each with at least 1 byte.
 type OnDataH26xFunc func(pts time.Duration, dts time.Duration, au [][]byte)
 
 // OnDataOpusFunc is the prototype of the callback passed to OnDataOpus().
+// packet is guaranteed to contain at least 1 byte.
 type OnDataOpusFunc func(pts time.Duration, packet []byte)
 
 // OnDataFLACFunc is the prototype of the callback passed to OnDataFLAC().
+// frame is guaranteed to contain at least 1 byte.
 type OnDataFLACFunc func(pts time.Duration, frame []byte)
 
 // OnDataMPEG4AudioFunc is the prototype of the callback passed to OnDataMPEG4Audio().
+// au is guaranteed to contain at least 1 byte.
 type OnDataMPEG4AudioFunc func(pts time.Duration, au []byte)
 
 // OnDataMPEG1AudioFunc is the prototype of the callback passed to OnDataMPEG1Audio().
+// frame is guaranteed to contain at least 1 byte.
 type OnDataMPEG1AudioFunc func(pts time.Duration, frame []byte)
 
 // OnDataAC3Func is the prototype of the callback passed to OnDataAC3().
+// frame is guaranteed to contain at least 1 byte.
 type OnDataAC3Func func(pts time.Duration, frame []byte)
 
 // OnDataG711Func is the prototype of the callback passed to OnDataG711().
+// samples is guaranteed to contain at least 1 byte.
 type OnDataG711Func func(pts time.Duration, samples []byte)
 
 // OnDataLPCMFunc is the prototype of the callback passed to OnDataLPCM().
+// samples is guaranteed to contain at least 1 byte.
 type OnDataLPCMFunc func(pts time.Duration, samples []byte)
 
-func h265FindNALU(array []mp4.HEVCNaluArray, typ h265.NALUType) []byte {
-	for _, entry := range array {
-		if entry.NaluType == byte(typ) && entry.NumNalus == 1 &&
-			h265.NALUType((entry.Nalus[0].NALUnit[0]>>1)&0b111111) == typ {
-			return entry.Nalus[0].NALUnit
+func h265FindParams(hvcc *mp4.HvcC) ([]byte, []byte, []byte, error) {
+	var vps []byte
+	var sps []byte
+	var pps []byte
+
+	for _, arr := range hvcc.NaluArrays {
+		switch h265.NALUType(arr.NaluType) {
+		case h265.NALUType_VPS_NUT, h265.NALUType_SPS_NUT, h265.NALUType_PPS_NUT:
+			if len(arr.Nalus) != 1 {
+				return nil, nil, nil, fmt.Errorf("multiple H265 parameters are not supported")
+			}
+
+			if len(arr.Nalus[0].NALUnit) == 0 {
+				return nil, nil, nil, fmt.Errorf("H265 parameter not provided")
+			}
+
+			switch h265.NALUType(arr.NaluType) {
+			case h265.NALUType_VPS_NUT:
+				if vps != nil {
+					return nil, nil, nil, fmt.Errorf("multiple H265 VPS are not supported")
+				}
+				vps = arr.Nalus[0].NALUnit
+
+			case h265.NALUType_SPS_NUT:
+				if sps != nil {
+					return nil, nil, nil, fmt.Errorf("multiple H265 SPS are not supported")
+				}
+				sps = arr.Nalus[0].NALUnit
+
+			case h265.NALUType_PPS_NUT:
+				if pps != nil {
+					return nil, nil, nil, fmt.Errorf("multiple H265 PPS are not supported")
+				}
+				pps = arr.Nalus[0].NALUnit
+			}
 		}
 	}
-	return nil
-}
-
-func h264TrackFromConfig(avcC *mp4.AVCDecoderConfiguration) (*Track, error) {
-	if avcC.NumOfSequenceParameterSets < 1 {
-		return nil, fmt.Errorf("no SPS found")
-	}
-	if avcC.NumOfPictureParameterSets < 1 {
-		return nil, fmt.Errorf("no PPS found")
-	}
-
-	return &Track{Codec: &codecs.H264{
-		SPS: avcC.SequenceParameterSets[0].NALUnit,
-		PPS: avcC.PictureParameterSets[0].NALUnit,
-	}}, nil
-}
-
-func h265TrackFromConfig(hvcC *mp4.HvcC) (*Track, error) {
-	vps := h265FindNALU(hvcC.NaluArrays, h265.NALUType_VPS_NUT)
-	sps := h265FindNALU(hvcC.NaluArrays, h265.NALUType_SPS_NUT)
-	pps := h265FindNALU(hvcC.NaluArrays, h265.NALUType_PPS_NUT)
 
 	if vps == nil || sps == nil || pps == nil {
-		return nil, fmt.Errorf("VPS, SPS or PPS not found")
+		return nil, nil, nil, fmt.Errorf("H265 parameters not provided")
 	}
 
-	return &Track{Codec: &codecs.H265{
-		VPS: vps,
-		SPS: sps,
-		PPS: pps,
-	}}, nil
+	return vps, sps, pps, nil
 }
 
 func audioTrackFromData(msg *message.Audio) (*Track, error) {
@@ -155,10 +170,21 @@ func videoTrackFromSequenceStart(msg *message.VideoExSequenceStart) (*Track, err
 		return &Track{Codec: &codecs.VP9{}}, nil
 
 	case message.FourCCHEVC:
-		return h265TrackFromConfig(msg.HEVCConfig)
+		// VPS, SPS, PPS are guaranteed to be present by message.VideoExSequenceStart
+		vps, sps, pps, _ := h265FindParams(msg.HEVCConfig)
+
+		return &Track{Codec: &codecs.H265{
+			VPS: vps,
+			SPS: sps,
+			PPS: pps,
+		}}, nil
 
 	case message.FourCCAVC:
-		return h264TrackFromConfig(msg.AVCConfig)
+		// SPS, PPS are guaranteed to be present by message.VideoExSequenceStart
+		return &Track{Codec: &codecs.H264{
+			SPS: msg.AVCConfig.SequenceParameterSets[0].NALUnit,
+			PPS: msg.AVCConfig.PictureParameterSets[0].NALUnit,
+		}}, nil
 
 	default:
 		panic("should not happen")
@@ -364,17 +390,22 @@ func (r *Reader) readTracks() (map[uint8]*Track, map[uint8]*Track, error) {
 				switch msg.Codec {
 				case message.CodecH264:
 					if msg.AVCConfig != nil {
-						videoTracks[0], err = h264TrackFromConfig(msg.AVCConfig)
-						if err != nil {
-							return nil, nil, err
-						}
+						// SPS, PPS are guaranteed to be present by message.Video
+						videoTracks[0] = &Track{Codec: &codecs.H264{
+							SPS: msg.AVCConfig.SequenceParameterSets[0].NALUnit,
+							PPS: msg.AVCConfig.PictureParameterSets[0].NALUnit,
+						}}
 					}
 
 				case message.CodecH265:
-					videoTracks[0], err = h265TrackFromConfig(msg.HEVCConfig)
-					if err != nil {
-						return nil, nil, err
-					}
+					// VPS, SPS, PPS are guaranteed to be present by message.Video
+					vps, sps, pps, _ := h265FindParams(msg.HEVCConfig)
+
+					videoTracks[0] = &Track{Codec: &codecs.H265{
+						VPS: vps,
+						SPS: sps,
+						PPS: pps,
+					}}
 				}
 			}
 
@@ -583,13 +614,8 @@ func (r *Reader) OnDataH265(track *Track, cb OnDataH26xFunc) {
 		case *message.Video:
 			switch msg.Type {
 			case message.VideoTypeConfig:
-				vps := h265FindNALU(msg.HEVCConfig.NaluArrays, h265.NALUType_VPS_NUT)
-				sps := h265FindNALU(msg.HEVCConfig.NaluArrays, h265.NALUType_SPS_NUT)
-				pps := h265FindNALU(msg.HEVCConfig.NaluArrays, h265.NALUType_PPS_NUT)
-
-				if vps == nil || sps == nil || pps == nil {
-					return fmt.Errorf("VPS, SPS or PPS not found")
-				}
+				// VPS, SPS, PPS are guaranteed to be present by message.Video
+				vps, sps, pps, _ := h265FindParams(msg.HEVCConfig)
 
 				au := [][]byte{vps, sps, pps}
 
@@ -645,23 +671,15 @@ func (r *Reader) OnDataH264(track *Track, cb OnDataH26xFunc) {
 		case *message.Video:
 			switch msg.Type {
 			case message.VideoTypeConfig:
-				if msg.AVCConfig == nil {
-					return nil
-				}
+				if msg.AVCConfig != nil {
+					// SPS, PPS are guaranteed to be present by message.Video
+					au := [][]byte{
+						msg.AVCConfig.SequenceParameterSets[0].NALUnit,
+						msg.AVCConfig.PictureParameterSets[0].NALUnit,
+					}
 
-				if msg.AVCConfig.NumOfSequenceParameterSets < 1 {
-					return fmt.Errorf("no SPS found")
+					cb(msg.DTS+msg.PTSDelta, msg.DTS, au)
 				}
-				if msg.AVCConfig.NumOfPictureParameterSets < 1 {
-					return fmt.Errorf("no PPS found")
-				}
-
-				au := [][]byte{
-					msg.AVCConfig.SequenceParameterSets[0].NALUnit,
-					msg.AVCConfig.PictureParameterSets[0].NALUnit,
-				}
-
-				cb(msg.DTS+msg.PTSDelta, msg.DTS, au)
 
 			case message.VideoTypeAU:
 				var au h264.AVCC
