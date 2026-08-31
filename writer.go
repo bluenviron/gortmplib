@@ -47,11 +47,11 @@ var (
 	h264DefaultPPS = []byte{0x08, 0x06, 0x07, 0x08}
 )
 
-func generateHvcC(vps, sps, pps []byte) *mp4.HvcC {
+func generateHvcC(vps, sps, pps []byte) (*mp4.HvcC, error) {
 	var psps h265.SPS
 	err := psps.Unmarshal(sps)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return &mp4.HvcC{
@@ -105,14 +105,14 @@ func generateHvcC(vps, sps, pps []byte) *mp4.HvcC {
 				}},
 			},
 		},
-	}
+	}, nil
 }
 
-func generateAvcC(sps, pps []byte) *mp4.AVCDecoderConfiguration {
+func generateAvcC(sps, pps []byte) (*mp4.AVCDecoderConfiguration, error) {
 	var psps h264.SPS
 	err := psps.Unmarshal(sps)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return &mp4.AVCDecoderConfiguration{ // <avcc/>
@@ -140,7 +140,7 @@ func generateAvcC(sps, pps []byte) *mp4.AVCDecoderConfiguration {
 				NALUnit: pps,
 			},
 		},
-	}
+	}, nil
 }
 
 func audioRateRTMPToInt(v message.AudioRate) int {
@@ -382,11 +382,17 @@ func (w *Writer) writeTracks() error {
 				pps = h265DefaultPPS
 			}
 
+			var hvcc *mp4.HvcC
+			hvcc, err = generateHvcC(vps, sps, pps)
+			if err != nil {
+				return err
+			}
+
 			var msg message.Message = &message.VideoExSequenceStart{
 				ChunkStreamID:   message.VideoChunkStreamID,
 				MessageStreamID: 0x1000000,
 				FourCC:          message.FourCCHEVC,
-				HEVCConfig:      generateHvcC(vps, sps, pps),
+				HEVCConfig:      hvcc,
 			}
 
 			if id != 0 {
@@ -409,6 +415,12 @@ func (w *Writer) writeTracks() error {
 				pps = h264DefaultPPS
 			}
 
+			var avcc *mp4.AVCDecoderConfiguration
+			avcc, err = generateAvcC(sps, pps)
+			if err != nil {
+				return err
+			}
+
 			if id == 0 {
 				err = w.Conn.Write(&message.Video{
 					ChunkStreamID:   message.VideoChunkStreamID,
@@ -416,7 +428,7 @@ func (w *Writer) writeTracks() error {
 					Codec:           message.CodecH264,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					AVCConfig:       generateAvcC(sps, pps),
+					AVCConfig:       avcc,
 				})
 				if err != nil {
 					return err
@@ -429,7 +441,7 @@ func (w *Writer) writeTracks() error {
 						ChunkStreamID:   message.VideoChunkStreamID,
 						MessageStreamID: 0x1000000,
 						FourCC:          message.FourCCAVC,
-						AVCConfig:       generateAvcC(sps, pps),
+						AVCConfig:       avcc,
 					},
 				})
 				if err != nil {
