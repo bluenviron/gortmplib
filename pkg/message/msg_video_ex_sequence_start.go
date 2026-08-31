@@ -14,10 +14,20 @@ type VideoExSequenceStart struct {
 	ChunkStreamID   byte
 	MessageStreamID uint32
 	FourCC          FourCC
-	AV1Config       *mp4.Av1C
-	VP9Config       *mp4.VpcC
-	HEVCConfig      *mp4.HvcC
-	AVCConfig       *mp4.AVCDecoderConfiguration
+
+	// only in case of FourCC = FourCCAV1.
+	AV1Config *mp4.Av1C
+
+	// only in case of FourCC = FourCCVP9.
+	VP9Config *mp4.VpcC
+
+	// only in case of FourCC = FourCCHEVC.
+	// Guaranteed to contain non-empty VPS, SPS and PPS NALUs.
+	HEVCConfig *mp4.HvcC
+
+	// only in case of FourCC = FourCCAVC.
+	// Guaranteed to contain non-empty SPS and PPS NALUs.
+	AVCConfig *mp4.AVCDecoderConfiguration
 }
 
 func (m *VideoExSequenceStart) unmarshal(raw *rawmessage.Message) error {
@@ -51,12 +61,22 @@ func (m *VideoExSequenceStart) unmarshal(raw *rawmessage.Message) error {
 			return fmt.Errorf("invalid H265 configuration: %w", err)
 		}
 
+		_, _, _, err = h265FindParams(m.HEVCConfig)
+		if err != nil {
+			return fmt.Errorf("unable to parse H265 config: %w", err)
+		}
+
 	case FourCCAVC:
 		m.AVCConfig = &mp4.AVCDecoderConfiguration{}
 		m.AVCConfig.SetType(mp4.BoxTypeAvcC())
 		_, err := mp4.Unmarshal(bytes.NewReader(raw.Body[5:]), uint64(len(raw.Body[5:])), m.AVCConfig, mp4.Context{})
 		if err != nil {
 			return fmt.Errorf("invalid H264 configuration: %w", err)
+		}
+
+		_, _, err = h264FindParams(m.AVCConfig)
+		if err != nil {
+			return fmt.Errorf("unable to parse H264 config: %w", err)
 		}
 
 	default:

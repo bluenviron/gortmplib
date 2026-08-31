@@ -2,6 +2,7 @@ package gortmplib_test
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"testing"
 	"time"
@@ -51,12 +52,10 @@ var testCodecH265 = &codecs.H265{
 	},
 }
 
-func generateAvcC(sps, pps []byte) *mp4.AVCDecoderConfiguration {
+func generateAvcC(t *testing.T, sps, pps []byte) *mp4.AVCDecoderConfiguration {
 	var psps h264.SPS
 	err := psps.Unmarshal(sps)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	return &mp4.AVCDecoderConfiguration{ // <avcc/>
 		AnyTypeBox: mp4.AnyTypeBox{
@@ -86,12 +85,10 @@ func generateAvcC(sps, pps []byte) *mp4.AVCDecoderConfiguration {
 	}
 }
 
-func generateHvcC(vps, sps, pps []byte) *mp4.HvcC {
+func generateHvcC(t *testing.T, vps, sps, pps []byte) *mp4.HvcC {
 	var psps h265.SPS
 	err := psps.Unmarshal(sps)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	return &mp4.HvcC{
 		ConfigurationVersion:        1,
@@ -178,10 +175,6 @@ func (c *dummyConn) Write(msg message.Message) error {
 }
 
 func TestReadTracks(t *testing.T) {
-	var spsp h265.SPS
-	err := spsp.Unmarshal(testCodecH265.SPS)
-	require.NoError(t, err)
-
 	for _, ca := range []struct {
 		name     string
 		tracks   []*gortmplib.Track
@@ -236,7 +229,7 @@ func TestReadTracks(t *testing.T) {
 					Codec:           message.CodecH264,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					AVCConfig:       generateAvcC(testCodecH264.SPS, testCodecH264.PPS),
+					AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 				},
 				&message.Audio{
 					ChunkStreamID:   message.AudioChunkStreamID,
@@ -295,7 +288,7 @@ func TestReadTracks(t *testing.T) {
 					Codec:           message.CodecH264,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					AVCConfig:       generateAvcC(testCodecH264.SPS, testCodecH264.PPS),
+					AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 				},
 				&message.Video{
 					ChunkStreamID:   message.VideoChunkStreamID,
@@ -348,7 +341,7 @@ func TestReadTracks(t *testing.T) {
 					Codec:           message.CodecH265,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					HEVCConfig:      generateHvcC(testCodecH265.VPS, testCodecH265.SPS, testCodecH265.PPS),
+					HEVCConfig:      generateHvcC(t, testCodecH265.VPS, testCodecH265.SPS, testCodecH265.PPS),
 				},
 				&message.Video{
 					ChunkStreamID:   message.VideoChunkStreamID,
@@ -384,7 +377,7 @@ func TestReadTracks(t *testing.T) {
 					Codec:           message.CodecH264,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					AVCConfig:       generateAvcC(testCodecH264.SPS, testCodecH264.PPS),
+					AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 				},
 				&message.Audio{
 					ChunkStreamID:   message.AudioChunkStreamID,
@@ -445,7 +438,7 @@ func TestReadTracks(t *testing.T) {
 					Codec:           message.CodecH264,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					AVCConfig:       generateAvcC(testCodecH264.SPS, testCodecH264.PPS),
+					AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 				},
 				&message.Audio{
 					ChunkStreamID:   message.AudioChunkStreamID,
@@ -603,7 +596,7 @@ func TestReadTracks(t *testing.T) {
 					Codec:           message.CodecH264,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					AVCConfig:       generateAvcC(testCodecH264.SPS, testCodecH264.PPS),
+					AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 				},
 				&message.Video{
 					ChunkStreamID:   message.VideoChunkStreamID,
@@ -656,7 +649,7 @@ func TestReadTracks(t *testing.T) {
 					ChunkStreamID:   4,
 					MessageStreamID: 0x1000000,
 					FourCC:          message.FourCCHEVC,
-					HEVCConfig:      generateHvcC(testCodecH265.VPS, testCodecH265.SPS, testCodecH265.PPS),
+					HEVCConfig:      generateHvcC(t, testCodecH265.VPS, testCodecH265.SPS, testCodecH265.PPS),
 				},
 				&message.VideoExCodedFrames{
 					ChunkStreamID:   4,
@@ -713,7 +706,7 @@ func TestReadTracks(t *testing.T) {
 					ChunkStreamID:   4,
 					MessageStreamID: 0x1000000,
 					FourCC:          message.FourCCHEVC,
-					HEVCConfig:      generateHvcC(testCodecH265.VPS, testCodecH265.SPS, testCodecH265.PPS),
+					HEVCConfig:      generateHvcC(t, testCodecH265.VPS, testCodecH265.SPS, testCodecH265.PPS),
 				},
 				&message.VideoExCodedFrames{
 					ChunkStreamID:   6,
@@ -860,7 +853,7 @@ func TestReadTracks(t *testing.T) {
 					Codec:           0x7,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					AVCConfig: generateAvcC(
+					AVCConfig: generateAvcC(t,
 						[]byte{
 							0x67, 0x64, 0x00, 0x1f, 0xac, 0x2c, 0x6a, 0x81,
 							0x40, 0x16, 0xe9, 0xb8, 0x28, 0x08, 0x2a, 0x00,
@@ -951,7 +944,7 @@ func TestReadTracks(t *testing.T) {
 					Codec:           message.CodecH264,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					AVCConfig:       generateAvcC(testCodecH264.SPS, testCodecH264.PPS),
+					AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 				},
 				&message.Video{
 					ChunkStreamID:   message.VideoChunkStreamID,
@@ -1229,7 +1222,7 @@ func TestReadTracks(t *testing.T) {
 					Codec:           0x7,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					AVCConfig: generateAvcC(
+					AVCConfig: generateAvcC(t,
 						[]byte{
 							0x67, 0x64, 0x00, 0x2a, 0xac, 0x2b, 0x20, 0x0f,
 							0x00, 0x44, 0xfc, 0xb8, 0x0b, 0x50, 0x10, 0x10,
@@ -1356,7 +1349,7 @@ func TestReadTracks(t *testing.T) {
 					Codec:           0x7,
 					IsKeyFrame:      true,
 					Type:            0x0,
-					AVCConfig: generateAvcC(
+					AVCConfig: generateAvcC(t,
 						[]byte{
 							0x67, 0x64, 0x00, 0x2a, 0xac, 0x2c, 0xac, 0x07,
 							0x80, 0x22, 0x7e, 0x5c, 0x05, 0xa8, 0x08, 0x08,
@@ -1775,7 +1768,7 @@ func TestReadTracks(t *testing.T) {
 					Codec:           message.CodecH264,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					AVCConfig:       generateAvcC(testCodecH264.SPS, testCodecH264.PPS),
+					AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 				},
 				&message.Video{
 					ChunkStreamID:   message.VideoChunkStreamID,
@@ -1783,7 +1776,7 @@ func TestReadTracks(t *testing.T) {
 					Codec:           message.CodecH264,
 					IsKeyFrame:      true,
 					Type:            message.VideoTypeConfig,
-					AVCConfig:       generateAvcC(testCodecH264.SPS, testCodecH264.PPS),
+					AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 				},
 				&message.Video{
 					ChunkStreamID:   message.VideoChunkStreamID,
@@ -1803,7 +1796,7 @@ func TestReadTracks(t *testing.T) {
 			mrw := message.NewReadWriter(bc, bc, true)
 
 			for _, msg := range ca.messages {
-				err = mrw.Write(msg)
+				err := mrw.Write(msg)
 				require.NoError(t, err)
 			}
 
@@ -1815,7 +1808,7 @@ func TestReadTracks(t *testing.T) {
 			r := &gortmplib.Reader{
 				Conn: c,
 			}
-			err = r.Initialize()
+			err := r.Initialize()
 			require.NoError(t, err)
 
 			tracks := r.Tracks()
@@ -1924,7 +1917,7 @@ func TestReaderRewind(t *testing.T) {
 			Codec:           message.CodecH264,
 			IsKeyFrame:      true,
 			Type:            message.VideoTypeConfig,
-			AVCConfig:       generateAvcC(testCodecH264.SPS, testCodecH264.PPS),
+			AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 		},
 		&message.Video{
 			ChunkStreamID:   message.VideoChunkStreamID,
@@ -1987,12 +1980,17 @@ func TestReaderRewind(t *testing.T) {
 		receivedCount++
 	})
 
-	for range 3 {
+	for {
 		err = r.Read()
-		require.NoError(t, err)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			t.Error(err)
+		}
 	}
 
-	require.Equal(t, 3, receivedCount)
+	require.Equal(t, 4, receivedCount)
 }
 
 func TestReaderEmptyH264Config(t *testing.T) {
@@ -2011,7 +2009,7 @@ func TestReaderEmptyH264Config(t *testing.T) {
 			Codec:           message.CodecH264,
 			IsKeyFrame:      true,
 			Type:            message.VideoTypeConfig,
-			AVCConfig:       generateAvcC(testCodecH264.SPS, testCodecH264.PPS),
+			AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 		},
 		&message.Video{
 			ChunkStreamID:   message.VideoChunkStreamID,
@@ -2051,10 +2049,149 @@ func TestReaderEmptyH264Config(t *testing.T) {
 		receivedCount++
 	})
 
-	for range 3 {
+	for {
 		err = r.Read()
-		require.NoError(t, err)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			t.Error(err)
+		}
 	}
 
 	require.Equal(t, 2, receivedCount)
+}
+
+func TestReaderEmptyH26xConfigNALUs(t *testing.T) {
+	t.Run("H264 first", func(t *testing.T) {
+		messages := []message.Message{
+			&message.Video{
+				ChunkStreamID:   message.VideoChunkStreamID,
+				MessageStreamID: 0x1000000,
+				Codec:           message.CodecH264,
+				IsKeyFrame:      true,
+				Type:            message.VideoTypeConfig,
+				AVCConfig: &mp4.AVCDecoderConfiguration{ // <avcc/>
+					AnyTypeBox:                 mp4.AnyTypeBox{Type: mp4.BoxTypeAvcC()},
+					ConfigurationVersion:       0x1,
+					Profile:                    0x4d,
+					ProfileCompatibility:       0x40,
+					Level:                      0x1e,
+					Reserved:                   0x3f,
+					LengthSizeMinusOne:         0x3,
+					Reserved2:                  0x7,
+					NumOfSequenceParameterSets: 1,
+					SequenceParameterSets:      []mp4.AVCParameterSet{{NALUnit: nil}},
+					NumOfPictureParameterSets:  1,
+					PictureParameterSets:       []mp4.AVCParameterSet{{NALUnit: nil}},
+				},
+			},
+			&message.Video{
+				ChunkStreamID:   message.VideoChunkStreamID,
+				DTS:             2 * time.Second,
+				MessageStreamID: 0x1000000,
+				Codec:           message.CodecH264,
+				IsKeyFrame:      true,
+				Type:            message.VideoTypeAU,
+				AU:              []byte{0x00, 0x00, 0x00, 0x02, 0x09, 0xf0},
+			},
+		}
+
+		var buf bytes.Buffer
+		bc := bytecounter.NewReadWriter(&buf)
+		mrw := message.NewReadWriter(bc, bc, true)
+
+		for _, msg := range messages {
+			err := mrw.Write(msg)
+			require.NoError(t, err)
+		}
+
+		c := &dummyConn{rw: &buf}
+		c.initialize()
+
+		r := &gortmplib.Reader{Conn: c}
+		err := r.Initialize()
+		require.EqualError(t, err, "unable to parse H264 config: H264 parameters not provided")
+	})
+
+	t.Run("H264 following", func(t *testing.T) {
+		messages := []message.Message{
+			&message.Video{
+				ChunkStreamID:   message.VideoChunkStreamID,
+				MessageStreamID: 0x1000000,
+				Codec:           message.CodecH264,
+				IsKeyFrame:      true,
+				Type:            message.VideoTypeConfig,
+				AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
+			},
+			&message.Video{
+				ChunkStreamID:   message.VideoChunkStreamID,
+				DTS:             2 * time.Second,
+				MessageStreamID: 0x1000000,
+				Codec:           message.CodecH264,
+				IsKeyFrame:      true,
+				Type:            message.VideoTypeAU,
+				AU:              []byte{0x00, 0x00, 0x00, 0x02, 0x09, 0xf0},
+			},
+			&message.Video{
+				ChunkStreamID:   message.VideoChunkStreamID,
+				DTS:             3 * time.Second,
+				MessageStreamID: 0x1000000,
+				Codec:           message.CodecH264,
+				IsKeyFrame:      true,
+				Type:            message.VideoTypeConfig,
+				AVCConfig: &mp4.AVCDecoderConfiguration{
+					AnyTypeBox:                 mp4.AnyTypeBox{Type: mp4.BoxTypeAvcC()},
+					ConfigurationVersion:       0x1,
+					Profile:                    0x4d,
+					ProfileCompatibility:       0x40,
+					Level:                      0x1e,
+					Reserved:                   0x3f,
+					LengthSizeMinusOne:         0x3,
+					Reserved2:                  0x7,
+					NumOfSequenceParameterSets: 1,
+					SequenceParameterSets:      []mp4.AVCParameterSet{{NALUnit: nil}},
+					NumOfPictureParameterSets:  1,
+					PictureParameterSets:       []mp4.AVCParameterSet{{NALUnit: nil}},
+				},
+			},
+		}
+
+		var buf bytes.Buffer
+		bc := bytecounter.NewReadWriter(&buf)
+		mrw := message.NewReadWriter(bc, bc, true)
+
+		for _, msg := range messages {
+			err := mrw.Write(msg)
+			require.NoError(t, err)
+		}
+
+		c := &dummyConn{rw: &buf}
+		c.initialize()
+
+		r := &gortmplib.Reader{Conn: c}
+		err := r.Initialize()
+		require.NoError(t, err)
+
+		tracks := r.Tracks()
+		require.Equal(t, []*gortmplib.Track{{Codec: &codecs.H264{
+			SPS: testCodecH264.SPS,
+			PPS: testCodecH264.PPS,
+		}}}, tracks)
+
+		receivedCount := 0
+		r.OnDataH264(tracks[0], func(_ time.Duration, _ time.Duration, _ [][]byte) {
+			receivedCount++
+		})
+
+		for {
+			err = r.Read()
+			if err != nil {
+				require.EqualError(t, err, "unable to parse H264 config: H264 parameters not provided")
+				break
+			}
+		}
+
+		require.Equal(t, 2, receivedCount)
+	})
 }
