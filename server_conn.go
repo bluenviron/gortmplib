@@ -259,17 +259,6 @@ func (c *ServerConn) checkCredentials(expectedUser string, expectedPass string) 
 		return fmt.Errorf("authentication failed")
 	}
 
-	// remove auth parameters from tcURL
-	c.tcURL = c.tcURL[:i]
-	delete(vals, "authmod")
-	delete(vals, "user")
-	delete(vals, "challenge")
-	delete(vals, "response")
-	q := queryEncode(vals)
-	if q != "" {
-		c.tcURL += "?" + q
-	}
-
 	return nil
 }
 
@@ -301,7 +290,7 @@ func (c *ServerConn) AcceptConnIfCredentialsMatch(expectedUser, expectedPass str
 		return err
 	}
 
-	return c.Accept()
+	return c.AcceptConn()
 }
 
 // AcceptConn accepts the connection.
@@ -347,6 +336,21 @@ func (c *ServerConn) AcceptConn() error {
 	})
 	if err != nil {
 		return err
+	}
+
+	// strip auth parameters from tcURL
+	if i := strings.Index(c.tcURL, "?authmod=adobe"); i >= 0 { //nolint:gocritic
+		var authParams string
+		c.tcURL, authParams = c.tcURL[:i], c.tcURL[i+1:]
+		vals := queryDecode(authParams)
+		delete(vals, "authmod")
+		delete(vals, "user")
+		delete(vals, "challenge")
+		delete(vals, "response")
+		q := queryEncode(vals)
+		if q != "" {
+			c.tcURL += "?" + q
+		}
 	}
 
 	for {
