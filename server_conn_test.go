@@ -736,6 +736,13 @@ func TestServerConnURL(t *testing.T) {
 			streamKey:   "",
 			expectedURL: "rtmp://localhost:1935/stream",
 		},
+		{
+			name:        "auth parameters always stripped",
+			tcurl:       "rtmp://localhost:1935/comp1?authmod=adobe&user=myuser&challenge=1234&response=5678",
+			app:         "comp1?authmod=adobe&user=myuser&challenge=1234&response=5678",
+			streamKey:   "",
+			expectedURL: "rtmp://localhost:1935/comp1",
+		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			ln, err := net.Listen("tcp", "127.0.0.1:9121")
