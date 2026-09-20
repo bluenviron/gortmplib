@@ -542,7 +542,8 @@ var readWriterCases = []struct {
 				ChromaFormatIdc:            0x1,
 				Reserved4:                  0x1f,
 				Reserved5:                  0x1f,
-				TemporalIdNested:           0x3,
+				NumTemporalLayers:          0x1,
+				TemporalIdNested:           0x1,
 				LengthSizeMinusOne:         0x3,
 				NumOfNaluArrays:            3,
 				NaluArrays: []mp4.HEVCNaluArray{
@@ -655,7 +656,8 @@ var readWriterCases = []struct {
 				ChromaFormatIdc:            0x1,
 				Reserved4:                  0x1f,
 				Reserved5:                  0x1f,
-				TemporalIdNested:           0x3,
+				NumTemporalLayers:          0x1,
+				TemporalIdNested:           0x1,
 				LengthSizeMinusOne:         0x3,
 				NumOfNaluArrays:            0x3,
 				NaluArrays: []mp4.HEVCNaluArray{

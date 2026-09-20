@@ -47,6 +47,13 @@ var (
 	h264DefaultPPS = []byte{0x08, 0x06, 0x07, 0x08}
 )
 
+func boolToUint8(v bool) uint8 {
+	if v {
+		return 1
+	}
+	return 0
+}
+
 func generateHvcC(vps, sps, pps []byte) (*mp4.HvcC, error) {
 	var psps h265.SPS
 	err := psps.Unmarshal(sps)
@@ -75,8 +82,8 @@ func generateHvcC(vps, sps, pps []byte) (*mp4.HvcC, error) {
 		BitDepthChromaMinus8: uint8(psps.BitDepthChromaMinus8),
 		// AvgFrameRate
 		// ConstantFrameRate
-		NumTemporalLayers: 1,
-		// TemporalIdNested
+		NumTemporalLayers:  (psps.MaxSubLayersMinus1 + 1),
+		TemporalIdNested:   boolToUint8(psps.TemporalIDNestingFlag),
 		LengthSizeMinusOne: 3,
 		NumOfNaluArrays:    3,
 		NaluArrays: []mp4.HEVCNaluArray{
