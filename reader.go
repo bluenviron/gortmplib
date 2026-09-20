@@ -265,14 +265,27 @@ func sortedKeys(m map[uint8]*Track) []int {
 	return ret
 }
 
+func h264AUIsStandaloneSEI(au [][]byte) bool {
+	return len(au) == 1 && h264.NALUType(au[0][0]&0x1F) == h264.NALUTypeSEI
+}
+
+func h264AUSize(au [][]byte) int {
+	size := 0
+	for _, nalu := range au {
+		size += len(nalu)
+	}
+	return size
+}
+
 // Reader provides functions to read incoming data.
 type Reader struct {
 	Conn Conn
 
-	videoTracks map[uint8]*Track
-	audioTracks map[uint8]*Track
-	onVideoData map[uint8]func(message.Message) error
-	onAudioData map[uint8]func(message.Message) error
+	videoTracks          map[uint8]*Track
+	audioTracks          map[uint8]*Track
+	onVideoData          map[uint8]func(message.Message) error
+	onVideoDataFinalizer map[uint8]func()
+	onAudioData          map[uint8]func(message.Message) error
 }
 
 // Initialize initializes Reader.
@@ -296,6 +309,7 @@ func (r *Reader) Initialize() error {
 	rc.Rewind()
 
 	r.onVideoData = make(map[uint8]func(message.Message) error)
+	r.onVideoDataFinalizer = make(map[uint8]func())
 	r.onAudioData = make(map[uint8]func(message.Message) error)
 
 	return nil
@@ -666,11 +680,76 @@ func (r *Reader) OnDataH265(track *Track, cb OnDataH26xFunc) {
 
 // OnDataH264 sets a callback that is called when H264 data is received.
 func (r *Reader) OnDataH264(track *Track, cb OnDataH26xFunc) {
-	r.onVideoData[r.videoTrackID(track)] = func(msg message.Message) error {
+	var pendingAU [][]byte
+	var pendingPTS time.Duration
+	var pendingDTS time.Duration
+
+	flushPending := func() {
+		if pendingAU != nil {
+			cb(pendingPTS, pendingDTS, pendingAU)
+			pendingAU = nil
+		}
+	}
+
+	processAU := func(pts time.Duration, dts time.Duration, au [][]byte) error {
+		// DJI drones often send standalone SEI NALUs
+		// which should be part of the same access unit of following NALUs.
+		// Merge them together.
+		if h264AUIsStandaloneSEI(au) {
+			if pendingAU != nil && (pendingPTS != pts || pendingDTS != dts) {
+				flushPending()
+			}
+
+			if (len(pendingAU) + len(au)) > h264.MaxNALUsPerAccessUnit {
+				return fmt.Errorf("H264 NALU count (%d) exceeds maximum allowed (%d)",
+					len(pendingAU)+len(au), h264.MaxNALUsPerAccessUnit)
+			}
+
+			if (h264AUSize(pendingAU) + h264AUSize(au)) > h264.MaxAccessUnitSize {
+				return fmt.Errorf("H264 access unit size (%d) is too big, maximum is %d",
+					h264AUSize(pendingAU)+h264AUSize(au), h264.MaxAccessUnitSize)
+			}
+
+			if pendingAU == nil {
+				pendingPTS = pts
+				pendingDTS = dts
+			}
+			pendingAU = append(pendingAU, au...)
+			return nil
+		}
+
+		if pendingAU != nil {
+			if pendingPTS == pts && pendingDTS == dts {
+				if (len(pendingAU) + len(au)) > h264.MaxNALUsPerAccessUnit {
+					return fmt.Errorf("H264 NALU count (%d) exceeds maximum allowed (%d)",
+						len(pendingAU)+len(au), h264.MaxNALUsPerAccessUnit)
+				}
+
+				if (h264AUSize(pendingAU) + h264AUSize(au)) > h264.MaxAccessUnitSize {
+					return fmt.Errorf("H264 access unit size (%d) is too big, maximum is %d",
+						h264AUSize(pendingAU)+h264AUSize(au), h264.MaxAccessUnitSize)
+				}
+
+				au = append(pendingAU, au...)
+				pendingAU = nil
+			} else {
+				flushPending()
+			}
+		}
+
+		cb(pts, dts, au)
+		return nil
+	}
+
+	trackID := r.videoTrackID(track)
+	r.onVideoDataFinalizer[trackID] = flushPending
+	r.onVideoData[trackID] = func(msg message.Message) error {
 		switch msg := msg.(type) {
 		case *message.Video:
 			switch msg.Type {
 			case message.VideoTypeConfig:
+				flushPending()
+
 				if msg.AVCConfig != nil {
 					// SPS, PPS are guaranteed to be present by message.Video
 					au := [][]byte{
@@ -691,7 +770,13 @@ func (r *Reader) OnDataH264(track *Track, cb OnDataH26xFunc) {
 					return fmt.Errorf("unable to decode AVCC: %w", err)
 				}
 
-				cb(msg.DTS+msg.PTSDelta, msg.DTS, au)
+				err = processAU(msg.DTS+msg.PTSDelta, msg.DTS, au)
+				if err != nil {
+					return err
+				}
+
+			case message.VideoTypeEOS:
+				flushPending()
 			}
 
 			return nil
@@ -706,7 +791,10 @@ func (r *Reader) OnDataH264(track *Track, cb OnDataH26xFunc) {
 				return fmt.Errorf("unable to decode AVCC: %w", err)
 			}
 
-			cb(msg.DTS, msg.DTS, au)
+			err = processAU(msg.DTS, msg.DTS, au)
+			if err != nil {
+				return err
+			}
 
 		case *message.VideoExCodedFrames:
 			var au h264.AVCC
@@ -718,7 +806,10 @@ func (r *Reader) OnDataH264(track *Track, cb OnDataH26xFunc) {
 				return fmt.Errorf("unable to decode AVCC: %w", err)
 			}
 
-			cb(msg.DTS+msg.PTSDelta, msg.DTS, au)
+			err = processAU(msg.DTS+msg.PTSDelta, msg.DTS, au)
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	}
@@ -819,6 +910,9 @@ func (r *Reader) OnDataLPCM(track *Track, cb OnDataLPCMFunc) {
 func (r *Reader) Read() error {
 	msg, err := r.Conn.Read()
 	if err != nil {
+		for _, finalizer := range r.onVideoDataFinalizer {
+			finalizer()
+		}
 		return err
 	}
 
