@@ -528,6 +528,7 @@ func TestWriter(t *testing.T) {
 						BitDepthLumaMinus8:         2,
 						Reserved5:                  0b11111,
 						BitDepthChromaMinus8:       2,
+						TemporalIdNested:           1,
 						LengthSizeMinusOne:         0x3,
 						NumTemporalLayers:          1,
 						NumOfNaluArrays:            0x3,

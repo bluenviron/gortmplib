@@ -52,6 +52,13 @@ var testCodecH265 = &codecs.H265{
 	},
 }
 
+func boolToUint8(v bool) uint8 {
+	if v {
+		return 1
+	}
+	return 0
+}
+
 func generateAvcC(t *testing.T, sps, pps []byte) *mp4.AVCDecoderConfiguration {
 	var psps h264.SPS
 	err := psps.Unmarshal(sps)
@@ -111,8 +118,8 @@ func generateHvcC(t *testing.T, vps, sps, pps []byte) *mp4.HvcC {
 		BitDepthChromaMinus8: uint8(psps.BitDepthChromaMinus8),
 		// AvgFrameRate
 		// ConstantFrameRate
-		NumTemporalLayers: 1,
-		// TemporalIdNested
+		NumTemporalLayers:  (psps.MaxSubLayersMinus1 + 1),
+		TemporalIdNested:   boolToUint8(psps.TemporalIDNestingFlag),
 		LengthSizeMinusOne: 3,
 		NumOfNaluArrays:    3,
 		NaluArrays: []mp4.HEVCNaluArray{
