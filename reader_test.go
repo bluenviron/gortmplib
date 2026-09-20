@@ -1916,6 +1916,220 @@ func TestReadTracksErrors(t *testing.T) {
 	}
 }
 
+func TestReaderH264SeparateSEI(t *testing.T) {
+	messages := []message.Message{
+		&message.Video{
+			ChunkStreamID:   message.VideoChunkStreamID,
+			MessageStreamID: 0x1000000,
+			Codec:           message.CodecH264,
+			IsKeyFrame:      true,
+			Type:            message.VideoTypeConfig,
+			AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
+		},
+		&message.Video{
+			ChunkStreamID:   message.VideoChunkStreamID,
+			DTS:             2 * time.Second,
+			MessageStreamID: 0x1000000,
+			Codec:           message.CodecH264,
+			Type:            message.VideoTypeAU,
+			AU:              []byte{0, 0, 0, 2, 6, 1},
+		},
+		&message.Video{
+			ChunkStreamID:   message.VideoChunkStreamID,
+			DTS:             2 * time.Second,
+			MessageStreamID: 0x1000000,
+			Codec:           message.CodecH264,
+			Type:            message.VideoTypeAU,
+			AU:              []byte{0, 0, 0, 2, 6, 2},
+		},
+		&message.Video{
+			ChunkStreamID:   message.VideoChunkStreamID,
+			DTS:             2 * time.Second,
+			MessageStreamID: 0x1000000,
+			Codec:           message.CodecH264,
+			IsKeyFrame:      true,
+			Type:            message.VideoTypeAU,
+			AU:              []byte{0, 0, 0, 2, 5, 3},
+		},
+		&message.Video{
+			ChunkStreamID:   message.VideoChunkStreamID,
+			DTS:             3 * time.Second,
+			MessageStreamID: 0x1000000,
+			Codec:           message.CodecH264,
+			Type:            message.VideoTypeAU,
+			AU:              []byte{0, 0, 0, 2, 6, 4},
+		},
+		&message.Video{
+			ChunkStreamID:   message.VideoChunkStreamID,
+			DTS:             3 * time.Second,
+			MessageStreamID: 0x1000000,
+			Codec:           message.CodecH264,
+			Type:            message.VideoTypeAU,
+			AU:              []byte{0, 0, 0, 2, 6, 5},
+		},
+		&message.Video{
+			ChunkStreamID:   message.VideoChunkStreamID,
+			DTS:             3 * time.Second,
+			MessageStreamID: 0x1000000,
+			Codec:           message.CodecH264,
+			Type:            message.VideoTypeEOS,
+		},
+	}
+
+	var buf bytes.Buffer
+	bc := bytecounter.NewReadWriter(&buf)
+	mrw := message.NewReadWriter(bc, bc, true)
+
+	for _, msg := range messages {
+		err := mrw.Write(msg)
+		require.NoError(t, err)
+	}
+
+	c := &dummyConn{rw: &buf}
+	c.initialize()
+
+	r := &gortmplib.Reader{Conn: c}
+	err := r.Initialize()
+	require.NoError(t, err)
+
+	var received []struct {
+		pts time.Duration
+		dts time.Duration
+		au  [][]byte
+	}
+
+	r.OnDataH264(r.Tracks()[0], func(pts time.Duration, dts time.Duration, au [][]byte) {
+		received = append(received, struct {
+			pts time.Duration
+			dts time.Duration
+			au  [][]byte
+		}{pts, dts, au})
+	})
+
+	for {
+		err = r.Read()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		require.NoError(t, err)
+	}
+
+	require.Equal(t, []struct {
+		pts time.Duration
+		dts time.Duration
+		au  [][]byte
+	}{
+		{0, 0, [][]byte{testCodecH264.SPS, testCodecH264.PPS}},
+		{2 * time.Second, 2 * time.Second, [][]byte{{6, 1}, {6, 2}, {5, 3}}},
+		{3 * time.Second, 3 * time.Second, [][]byte{{6, 4}, {6, 5}}},
+	}, received)
+}
+
+func TestReaderH264SeparateSEILimits(t *testing.T) {
+	t.Run("NALU count", func(t *testing.T) {
+		messages := make([]message.Message, 0, h264.MaxNALUsPerAccessUnit+2)
+
+		messages = append(messages, &message.Video{
+			ChunkStreamID:   message.VideoChunkStreamID,
+			MessageStreamID: 0x1000000,
+			Codec:           message.CodecH264,
+			IsKeyFrame:      true,
+			Type:            message.VideoTypeConfig,
+			AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
+		})
+
+		for range h264.MaxNALUsPerAccessUnit + 1 {
+			messages = append(messages, &message.Video{
+				ChunkStreamID:   message.VideoChunkStreamID,
+				DTS:             2 * time.Second,
+				MessageStreamID: 0x1000000,
+				Codec:           message.CodecH264,
+				Type:            message.VideoTypeAU,
+				AU:              []byte{0, 0, 0, 2, 6, 1},
+			})
+		}
+
+		var buf bytes.Buffer
+		bc := bytecounter.NewReadWriter(&buf)
+		mrw := message.NewReadWriter(bc, bc, true)
+		for _, msg := range messages {
+			err := mrw.Write(msg)
+			require.NoError(t, err)
+		}
+
+		c := &dummyConn{rw: &buf}
+		c.initialize()
+
+		r := &gortmplib.Reader{Conn: c}
+		err := r.Initialize()
+		require.NoError(t, err)
+		r.OnDataH264(r.Tracks()[0], func(time.Duration, time.Duration, [][]byte) {})
+
+		for range messages {
+			err = r.Read()
+		}
+
+		require.EqualError(t, err, "H264 NALU count (51) exceeds maximum allowed (50)")
+	})
+
+	t.Run("access unit size", func(t *testing.T) {
+		sei := make([]byte, h264.MaxAccessUnitSize)
+		sei[0] = byte(h264.NALUTypeSEI)
+		avcc, err := h264.AVCC{sei}.Marshal()
+		require.NoError(t, err)
+
+		messages := []message.Message{
+			&message.Video{
+				ChunkStreamID:   message.VideoChunkStreamID,
+				MessageStreamID: 0x1000000,
+				Codec:           message.CodecH264,
+				IsKeyFrame:      true,
+				Type:            message.VideoTypeConfig,
+				AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
+			},
+			&message.Video{
+				ChunkStreamID:   message.VideoChunkStreamID,
+				DTS:             2 * time.Second,
+				MessageStreamID: 0x1000000,
+				Codec:           message.CodecH264,
+				Type:            message.VideoTypeAU,
+				AU:              avcc,
+			},
+			&message.Video{
+				ChunkStreamID:   message.VideoChunkStreamID,
+				DTS:             2 * time.Second,
+				MessageStreamID: 0x1000000,
+				Codec:           message.CodecH264,
+				Type:            message.VideoTypeAU,
+				AU:              []byte{0, 0, 0, 2, 6, 1},
+			},
+		}
+
+		var buf bytes.Buffer
+		bc := bytecounter.NewReadWriter(&buf)
+		mrw := message.NewReadWriter(bc, bc, true)
+		for _, msg := range messages {
+			err = mrw.Write(msg)
+			require.NoError(t, err)
+		}
+
+		c := &dummyConn{rw: &buf}
+		c.initialize()
+
+		r := &gortmplib.Reader{Conn: c}
+		err = r.Initialize()
+		require.NoError(t, err)
+		r.OnDataH264(r.Tracks()[0], func(time.Duration, time.Duration, [][]byte) {})
+
+		for range messages {
+			err = r.Read()
+		}
+
+		require.EqualError(t, err,
+			"H264 access unit size (8388610) is too big, maximum is 8388608")
+	})
+}
+
 func TestReaderRewind(t *testing.T) {
 	messages := []message.Message{
 		&message.Video{
