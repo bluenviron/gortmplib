@@ -277,6 +277,12 @@ func h264AUSize(au [][]byte) int {
 	return size
 }
 
+// command frames are sent by some servers (e.g. Wowza) before the first frame.
+// They carry no data and are skipped, like FFmpeg does.
+func videoCarriesNoData(msg *message.Video) bool {
+	return msg.FrameType == message.VideoFrameTypeCommand
+}
+
 // Reader provides functions to read incoming data.
 type Reader struct {
 	Conn Conn
@@ -394,6 +400,10 @@ func (r *Reader) readTracks() (map[uint8]*Track, map[uint8]*Track, error) {
 
 		switch msg := msg.(type) {
 		case *message.Video:
+			if videoCarriesNoData(msg) {
+				continue
+			}
+
 			if !firstReceived {
 				firstReceived = true
 				startTime = msg.DTS
@@ -914,6 +924,10 @@ func (r *Reader) Read() error {
 			finalizer()
 		}
 		return err
+	}
+
+	if vmsg, ok := msg.(*message.Video); ok && videoCarriesNoData(vmsg) {
+		return nil
 	}
 
 	switch msg := msg.(type) {

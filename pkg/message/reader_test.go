@@ -418,7 +418,8 @@ var readWriterCases = []struct {
 			DTS:             2543534 * time.Millisecond,
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
-			IsKeyFrame:      true,
+			FrameType:       message.VideoFrameTypeKeyFrame,
+			IsKeyFrame:      true, //nolint:staticcheck
 			Type:            message.VideoTypeAU,
 			PTSDelta:        10 * time.Millisecond,
 			AU:              []byte{0x01, 0x02, 0x03},
@@ -436,7 +437,8 @@ var readWriterCases = []struct {
 			DTS:             2543534 * time.Millisecond,
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
-			IsKeyFrame:      true,
+			FrameType:       message.VideoFrameTypeKeyFrame,
+			IsKeyFrame:      true, //nolint:staticcheck
 			Type:            message.VideoTypeAU,
 			PTSDelta:        -34 * time.Millisecond,
 			AU:              []byte{0x01, 0x02, 0x03},
@@ -454,7 +456,8 @@ var readWriterCases = []struct {
 			DTS:             2543534 * time.Millisecond,
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
-			IsKeyFrame:      true,
+			FrameType:       message.VideoFrameTypeKeyFrame,
+			IsKeyFrame:      true, //nolint:staticcheck
 			Type:            message.VideoTypeConfig,
 			AVCConfig: &mp4.AVCDecoderConfiguration{
 				AnyTypeBox:                 mp4.AnyTypeBox{Type: mp4.BoxType{0x61, 0x76, 0x63, 0x43}},
@@ -506,7 +509,8 @@ var readWriterCases = []struct {
 			DTS:             2543534 * time.Millisecond,
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
-			IsKeyFrame:      true,
+			FrameType:       message.VideoFrameTypeKeyFrame,
+			IsKeyFrame:      true, //nolint:staticcheck
 			Type:            message.VideoTypeConfig,
 			AVCConfig:       nil,
 		},
@@ -523,7 +527,8 @@ var readWriterCases = []struct {
 			DTS:             2543534 * time.Millisecond,
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH265,
-			IsKeyFrame:      true,
+			FrameType:       message.VideoFrameTypeKeyFrame,
+			IsKeyFrame:      true, //nolint:staticcheck
 			Type:            message.VideoTypeConfig,
 			HEVCConfig: &mp4.HvcC{
 				ConfigurationVersion: 0x1,
@@ -601,13 +606,28 @@ var readWriterCases = []struct {
 			DTS:             2543534 * time.Millisecond,
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
-			IsKeyFrame:      false,
+			FrameType:       message.VideoFrameTypeInterFrame,
 			Type:            message.VideoTypeEOS,
 		},
 		[]byte{
 			0x06, 0x26, 0xcf, 0xae, 0x00, 0x00, 0x05, 0x09,
 			0x01, 0x00, 0x00, 0x00, 0x27, 0x02, 0x00, 0x00,
 			0x00,
+		},
+	},
+	{
+		"video command",
+		&message.Video{
+			ChunkStreamID:   6,
+			DTS:             2543534 * time.Millisecond,
+			MessageStreamID: 0x1000000,
+			Codec:           message.CodecH264,
+			FrameType:       message.VideoFrameTypeCommand,
+			Command:         message.VideoCommandStartSeek,
+		},
+		[]byte{
+			0x06, 0x26, 0xcf, 0xae, 0x00, 0x00, 0x02, 0x09,
+			0x01, 0x00, 0x00, 0x00, 0x57, 0x00,
 		},
 	},
 	{
