@@ -69,8 +69,9 @@ func allocateMessage(raw *rawmessage.Message) (Message, error) {
 		return &DataAMF0{}, nil
 
 	case TypeAudio:
-		if len(raw.Body) < 1 {
-			return nil, fmt.Errorf("not enough bytes")
+		// empty messages are sent by some servers (e.g. Wowza)
+		if len(raw.Body) == 0 {
+			return &Audio{}, nil
 		}
 
 		if (raw.Body[0] >> 4) == 9 {
