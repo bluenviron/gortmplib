@@ -114,8 +114,12 @@ type Video struct {
 	ChunkStreamID   byte
 	DTS             time.Duration
 	MessageStreamID uint32
-	Codec           uint8
-	FrameType       VideoFrameType
+
+	// zero in case of empty messages that are sent by some servers
+	// and carry no other field.
+	Codec uint8
+
+	FrameType VideoFrameType
 
 	// Deprecated: replaced by FrameType.
 	IsKeyFrame bool
@@ -144,6 +148,11 @@ func (m *Video) unmarshal(raw *rawmessage.Message) error {
 	m.ChunkStreamID = raw.ChunkStreamID
 	m.DTS = raw.Timestamp
 	m.MessageStreamID = raw.MessageStreamID
+
+	// empty message
+	if len(raw.Body) == 0 {
+		return nil
+	}
 
 	if len(raw.Body) < 2 {
 		return fmt.Errorf("invalid body size")
@@ -229,6 +238,16 @@ func (m *Video) unmarshal(raw *rawmessage.Message) error {
 }
 
 func (m Video) marshal() (*rawmessage.Message, error) {
+	// empty message
+	if m.Codec == 0 {
+		return &rawmessage.Message{
+			ChunkStreamID:   m.ChunkStreamID,
+			Timestamp:       m.DTS,
+			Type:            uint8(TypeVideo),
+			MessageStreamID: m.MessageStreamID,
+		}, nil
+	}
+
 	frameType := m.FrameType
 	if frameType == 0 {
 		if m.IsKeyFrame {

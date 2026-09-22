@@ -2283,8 +2283,16 @@ func TestReaderEmptyH264Config(t *testing.T) {
 	require.Equal(t, 2, receivedCount)
 }
 
-func TestReaderVideoCommand(t *testing.T) {
+func TestReaderCommandFramesAndEmptyMessages(t *testing.T) {
 	messages := []message.Message{
+		&message.Audio{
+			ChunkStreamID:   message.AudioChunkStreamID,
+			MessageStreamID: 0x1000000,
+		},
+		&message.Video{
+			ChunkStreamID:   message.VideoChunkStreamID,
+			MessageStreamID: 0x1000000,
+		},
 		&message.Video{
 			ChunkStreamID:   message.VideoChunkStreamID,
 			MessageStreamID: 0x1000000,

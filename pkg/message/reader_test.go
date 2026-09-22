@@ -631,6 +631,30 @@ var readWriterCases = []struct {
 		},
 	},
 	{
+		"video empty",
+		&message.Video{
+			ChunkStreamID:   6,
+			DTS:             2543534 * time.Millisecond,
+			MessageStreamID: 0x1000000,
+		},
+		[]byte{
+			0x06, 0x26, 0xcf, 0xae, 0x00, 0x00, 0x00, 0x09,
+			0x01, 0x00, 0x00, 0x00,
+		},
+	},
+	{
+		"audio empty",
+		&message.Audio{
+			ChunkStreamID:   4,
+			DTS:             2543534 * time.Millisecond,
+			MessageStreamID: 0x1000000,
+		},
+		[]byte{
+			0x04, 0x26, 0xcf, 0xae, 0x00, 0x00, 0x00, 0x08,
+			0x01, 0x00, 0x00, 0x00,
+		},
+	},
+	{
 		"video ex sequence start av1",
 		&message.VideoExSequenceStart{
 			ChunkStreamID:   6,
@@ -1042,7 +1066,7 @@ func FuzzReader(f *testing.F) {
 			require.NotEmpty(t, msg.Payload)
 
 		case *message.Audio:
-			if msg.Codec != message.CodecMPEG4Audio || msg.AACType != message.AudioAACTypeConfig {
+			if msg.Codec != 0 && (msg.Codec != message.CodecMPEG4Audio || msg.AACType != message.AudioAACTypeConfig) {
 				require.NotEmpty(t, msg.AU)
 			}
 
