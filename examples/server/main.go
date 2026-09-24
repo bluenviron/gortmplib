@@ -225,8 +225,7 @@ func handlePlayer(sc *gortmplib.ServerConn) error {
 	sc.RW.(net.Conn).SetReadDeadline(time.Time{})
 
 	for {
-		buf := make([]byte, 1024)
-		_, err = sc.RW.Read(buf)
+		_, err = sc.Read()
 		if err != nil {
 			return err
 		}
