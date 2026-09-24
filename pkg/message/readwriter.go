@@ -18,13 +18,23 @@ func NewReadWriter(
 	bcrw *bytecounter.ReadWriter,
 	checkAcknowledge bool,
 ) *ReadWriter {
-	w := NewWriter(rw, bcrw.Writer, checkAcknowledge)
+	w := &Writer{
+		BW:               rw,
+		BCW:              bcrw.Writer,
+		CheckAcknowledge: checkAcknowledge,
+	}
+	w.Initialize()
 
-	r := NewReader(rw, bcrw.Reader, func(count uint32) error {
-		return w.Write(&Acknowledge{
-			Value: count,
-		})
-	})
+	r := &Reader{
+		BR:  rw,
+		BCR: bcrw.Reader,
+		OnAckNeeded: func(count uint32) error {
+			return w.Write(&Acknowledge{
+				Value: count,
+			})
+		},
+	}
+	r.Initialize()
 
 	return &ReadWriter{
 		r: r,

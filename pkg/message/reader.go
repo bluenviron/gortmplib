@@ -139,23 +139,43 @@ func allocateMessage(raw *rawmessage.Message) (Message, error) {
 
 // Reader is a message reader.
 type Reader struct {
-	r *rawmessage.Reader
+	BR          io.Reader
+	BCR         *bytecounter.Reader
+	OnAckNeeded func(uint32) error
+
+	rmr *rawmessage.Reader
+}
+
+// Initialize initializes the Reader.
+func (r *Reader) Initialize() {
+	r.rmr = &rawmessage.Reader{
+		BR:          r.BR,
+		BCR:         r.BCR,
+		OnAckNeeded: r.OnAckNeeded,
+	}
+	r.rmr.Initialize()
 }
 
 // NewReader allocates a Reader.
+//
+// Deprecated: use Initialize() instead.
 func NewReader(
-	r io.Reader,
+	br io.Reader,
 	bcr *bytecounter.Reader,
 	onAckNeeded func(uint32) error,
 ) *Reader {
-	return &Reader{
-		r: rawmessage.NewReader(r, bcr, onAckNeeded),
+	r := &Reader{
+		BR:          br,
+		BCR:         bcr,
+		OnAckNeeded: onAckNeeded,
 	}
+	r.Initialize()
+	return r
 }
 
 // Read reads a Message.
 func (r *Reader) Read() (Message, error) {
-	raw, err := r.r.Read()
+	raw, err := r.rmr.Read()
 	if err != nil {
 		return nil, err
 	}
@@ -172,16 +192,16 @@ func (r *Reader) Read() (Message, error) {
 
 	switch tmsg := msg.(type) {
 	case *SetChunkSize:
-		err = r.r.SetChunkSize(tmsg.Value)
+		err = r.rmr.SetChunkSize(tmsg.Value)
 		if err != nil {
 			return nil, err
 		}
 
 	case *AbortMessage:
-		r.r.AbortChunkStream(tmsg.ChunkStreamID)
+		r.rmr.AbortChunkStream(tmsg.ChunkStreamID)
 
 	case *SetWindowAckSize:
-		r.r.SetWindowAckSize(tmsg.Value)
+		r.rmr.SetWindowAckSize(tmsg.Value)
 	}
 
 	return msg, nil

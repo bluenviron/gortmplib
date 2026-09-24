@@ -945,7 +945,11 @@ func TestReader(t *testing.T) {
 	for _, ca := range readWriterCases {
 		t.Run(ca.name, func(t *testing.T) {
 			bc := bytecounter.NewReader(bytes.NewReader(ca.enc))
-			r := message.NewReader(bc, bc, nil)
+			r := &message.Reader{
+				BR:  bc,
+				BCR: bc,
+			}
+			r.Initialize()
 			dec, err := r.Read()
 			require.NoError(t, err)
 			require.Equal(t, ca.dec, dec)
@@ -961,7 +965,11 @@ func TestReaderNonStandardControlChunkStreamID(t *testing.T) {
 	}
 
 	bc := bytecounter.NewReader(bytes.NewReader(buf))
-	r := message.NewReader(bc, bc, nil)
+	r := &message.Reader{
+		BR:  bc,
+		BCR: bc,
+	}
+	r.Initialize()
 	dec, err := r.Read()
 	require.NoError(t, err)
 	require.Equal(t, &message.UserControlStreamDry{
@@ -991,7 +999,11 @@ func TestReaderUserControlUndocumented(t *testing.T) {
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			bc := bytecounter.NewReader(bytes.NewReader(ca.buf))
-			r := message.NewReader(bc, bc, nil)
+			r := &message.Reader{
+				BR:  bc,
+				BCR: bc,
+			}
+			r.Initialize()
 			dec, err := r.Read()
 			require.NoError(t, err)
 			require.Equal(t, &message.UserControlUndocumented{}, dec)
@@ -1006,11 +1018,20 @@ func FuzzReader(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, b []byte) {
 		bcr := bytecounter.NewReader(bytes.NewReader(b))
-		r := message.NewReader(bcr, bcr, nil)
+		r := &message.Reader{
+			BR:  bcr,
+			BCR: bcr,
+		}
+		r.Initialize()
 
 		var buf bytes.Buffer
 		bcw := bytecounter.NewWriter(&buf)
-		w := message.NewWriter(bcw, bcw, true)
+		w := &message.Writer{
+			BW:               bcw,
+			BCW:              bcw,
+			CheckAcknowledge: true,
+		}
+		w.Initialize()
 
 		msg, err := r.Read()
 		if err != nil {
