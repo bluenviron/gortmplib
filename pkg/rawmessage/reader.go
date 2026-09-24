@@ -46,18 +46,18 @@ func (rc *readerChunkStream) abortMessage() {
 }
 
 func (rc *readerChunkStream) readChunk(c chunk.Chunk, bodySize uint32, hasExtendedTimestamp bool) error {
-	err := c.Read(rc.mr.br, bodySize, hasExtendedTimestamp)
+	err := c.Read(rc.mr.bufr, bodySize, hasExtendedTimestamp)
 	if err != nil {
 		return err
 	}
 
 	// check if an ack is needed
 	if rc.mr.ackWindowSize != 0 {
-		count := uint32(rc.mr.bcr.Count())
+		count := uint32(rc.mr.BCR.Count())
 		diff := count - rc.mr.lastAckCount
 
 		if diff > rc.mr.ackWindowSize {
-			err = rc.mr.onAckNeeded(count)
+			err = rc.mr.OnAckNeeded(count)
 			if err != nil {
 				return err
 			}
@@ -235,10 +235,11 @@ func (rc *readerChunkStream) readMessage(typ byte) (*Message, error) {
 
 // Reader is a raw message reader.
 type Reader struct {
-	bcr         *bytecounter.Reader
-	onAckNeeded func(uint32) error
+	BR          io.Reader
+	BCR         *bytecounter.Reader
+	OnAckNeeded func(uint32) error
 
-	br            *bufio.Reader
+	bufr          *bufio.Reader
 	chunkSize     uint32
 	ackWindowSize uint32
 	lastAckCount  uint32
@@ -250,19 +251,28 @@ type Reader struct {
 	chunkStreams  map[byte]*readerChunkStream
 }
 
+// Initialize initializes the Reader.
+func (r *Reader) Initialize() {
+	r.bufr = bufio.NewReader(r.BR)
+	r.chunkSize = 128
+	r.chunkStreams = make(map[byte]*readerChunkStream)
+}
+
 // NewReader allocates a Reader.
+//
+// Deprecated: use Initialize() instead.
 func NewReader(
-	r io.Reader,
+	br io.Reader,
 	bcr *bytecounter.Reader,
 	onAckNeeded func(uint32) error,
 ) *Reader {
-	return &Reader{
-		bcr:          bcr,
-		br:           bufio.NewReader(r),
-		onAckNeeded:  onAckNeeded,
-		chunkSize:    128,
-		chunkStreams: make(map[byte]*readerChunkStream),
+	r := &Reader{
+		BR:          br,
+		BCR:         bcr,
+		OnAckNeeded: onAckNeeded,
 	}
+	r.Initialize()
+	return r
 }
 
 // SetChunkSize sets the maximum chunk size.
@@ -297,7 +307,7 @@ func (r *Reader) AbortChunkStream(v uint32) {
 // Read reads a Message.
 func (r *Reader) Read() (*Message, error) {
 	for {
-		byt, err := r.br.ReadByte()
+		byt, err := r.bufr.ReadByte()
 		if err != nil {
 			return nil, err
 		}
@@ -315,7 +325,7 @@ func (r *Reader) Read() (*Message, error) {
 			r.chunkStreams[chunkStreamID] = rc
 		}
 
-		r.br.UnreadByte() //nolint:errcheck
+		r.bufr.UnreadByte() //nolint:errcheck
 
 		msg, err := rc.readMessage(typ)
 		if err != nil {

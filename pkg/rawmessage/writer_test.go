@@ -45,7 +45,12 @@ func TestWriter(t *testing.T) {
 		t.Run(ca.name, func(t *testing.T) {
 			var buf bytes.Buffer
 			bc := bytecounter.NewWriter(&buf)
-			w := NewWriter(bc, bc, true)
+			w := &Writer{
+				BW:               bc,
+				BCW:              bc,
+				CheckAcknowledge: true,
+			}
+			w.Initialize()
 
 			for _, msg := range ca.messages {
 				err := w.Write(msg)
@@ -72,7 +77,12 @@ func TestWriterAcknowledge(t *testing.T) {
 		t.Run(ca, func(t *testing.T) {
 			var buf bytes.Buffer
 			bc := bytecounter.NewWriter(&buf)
-			w := NewWriter(bc, bc, true)
+			w := &Writer{
+				BW:               bc,
+				BCW:              bc,
+				CheckAcknowledge: true,
+			}
+			w.Initialize()
 
 			if ca == "overflow" {
 				bc.SetCount(4294967096)

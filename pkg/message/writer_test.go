@@ -15,7 +15,12 @@ func TestWriter(t *testing.T) {
 		t.Run(ca.name, func(t *testing.T) {
 			var buf bytes.Buffer
 			bc := bytecounter.NewWriter(&buf)
-			r := message.NewWriter(bc, bc, true)
+			r := &message.Writer{
+				BW:               bc,
+				BCW:              bc,
+				CheckAcknowledge: true,
+			}
+			r.Initialize()
 			err := r.Write(ca.dec)
 			require.NoError(t, err)
 			require.Equal(t, ca.enc, buf.Bytes())
