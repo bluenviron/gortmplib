@@ -189,6 +189,8 @@ type Writer struct {
 
 	videoTrackToID map[*Track]uint8
 	audioTrackToID map[*Track]uint8
+	readerDone     chan struct{}
+	readerErr      error
 }
 
 // Initialize initializes Writer.
@@ -205,7 +207,17 @@ func (w *Writer) Initialize() error {
 		return err
 	}
 
+	// Drain incoming data until the connection returns a read error.
+	w.readerDone = make(chan struct{})
+	go w.reader()
+
 	return nil
+}
+
+// Wait waits until reading from the connection fails and returns the read error.
+func (w *Writer) Wait() error {
+	<-w.readerDone
+	return w.readerErr
 }
 
 func (w *Writer) writeTracks() error {
@@ -573,6 +585,17 @@ func (w *Writer) writeTracks() error {
 	}
 
 	return nil
+}
+
+func (w *Writer) reader() {
+	for {
+		_, err := w.Conn.Read()
+		if err != nil {
+			w.readerErr = err
+			close(w.readerDone)
+			return
+		}
+	}
 }
 
 // WriteAV1 writes a AV1 temporal unit.

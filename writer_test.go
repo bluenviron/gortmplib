@@ -2,6 +2,8 @@ package gortmplib_test
 
 import (
 	"bytes"
+	"io"
+	"net"
 	"testing"
 	"time"
 
@@ -48,6 +50,58 @@ var (
 
 	h264DefaultPPS = []byte{0x08, 0x06, 0x07, 0x08}
 )
+
+func TestWriterDrainIncomingData(t *testing.T) {
+	serverConn, clientConn := net.Pipe()
+	defer serverConn.Close()
+	defer clientConn.Close()
+
+	server := &dummyConn{rw: serverConn}
+	server.initialize()
+
+	client := &dummyConn{rw: clientConn}
+	client.initialize()
+
+	readDone := make(chan error, 1)
+	go func() {
+		_, err := client.Read()
+		readDone <- err
+	}()
+
+	w := &gortmplib.Writer{Conn: server}
+	err := w.Initialize()
+	require.NoError(t, err)
+	require.NoError(t, <-readDone)
+
+	err = client.Write(&message.SetChunkSize{Value: 128})
+	require.NoError(t, err)
+
+	err = client.Write(&message.SetChunkSize{Value: 128})
+	require.NoError(t, err)
+
+	waitDone := make(chan error, 1)
+	go func() {
+		waitDone <- w.Wait()
+	}()
+
+	select {
+	case err = <-waitDone:
+		t.Fatalf("Wait returned before a read error: %v", err)
+	case <-time.After(20 * time.Millisecond):
+	}
+
+	_, err = clientConn.Write([]byte{0})
+	require.NoError(t, err)
+
+	select {
+	case err = <-waitDone:
+		require.EqualError(t, err, "extended chunk stream IDs are not supported (yet)")
+	case <-time.After(2 * time.Second):
+		t.Fatal("Wait did not return after a read error")
+	}
+
+	require.EqualError(t, w.Wait(), "extended chunk stream IDs are not supported (yet)")
+}
 
 func TestWriter(t *testing.T) {
 	for _, ca := range []string{
@@ -154,9 +208,13 @@ func TestWriter(t *testing.T) {
 				}})
 			}
 
-			var buf bytes.Buffer
+			var input bytes.Buffer
+			var output bytes.Buffer
 			c := &dummyConn{
-				rw: &buf,
+				rw: &readWriter{
+					Reader: &input,
+					Writer: &output,
+				},
 			}
 			c.initialize()
 
@@ -167,7 +225,7 @@ func TestWriter(t *testing.T) {
 			err := w.Initialize()
 			require.NoError(t, err)
 
-			bc := bytecounter.NewReadWriter(&buf)
+			bc := bytecounter.NewReadWriter(&output)
 			mrw := message.NewReadWriter(bc, bc, true)
 
 			msg, err := mrw.Read()
@@ -765,4 +823,9 @@ func TestWriter(t *testing.T) {
 			}
 		})
 	}
+}
+
+type readWriter struct {
+	io.Reader
+	io.Writer
 }

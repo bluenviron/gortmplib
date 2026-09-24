@@ -2,18 +2,21 @@ package message
 
 import (
 	"io"
+	"sync"
 
 	"github.com/bluenviron/gortmplib/pkg/bytecounter"
 	"github.com/bluenviron/gortmplib/pkg/rawmessage"
 )
 
 // Writer is a message writer.
+// It also drains incoming messages.
 type Writer struct {
 	BW               io.Writer
 	BCW              *bytecounter.Writer
 	CheckAcknowledge bool
 
-	rmw *rawmessage.Writer
+	mutex sync.Mutex
+	rmw   *rawmessage.Writer
 }
 
 // Initialize initializes the Writer.
@@ -48,8 +51,12 @@ func (w *Writer) SetAcknowledgeValue(v uint32) {
 	w.rmw.SetAcknowledgeValue(v)
 }
 
-// Write writes a message.
+// Write writes a message. It is safe to call it concurrently.
 func (w *Writer) Write(msg Message) error {
+	// this is necessary to synchronize rmw.Write with SetChunkSize and SetWindowAckSize.
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
 	raw, err := msg.marshal()
 	if err != nil {
 		return err
