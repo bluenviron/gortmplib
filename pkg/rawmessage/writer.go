@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/bluenviron/gortmplib/pkg/bytecounter"
@@ -156,6 +157,7 @@ type Writer struct {
 	CheckAcknowledge bool
 	AckValue         uint32
 
+	mutex         sync.Mutex
 	bufw          *bufio.Writer
 	chunkSize     uint32
 	ackWindowSize uint32
@@ -188,21 +190,33 @@ func NewWriter(
 
 // SetChunkSize sets the maximum chunk size.
 func (w *Writer) SetChunkSize(v uint32) {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
 	w.chunkSize = v
 }
 
 // SetWindowAckSize sets the window acknowledgement size.
 func (w *Writer) SetWindowAckSize(v uint32) {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
 	w.ackWindowSize = v
 }
 
 // SetAcknowledgeValue sets the acknowledge sequence number.
 func (w *Writer) SetAcknowledgeValue(v uint32) {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
 	w.AckValue = v
 }
 
-// Write writes a Message.
+// Write writes a Message. It is safe to call it concurrently.
 func (w *Writer) Write(msg *Message) error {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
 	wc, ok := w.chunkStreams[msg.ChunkStreamID]
 	if !ok {
 		wc = &writerChunkStream{mw: w}
