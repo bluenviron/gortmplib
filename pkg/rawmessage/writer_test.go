@@ -1,4 +1,4 @@
-package rawmessage
+package rawmessage_test
 
 import (
 	"bytes"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/bluenviron/gortmplib/pkg/bytecounter"
 	"github.com/bluenviron/gortmplib/pkg/chunk"
+	"github.com/bluenviron/gortmplib/pkg/rawmessage"
 )
 
 func chunkBodySize(ch chunk.Chunk) uint32 {
@@ -45,7 +46,7 @@ func TestWriter(t *testing.T) {
 		t.Run(ca.name, func(t *testing.T) {
 			var buf bytes.Buffer
 			bc := bytecounter.NewWriter(&buf)
-			w := &Writer{
+			w := &rawmessage.Writer{
 				BW:               bc,
 				BCW:              bc,
 				CheckAcknowledge: true,
@@ -77,7 +78,7 @@ func TestWriterAcknowledge(t *testing.T) {
 		t.Run(ca, func(t *testing.T) {
 			var buf bytes.Buffer
 			bc := bytecounter.NewWriter(&buf)
-			w := &Writer{
+			w := &rawmessage.Writer{
 				BW:               bc,
 				BCW:              bc,
 				CheckAcknowledge: true,
@@ -86,13 +87,13 @@ func TestWriterAcknowledge(t *testing.T) {
 
 			if ca == "overflow" {
 				bc.SetCount(4294967096)
-				w.ackValue = 4294967096
+				w.AckValue = 4294967096
 			}
 
 			w.SetChunkSize(65536)
 			w.SetWindowAckSize(100)
 
-			err := w.Write(&Message{
+			err := w.Write(&rawmessage.Message{
 				ChunkStreamID:   27,
 				Timestamp:       18576 * time.Millisecond,
 				Type:            6,
@@ -101,7 +102,7 @@ func TestWriterAcknowledge(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			err = w.Write(&Message{
+			err = w.Write(&rawmessage.Message{
 				ChunkStreamID:   27,
 				Timestamp:       18576 * time.Millisecond,
 				Type:            6,

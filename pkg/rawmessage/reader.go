@@ -54,7 +54,7 @@ func (rc *readerChunkStream) readChunk(c chunk.Chunk, bodySize uint32, hasExtend
 	// check if an ack is needed
 	if rc.mr.ackWindowSize != 0 {
 		count := uint32(rc.mr.BCR.Count())
-		diff := count - rc.mr.lastAckCount
+		diff := count - rc.mr.LastAckCount
 
 		if diff > rc.mr.ackWindowSize {
 			err = rc.mr.OnAckNeeded(count)
@@ -62,7 +62,7 @@ func (rc *readerChunkStream) readChunk(c chunk.Chunk, bodySize uint32, hasExtend
 				return err
 			}
 
-			rc.mr.lastAckCount += rc.mr.ackWindowSize
+			rc.mr.LastAckCount += rc.mr.ackWindowSize
 		}
 	}
 
@@ -235,14 +235,14 @@ func (rc *readerChunkStream) readMessage(typ byte) (*Message, error) {
 
 // Reader is a raw message reader.
 type Reader struct {
-	BR          io.Reader
-	BCR         *bytecounter.Reader
-	OnAckNeeded func(uint32) error
+	BR           io.Reader
+	BCR          *bytecounter.Reader
+	OnAckNeeded  func(uint32) error
+	LastAckCount uint32
 
 	bufr          *bufio.Reader
 	chunkSize     uint32
 	ackWindowSize uint32
-	lastAckCount  uint32
 	msg           Message
 	c0            chunk.Chunk0
 	c1            chunk.Chunk1

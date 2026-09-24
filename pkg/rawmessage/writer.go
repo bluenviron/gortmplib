@@ -23,7 +23,7 @@ type writerChunkStream struct {
 func (wc *writerChunkStream) writeChunk(c chunk.Chunk, hasExtendedTimestamp bool) error {
 	// check if we received an acknowledge
 	if wc.mw.CheckAcknowledge && wc.mw.ackWindowSize != 0 {
-		diff := uint32(wc.mw.BCW.Count()) - wc.mw.ackValue
+		diff := uint32(wc.mw.BCW.Count()) - wc.mw.AckValue
 
 		if diff > (wc.mw.ackWindowSize * 3 / 2) {
 			return fmt.Errorf("no acknowledge received within window")
@@ -154,11 +154,11 @@ type Writer struct {
 	BW               io.Writer
 	BCW              *bytecounter.Writer
 	CheckAcknowledge bool
+	AckValue         uint32
 
 	bufw          *bufio.Writer
 	chunkSize     uint32
 	ackWindowSize uint32
-	ackValue      uint32
 	chunkStreams  map[byte]*writerChunkStream
 }
 
@@ -198,7 +198,7 @@ func (w *Writer) SetWindowAckSize(v uint32) {
 
 // SetAcknowledgeValue sets the acknowledge sequence number.
 func (w *Writer) SetAcknowledgeValue(v uint32) {
-	w.ackValue = v
+	w.AckValue = v
 }
 
 // Write writes a Message.
