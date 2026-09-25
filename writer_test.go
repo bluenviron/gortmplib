@@ -449,7 +449,8 @@ func TestWriter(t *testing.T) {
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecH264,
-					IsKeyFrame:      true,
+					FrameType:       message.VideoFrameTypeKeyFrame,
+					IsKeyFrame:      true, //nolint:staticcheck
 					Type:            message.VideoTypeConfig,
 					AVCConfig: generateAvcC(t,
 						[]byte{
@@ -493,7 +494,8 @@ func TestWriter(t *testing.T) {
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecH264,
-					IsKeyFrame:      true,
+					FrameType:       message.VideoFrameTypeKeyFrame,
+					IsKeyFrame:      true, //nolint:staticcheck
 					Type:            message.VideoTypeAU,
 					PTSDelta:        100 * time.Millisecond,
 					AU:              []byte{0, 0, 0, 2, 5, 1},
@@ -662,7 +664,8 @@ func TestWriter(t *testing.T) {
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecH264,
-					IsKeyFrame:      true,
+					FrameType:       message.VideoFrameTypeKeyFrame,
+					IsKeyFrame:      true, //nolint:staticcheck
 					Type:            message.VideoTypeConfig,
 					AVCConfig:       generateAvcC(t, h264DefaultSPS, h264DefaultPPS),
 				}, msg)
@@ -676,6 +679,7 @@ func TestWriter(t *testing.T) {
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecH264,
+					FrameType:       message.VideoFrameTypeInterFrame,
 					Type:            message.VideoTypeAU,
 					AU:              []byte{0, 0, 0, 2, 1, 2},
 				}, msg)

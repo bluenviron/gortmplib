@@ -445,7 +445,7 @@ func (w *Writer) writeTracks() error {
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecH264,
-					IsKeyFrame:      true,
+					FrameType:       message.VideoFrameTypeKeyFrame,
 					Type:            message.VideoTypeConfig,
 					AVCConfig:       avcc,
 				})
@@ -703,11 +703,16 @@ func (w *Writer) WriteH264(track *Track, pts time.Duration, dts time.Duration, a
 	id := w.videoTrackToID[track]
 
 	if id == 0 {
+		frameType := message.VideoFrameTypeInterFrame
+		if h264.IsRandomAccess(au) {
+			frameType = message.VideoFrameTypeKeyFrame
+		}
+
 		return w.Conn.Write(&message.Video{
 			ChunkStreamID:   message.VideoChunkStreamID,
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
-			IsKeyFrame:      h264.IsRandomAccess(au),
+			FrameType:       frameType,
 			Type:            message.VideoTypeAU,
 			AU:              avcc,
 			DTS:             dts,
