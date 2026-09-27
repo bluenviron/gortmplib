@@ -277,10 +277,6 @@ func h264AUSize(au [][]byte) int {
 	return size
 }
 
-func audioCarriesNoData(msg *message.Audio) bool {
-	return msg.Codec == 0
-}
-
 // Reader provides functions to read incoming data.
 type Reader struct {
 	Conn Conn
@@ -471,17 +467,13 @@ func (r *Reader) readTracks() (map[uint8]*Track, map[uint8]*Track, error) {
 			}
 
 		case *message.Audio:
-			if audioCarriesNoData(msg) {
-				continue
-			}
-
 			if !firstReceived {
 				firstReceived = true
 				startTime = msg.DTS
 			}
 			curTime = msg.DTS
 
-			if audioTracks[0] == nil {
+			if audioTracks[0] == nil && msg.Codec != 0 {
 				if msg.Codec == message.CodecMPEG4Audio {
 					if msg.AACType == message.AudioAACTypeConfig {
 						if msg.AACConfig != nil {
@@ -848,7 +840,7 @@ func (r *Reader) OnDataMPEG4Audio(track *Track, cb OnDataMPEG4AudioFunc) {
 	r.onAudioData[r.audioTrackID(track)] = func(msg message.Message) error {
 		switch msg := msg.(type) {
 		case *message.Audio:
-			if msg.AACType == message.AudioAACTypeAU {
+			if msg.Codec != 0 && msg.AACType == message.AudioAACTypeAU {
 				cb(msg.DTS, msg.AU)
 			}
 
@@ -864,7 +856,9 @@ func (r *Reader) OnDataMPEG1Audio(track *Track, cb OnDataMPEG1AudioFunc) {
 	r.onAudioData[r.audioTrackID(track)] = func(msg message.Message) error {
 		switch msg := msg.(type) {
 		case *message.Audio:
-			cb(msg.DTS, msg.AU)
+			if msg.Codec != 0 {
+				cb(msg.DTS, msg.AU)
+			}
 
 		case *message.AudioExCodedFrames:
 			cb(msg.DTS, msg.Payload)
@@ -922,13 +916,6 @@ func (r *Reader) Read() error {
 			finalizer()
 		}
 		return err
-	}
-
-	switch msg := msg.(type) {
-	case *message.Audio:
-		if audioCarriesNoData(msg) {
-			return nil
-		}
 	}
 
 	switch msg := msg.(type) {
