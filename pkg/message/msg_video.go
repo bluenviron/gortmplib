@@ -22,6 +22,25 @@ const (
 	CodecH265 = 12 // unofficial
 )
 
+// VideoFrameType is the frame type of a video message.
+type VideoFrameType uint8
+
+// VideoFrameType values.
+const (
+	VideoFrameTypeKeyFrame   VideoFrameType = 1
+	VideoFrameTypeInterFrame VideoFrameType = 2
+	VideoFrameTypeCommand    VideoFrameType = 5
+)
+
+// VideoCommand is the command carried by a video message with FrameType = VideoFrameTypeCommand.
+type VideoCommand uint8
+
+// VideoCommand values.
+const (
+	VideoCommandStartSeek VideoCommand = 0
+	VideoCommandEndSeek   VideoCommand = 1
+)
+
 // VideoType is the type of a video message.
 type VideoType uint8
 
@@ -95,10 +114,16 @@ type Video struct {
 	ChunkStreamID   byte
 	DTS             time.Duration
 	MessageStreamID uint32
-	Codec           uint8
-	IsKeyFrame      bool
-	Type            VideoType
-	PTSDelta        time.Duration
+	FrameType       VideoFrameType
+
+	// only in case of FrameType = VideoFrameTypeCommand.
+	// Command frames carry no other field.
+	Command VideoCommand
+
+	// only in case of FrameType = VideoFrameTypeKeyFrame or FrameType = VideoFrameTypeInterFrame.
+	Codec    uint8
+	Type     VideoType
+	PTSDelta time.Duration
 
 	// only in case of Type = VideoTypeConfig, Codec = CodecH265.
 	// Guaranteed to contain non-empty VPS, SPS and PPS NALUs.
@@ -111,6 +136,9 @@ type Video struct {
 
 	// only in case of Type = VideoTypeAU.
 	AU []byte
+
+	// Deprecated: replaced by FrameType.
+	IsKeyFrame bool
 }
 
 func (m *Video) unmarshal(raw *rawmessage.Message) error {
@@ -118,71 +146,114 @@ func (m *Video) unmarshal(raw *rawmessage.Message) error {
 	m.DTS = raw.Timestamp
 	m.MessageStreamID = raw.MessageStreamID
 
-	if len(raw.Body) < 5 {
+	if len(raw.Body) < 2 {
 		return fmt.Errorf("invalid body size")
 	}
 
-	m.IsKeyFrame = (raw.Body[0] >> 4) == 1
+	switch VideoFrameType(raw.Body[0] >> 4) {
+	case VideoFrameTypeKeyFrame:
+		m.FrameType = VideoFrameTypeKeyFrame
+		m.IsKeyFrame = true
 
-	m.Codec = raw.Body[0] & 0x0F
-	switch m.Codec {
-	case CodecH264, CodecH265:
+	case VideoFrameTypeCommand:
+		m.FrameType = VideoFrameTypeCommand
+
 	default:
-		return fmt.Errorf("unsupported video codec: %d", m.Codec)
+		m.FrameType = VideoFrameTypeInterFrame
 	}
 
-	m.Type = VideoType(raw.Body[1])
-	switch m.Type {
-	case VideoTypeConfig, VideoTypeAU, VideoTypeEOS:
-	default:
-		return fmt.Errorf("unsupported video message type: %d", m.Type)
-	}
-
-	m.PTSDelta = time.Duration(int32(uint32(raw.Body[2])<<24|uint32(raw.Body[3])<<16|
-		uint32(raw.Body[4])<<8)>>8) * time.Millisecond
-
-	switch m.Type {
-	case VideoTypeConfig:
+	if m.FrameType == VideoFrameTypeCommand {
+		m.Command = VideoCommand(raw.Body[1])
+		switch m.Command {
+		case VideoCommandStartSeek, VideoCommandEndSeek:
+		default:
+			return fmt.Errorf("unsupported video command: %d", m.Command)
+		}
+	} else {
+		m.Codec = raw.Body[0] & 0x0F
 		switch m.Codec {
-		case CodecH264:
-			if len(raw.Body) > 5 {
-				m.AVCConfig = &mp4.AVCDecoderConfiguration{}
-				m.AVCConfig.SetType(mp4.BoxTypeAvcC())
-				_, err := mp4.Unmarshal(bytes.NewReader(raw.Body[5:]), uint64(len(raw.Body[5:])), m.AVCConfig, mp4.Context{})
-				if err != nil {
-					return fmt.Errorf("unable to parse H264 config: %w", err)
-				}
-
-				_, _, err = h264FindParams(m.AVCConfig)
-				if err != nil {
-					return fmt.Errorf("unable to parse H264 config: %w", err)
-				}
-			}
-
-		case CodecH265:
-			m.HEVCConfig = &mp4.HvcC{}
-			_, err := mp4.Unmarshal(bytes.NewReader(raw.Body[5:]), uint64(len(raw.Body[5:])), m.HEVCConfig, mp4.Context{})
-			if err != nil {
-				return fmt.Errorf("unable to parse H265 config: %w", err)
-			}
-
-			_, _, _, err = h265FindParams(m.HEVCConfig)
-			if err != nil {
-				return fmt.Errorf("unable to parse H265 config: %w", err)
-			}
+		case CodecH264, CodecH265:
+		default:
+			return fmt.Errorf("unsupported video codec: %d", m.Codec)
 		}
 
-	case VideoTypeAU:
-		if len(raw.Body) < 6 {
+		if len(raw.Body) < 5 {
 			return fmt.Errorf("invalid body size")
 		}
-		m.AU = raw.Body[5:]
+
+		m.Type = VideoType(raw.Body[1])
+		switch m.Type {
+		case VideoTypeConfig, VideoTypeAU, VideoTypeEOS:
+		default:
+			return fmt.Errorf("unsupported video message type: %d", m.Type)
+		}
+
+		m.PTSDelta = time.Duration(int32(uint32(raw.Body[2])<<24|uint32(raw.Body[3])<<16|
+			uint32(raw.Body[4])<<8)>>8) * time.Millisecond
+
+		switch m.Type {
+		case VideoTypeConfig:
+			switch m.Codec {
+			case CodecH264:
+				if len(raw.Body) > 5 {
+					m.AVCConfig = &mp4.AVCDecoderConfiguration{}
+					m.AVCConfig.SetType(mp4.BoxTypeAvcC())
+					_, err := mp4.Unmarshal(bytes.NewReader(raw.Body[5:]), uint64(len(raw.Body[5:])), m.AVCConfig, mp4.Context{})
+					if err != nil {
+						return fmt.Errorf("unable to parse H264 config: %w", err)
+					}
+
+					_, _, err = h264FindParams(m.AVCConfig)
+					if err != nil {
+						return fmt.Errorf("unable to parse H264 config: %w", err)
+					}
+				}
+
+			case CodecH265:
+				m.HEVCConfig = &mp4.HvcC{}
+				_, err := mp4.Unmarshal(bytes.NewReader(raw.Body[5:]), uint64(len(raw.Body[5:])), m.HEVCConfig, mp4.Context{})
+				if err != nil {
+					return fmt.Errorf("unable to parse H265 config: %w", err)
+				}
+
+				_, _, _, err = h265FindParams(m.HEVCConfig)
+				if err != nil {
+					return fmt.Errorf("unable to parse H265 config: %w", err)
+				}
+			}
+
+		case VideoTypeAU:
+			if len(raw.Body) < 6 {
+				return fmt.Errorf("invalid body size")
+			}
+			m.AU = raw.Body[5:]
+		}
 	}
 
 	return nil
 }
 
 func (m Video) marshal() (*rawmessage.Message, error) {
+	// support for the deprecated field IsKeyFrame
+	frameType := m.FrameType
+	if frameType == 0 {
+		if m.IsKeyFrame {
+			frameType = VideoFrameTypeKeyFrame
+		} else {
+			frameType = VideoFrameTypeInterFrame
+		}
+	}
+
+	if frameType == VideoFrameTypeCommand {
+		return &rawmessage.Message{
+			ChunkStreamID:   m.ChunkStreamID,
+			Timestamp:       m.DTS,
+			Type:            uint8(TypeVideo),
+			MessageStreamID: m.MessageStreamID,
+			Body:            []byte{uint8(frameType) << 4, uint8(m.Command)},
+		}, nil
+	}
+
 	var bodyData []byte
 
 	switch m.Type {
@@ -213,12 +284,7 @@ func (m Video) marshal() (*rawmessage.Message, error) {
 
 	body := make([]byte, 5+len(bodyData))
 
-	if m.IsKeyFrame {
-		body[0] = 1 << 4
-	} else {
-		body[0] = 2 << 4
-	}
-	body[0] |= m.Codec
+	body[0] = uint8(frameType)<<4 | m.Codec
 	body[1] = uint8(m.Type)
 
 	tmp := uint32(m.PTSDelta / time.Millisecond)

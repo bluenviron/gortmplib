@@ -57,7 +57,7 @@ type Audio struct {
 	ChunkStreamID   byte
 	DTS             time.Duration
 	MessageStreamID uint32
-	Codec           uint8
+	Codec           uint8 // zero in case of empty messages
 	Rate            AudioRate
 	Depth           AudioDepth
 	IsStereo        bool
@@ -70,6 +70,11 @@ func (m *Audio) unmarshal(raw *rawmessage.Message) error {
 	m.ChunkStreamID = raw.ChunkStreamID
 	m.DTS = raw.Timestamp
 	m.MessageStreamID = raw.MessageStreamID
+
+	// empty message
+	if len(raw.Body) == 0 {
+		return nil
+	}
 
 	if len(raw.Body) < 2 {
 		return fmt.Errorf("invalid body size")
@@ -119,6 +124,16 @@ func (m *Audio) unmarshal(raw *rawmessage.Message) error {
 }
 
 func (m Audio) marshal() (*rawmessage.Message, error) {
+	// empty message
+	if m.Codec == 0 {
+		return &rawmessage.Message{
+			ChunkStreamID:   m.ChunkStreamID,
+			Timestamp:       m.DTS,
+			Type:            uint8(TypeAudio),
+			MessageStreamID: m.MessageStreamID,
+		}, nil
+	}
+
 	var bodyData []byte
 
 	if m.Codec == CodecMPEG4Audio {

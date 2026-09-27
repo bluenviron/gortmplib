@@ -394,6 +394,10 @@ func (r *Reader) readTracks() (map[uint8]*Track, map[uint8]*Track, error) {
 
 		switch msg := msg.(type) {
 		case *message.Video:
+			if msg.FrameType == message.VideoFrameTypeCommand {
+				continue
+			}
+
 			if !firstReceived {
 				firstReceived = true
 				startTime = msg.DTS
@@ -467,6 +471,10 @@ func (r *Reader) readTracks() (map[uint8]*Track, map[uint8]*Track, error) {
 			}
 
 		case *message.Audio:
+			if msg.Codec == 0 {
+				continue
+			}
+
 			if !firstReceived {
 				firstReceived = true
 				startTime = msg.DTS
@@ -914,6 +922,14 @@ func (r *Reader) Read() error {
 			finalizer()
 		}
 		return err
+	}
+
+	if video, ok := msg.(*message.Video); ok && video.FrameType == message.VideoFrameTypeCommand {
+		return nil
+	}
+
+	if audio, ok := msg.(*message.Audio); ok && audio.Codec == 0 {
+		return nil
 	}
 
 	switch msg := msg.(type) {
