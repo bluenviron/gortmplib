@@ -41,14 +41,26 @@ const (
 	VideoCommandEndSeek   VideoCommand = 1
 )
 
+// VideoPacketType is the type of a video message.
+type VideoPacketType uint8
+
+// VideoPacketType values.
+const (
+	VideoPacketTypeConfig VideoPacketType = 0
+	VideoPacketTypeAU     VideoPacketType = 1
+	VideoPacketTypeEOS    VideoPacketType = 2
+)
+
 // VideoType is the type of a video message.
-type VideoType uint8
+//
+// Deprecated: replaced by VideoPacketType.
+type VideoType = VideoPacketType
 
 // VideoType values.
 const (
-	VideoTypeConfig VideoType = 0
-	VideoTypeAU     VideoType = 1
-	VideoTypeEOS    VideoType = 2
+	VideoTypeConfig VideoType = VideoPacketTypeConfig
+	VideoTypeAU     VideoType = VideoPacketTypeAU
+	VideoTypeEOS    VideoType = VideoPacketTypeEOS
 )
 
 func h264FindParams(avcc *mp4.AVCDecoderConfiguration) ([]byte, []byte, error) {
@@ -121,24 +133,27 @@ type Video struct {
 	Command VideoCommand
 
 	// only in case of FrameType = VideoFrameTypeKeyFrame or FrameType = VideoFrameTypeInterFrame.
-	Codec    uint8
-	Type     VideoType
-	PTSDelta time.Duration
+	Codec      uint8
+	PacketType VideoPacketType
+	PTSDelta   time.Duration
 
-	// only in case of Type = VideoTypeConfig, Codec = CodecH265.
+	// only in case of PacketType = VideoPacketTypeConfig, Codec = CodecH265.
 	// Guaranteed to contain non-empty VPS, SPS and PPS NALUs.
 	HEVCConfig *mp4.HvcC
 
-	// only in case of Type = VideoTypeConfig, Codec = CodecH264.
+	// only in case of PacketType = VideoPacketTypeConfig, Codec = CodecH264.
 	// Might be nil.
 	// When non-nil, guaranteed to contain non-empty SPS and PPS NALUs.
 	AVCConfig *mp4.AVCDecoderConfiguration
 
-	// only in case of Type = VideoTypeAU.
+	// only in case of PacketType = VideoPacketTypeAU.
 	AU []byte
 
 	// Deprecated: replaced by FrameType.
 	IsKeyFrame bool
+
+	// Deprecated: replaced by PacketType.
+	Type VideoType
 }
 
 func (m *Video) unmarshal(raw *rawmessage.Message) error {
@@ -181,18 +196,19 @@ func (m *Video) unmarshal(raw *rawmessage.Message) error {
 			return fmt.Errorf("invalid body size")
 		}
 
-		m.Type = VideoType(raw.Body[1])
-		switch m.Type {
-		case VideoTypeConfig, VideoTypeAU, VideoTypeEOS:
+		m.PacketType = VideoPacketType(raw.Body[1])
+		switch m.PacketType {
+		case VideoPacketTypeConfig, VideoPacketTypeAU, VideoPacketTypeEOS:
 		default:
-			return fmt.Errorf("unsupported video message type: %d", m.Type)
+			return fmt.Errorf("unsupported video message type: %d", m.PacketType)
 		}
+		m.Type = m.PacketType
 
 		m.PTSDelta = time.Duration(int32(uint32(raw.Body[2])<<24|uint32(raw.Body[3])<<16|
 			uint32(raw.Body[4])<<8)>>8) * time.Millisecond
 
-		switch m.Type {
-		case VideoTypeConfig:
+		switch m.PacketType {
+		case VideoPacketTypeConfig:
 			switch m.Codec {
 			case CodecH264:
 				if len(raw.Body) > 5 {
@@ -222,7 +238,7 @@ func (m *Video) unmarshal(raw *rawmessage.Message) error {
 				}
 			}
 
-		case VideoTypeAU:
+		case VideoPacketTypeAU:
 			if len(raw.Body) < 6 {
 				return fmt.Errorf("invalid body size")
 			}
@@ -256,8 +272,13 @@ func (m Video) marshal() (*rawmessage.Message, error) {
 
 	var bodyData []byte
 
-	switch m.Type {
-	case VideoTypeConfig:
+	// support for the deprecated field Type
+	if m.Type != 0 {
+		m.PacketType = m.Type
+	}
+
+	switch m.PacketType {
+	case VideoPacketTypeConfig:
 		switch m.Codec {
 		case CodecH264:
 			if m.AVCConfig != nil {
@@ -278,14 +299,14 @@ func (m Video) marshal() (*rawmessage.Message, error) {
 			bodyData = buf.Bytes()
 		}
 
-	case VideoTypeAU:
+	case VideoPacketTypeAU:
 		bodyData = m.AU
 	}
 
 	body := make([]byte, 5+len(bodyData))
 
 	body[0] = uint8(frameType)<<4 | m.Codec
-	body[1] = uint8(m.Type)
+	body[1] = uint8(m.PacketType)
 
 	tmp := uint32(m.PTSDelta / time.Millisecond)
 	body[2] = uint8(tmp >> 16)
