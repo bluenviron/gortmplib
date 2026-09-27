@@ -57,17 +57,13 @@ type Audio struct {
 	ChunkStreamID   byte
 	DTS             time.Duration
 	MessageStreamID uint32
-
-	// zero in case of empty messages that are sent by some servers
-	// and carry no other field.
-	Codec uint8
-
-	Rate      AudioRate
-	Depth     AudioDepth
-	IsStereo  bool
-	AACType   AudioAACType                    // Codec = CodecMPEG4Audio
-	AACConfig *mpeg4audio.AudioSpecificConfig // Codec = CodecMPEG4Audio, AACType = AACTypeConfig
-	AU        []byte
+	Codec           uint8 // zero in case of empty messages
+	Rate            AudioRate
+	Depth           AudioDepth
+	IsStereo        bool
+	AACType         AudioAACType                    // Codec = CodecMPEG4Audio
+	AACConfig       *mpeg4audio.AudioSpecificConfig // Codec = CodecMPEG4Audio, AACType = AACTypeConfig
+	AU              []byte
 }
 
 func (m *Audio) unmarshal(raw *rawmessage.Message) error {

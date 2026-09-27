@@ -747,7 +747,7 @@ func (r *Reader) OnDataH264(track *Track, cb OnDataH26xFunc) {
 		switch msg := msg.(type) {
 		case *message.Video:
 			switch {
-			case msg.FrameType != message.VideoFrameTypeCommand && msg.Type != message.VideoTypeConfig:
+			case msg.FrameType != message.VideoFrameTypeCommand && msg.Type == message.VideoTypeConfig:
 				flushPending()
 
 				if msg.AVCConfig != nil {
@@ -840,7 +840,7 @@ func (r *Reader) OnDataMPEG4Audio(track *Track, cb OnDataMPEG4AudioFunc) {
 	r.onAudioData[r.audioTrackID(track)] = func(msg message.Message) error {
 		switch msg := msg.(type) {
 		case *message.Audio:
-			if msg.Codec != 0 && msg.AACType == message.AudioAACTypeAU {
+			if msg.AACType == message.AudioAACTypeAU {
 				cb(msg.DTS, msg.AU)
 			}
 
@@ -856,9 +856,7 @@ func (r *Reader) OnDataMPEG1Audio(track *Track, cb OnDataMPEG1AudioFunc) {
 	r.onAudioData[r.audioTrackID(track)] = func(msg message.Message) error {
 		switch msg := msg.(type) {
 		case *message.Audio:
-			if msg.Codec != 0 {
-				cb(msg.DTS, msg.AU)
-			}
+			cb(msg.DTS, msg.AU)
 
 		case *message.AudioExCodedFrames:
 			cb(msg.DTS, msg.Payload)
@@ -916,6 +914,10 @@ func (r *Reader) Read() error {
 			finalizer()
 		}
 		return err
+	}
+
+	if audio, ok := msg.(*message.Audio); ok && audio.Codec == 0 {
+		return nil
 	}
 
 	switch msg := msg.(type) {
