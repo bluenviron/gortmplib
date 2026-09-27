@@ -277,12 +277,6 @@ func h264AUSize(au [][]byte) int {
 	return size
 }
 
-// command frames and empty audio messages are sent by some servers (e.g. Wowza)
-// before the first frame. They carry no data and are skipped, like FFmpeg does.
-func videoCarriesNoData(msg *message.Video) bool {
-	return msg.FrameType == message.VideoFrameTypeCommand
-}
-
 func audioCarriesNoData(msg *message.Audio) bool {
 	return msg.Codec == 0
 }
@@ -404,17 +398,13 @@ func (r *Reader) readTracks() (map[uint8]*Track, map[uint8]*Track, error) {
 
 		switch msg := msg.(type) {
 		case *message.Video:
-			if videoCarriesNoData(msg) {
-				continue
-			}
-
 			if !firstReceived {
 				firstReceived = true
 				startTime = msg.DTS
 			}
 			curTime = msg.DTS
 
-			if msg.Type == message.VideoTypeConfig && videoTracks[0] == nil {
+			if msg.FrameType != message.VideoFrameTypeCommand && msg.Type == message.VideoTypeConfig && videoTracks[0] == nil {
 				switch msg.Codec {
 				case message.CodecH264:
 					if msg.AVCConfig != nil {
@@ -644,8 +634,8 @@ func (r *Reader) OnDataH265(track *Track, cb OnDataH26xFunc) {
 	r.onVideoData[r.videoTrackID(track)] = func(msg message.Message) error {
 		switch msg := msg.(type) {
 		case *message.Video:
-			switch msg.Type {
-			case message.VideoTypeConfig:
+			switch {
+			case msg.FrameType != message.VideoFrameTypeCommand && msg.Type == message.VideoTypeConfig:
 				// VPS, SPS, PPS are guaranteed to be present by message.Video
 				vps, sps, pps, _ := h265FindParams(msg.HEVCConfig)
 
@@ -653,7 +643,7 @@ func (r *Reader) OnDataH265(track *Track, cb OnDataH26xFunc) {
 
 				cb(msg.DTS+msg.PTSDelta, msg.DTS, au)
 
-			case message.VideoTypeAU:
+			case msg.FrameType != message.VideoFrameTypeCommand && msg.Type == message.VideoTypeAU:
 				var au h264.AVCC
 				err := au.Unmarshal(msg.AU)
 				if err != nil {
@@ -764,8 +754,8 @@ func (r *Reader) OnDataH264(track *Track, cb OnDataH26xFunc) {
 	r.onVideoData[trackID] = func(msg message.Message) error {
 		switch msg := msg.(type) {
 		case *message.Video:
-			switch msg.Type {
-			case message.VideoTypeConfig:
+			switch {
+			case msg.FrameType != message.VideoFrameTypeCommand && msg.Type != message.VideoTypeConfig:
 				flushPending()
 
 				if msg.AVCConfig != nil {
@@ -778,7 +768,7 @@ func (r *Reader) OnDataH264(track *Track, cb OnDataH26xFunc) {
 					cb(msg.DTS+msg.PTSDelta, msg.DTS, au)
 				}
 
-			case message.VideoTypeAU:
+			case msg.FrameType != message.VideoFrameTypeCommand && msg.Type == message.VideoTypeAU:
 				var au h264.AVCC
 				err := au.Unmarshal(msg.AU)
 				if err != nil {
@@ -793,7 +783,7 @@ func (r *Reader) OnDataH264(track *Track, cb OnDataH26xFunc) {
 					return err
 				}
 
-			case message.VideoTypeEOS:
+			case msg.FrameType != message.VideoFrameTypeCommand && msg.Type == message.VideoTypeEOS:
 				flushPending()
 			}
 
@@ -935,10 +925,6 @@ func (r *Reader) Read() error {
 	}
 
 	switch msg := msg.(type) {
-	case *message.Video:
-		if videoCarriesNoData(msg) {
-			return nil
-		}
 	case *message.Audio:
 		if audioCarriesNoData(msg) {
 			return nil
