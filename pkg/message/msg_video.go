@@ -250,7 +250,7 @@ func (m Video) marshal() (*rawmessage.Message, error) {
 			Timestamp:       m.DTS,
 			Type:            uint8(TypeVideo),
 			MessageStreamID: m.MessageStreamID,
-			Body:            []byte{uint8(frameType)<<4 | m.Codec, uint8(m.Command)},
+			Body:            []byte{uint8(frameType) << 4, uint8(m.Command)},
 		}, nil
 	}
 

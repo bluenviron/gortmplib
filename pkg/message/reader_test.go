@@ -621,21 +621,6 @@ var readWriterCases = []struct {
 			ChunkStreamID:   6,
 			DTS:             2543534 * time.Millisecond,
 			MessageStreamID: 0x1000000,
-			Codec:           message.CodecH264,
-			FrameType:       message.VideoFrameTypeCommand,
-			Command:         message.VideoCommandStartSeek,
-		},
-		[]byte{
-			0x06, 0x26, 0xcf, 0xae, 0x00, 0x00, 0x02, 0x09,
-			0x01, 0x00, 0x00, 0x00, 0x57, 0x00,
-		},
-	},
-	{
-		"video command without codec",
-		&message.Video{
-			ChunkStreamID:   6,
-			DTS:             2543534 * time.Millisecond,
-			MessageStreamID: 0x1000000,
 			FrameType:       message.VideoFrameTypeCommand,
 			Command:         message.VideoCommandStartSeek,
 		},
@@ -997,6 +982,24 @@ func TestReader(t *testing.T) {
 			require.Equal(t, ca.dec, dec)
 		})
 	}
+}
+
+func TestReaderVideoCommandWithCodecNibble(t *testing.T) {
+	buf := []byte{
+		0x06, 0x26, 0xcf, 0xae, 0x00, 0x00, 0x02, 0x09,
+		0x01, 0x00, 0x00, 0x00, 0x57, 0x00,
+	}
+	bc := bytecounter.NewReader(bytes.NewReader(buf))
+	r := message.NewReader(bc, bc, nil)
+	msg, err := r.Read()
+	require.NoError(t, err)
+	require.Equal(t, &message.Video{
+		ChunkStreamID:   6,
+		DTS:             2543534 * time.Millisecond,
+		MessageStreamID: 0x1000000,
+		FrameType:       message.VideoFrameTypeCommand,
+		Command:         message.VideoCommandStartSeek,
+	}, msg)
 }
 
 func TestReaderNonStandardControlChunkStreamID(t *testing.T) {
