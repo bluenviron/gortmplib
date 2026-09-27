@@ -420,7 +420,8 @@ var readWriterCases = []struct {
 			Codec:           message.CodecH264,
 			FrameType:       message.VideoFrameTypeKeyFrame,
 			IsKeyFrame:      true, //nolint:staticcheck
-			Type:            message.VideoTypeAU,
+			PacketType:      message.VideoPacketTypeAU,
+			Type:            message.VideoTypeAU, //nolint:staticcheck
 			PTSDelta:        10 * time.Millisecond,
 			AU:              []byte{0x01, 0x02, 0x03},
 		},
@@ -439,7 +440,8 @@ var readWriterCases = []struct {
 			Codec:           message.CodecH264,
 			FrameType:       message.VideoFrameTypeKeyFrame,
 			IsKeyFrame:      true, //nolint:staticcheck
-			Type:            message.VideoTypeAU,
+			PacketType:      message.VideoPacketTypeAU,
+			Type:            message.VideoTypeAU, //nolint:staticcheck
 			PTSDelta:        -34 * time.Millisecond,
 			AU:              []byte{0x01, 0x02, 0x03},
 		},
@@ -458,7 +460,7 @@ var readWriterCases = []struct {
 			Codec:           message.CodecH264,
 			FrameType:       message.VideoFrameTypeKeyFrame,
 			IsKeyFrame:      true, //nolint:staticcheck
-			Type:            message.VideoTypeConfig,
+			PacketType:      message.VideoPacketTypeConfig,
 			AVCConfig: &mp4.AVCDecoderConfiguration{
 				AnyTypeBox:                 mp4.AnyTypeBox{Type: mp4.BoxType{0x61, 0x76, 0x63, 0x43}},
 				ConfigurationVersion:       0x1,
@@ -511,7 +513,7 @@ var readWriterCases = []struct {
 			Codec:           message.CodecH264,
 			FrameType:       message.VideoFrameTypeKeyFrame,
 			IsKeyFrame:      true, //nolint:staticcheck
-			Type:            message.VideoTypeConfig,
+			PacketType:      message.VideoPacketTypeConfig,
 			AVCConfig:       nil,
 		},
 		[]byte{
@@ -529,7 +531,7 @@ var readWriterCases = []struct {
 			Codec:           message.CodecH265,
 			FrameType:       message.VideoFrameTypeKeyFrame,
 			IsKeyFrame:      true, //nolint:staticcheck
-			Type:            message.VideoTypeConfig,
+			PacketType:      message.VideoPacketTypeConfig,
 			HEVCConfig: &mp4.HvcC{
 				ConfigurationVersion: 0x1,
 				GeneralProfileIdc:    0x1,
@@ -607,7 +609,8 @@ var readWriterCases = []struct {
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
 			FrameType:       message.VideoFrameTypeInterFrame,
-			Type:            message.VideoTypeEOS,
+			PacketType:      message.VideoPacketTypeEOS,
+			Type:            message.VideoTypeEOS, //nolint:staticcheck
 		},
 		[]byte{
 			0x06, 0x26, 0xcf, 0xae, 0x00, 0x00, 0x05, 0x09,
@@ -1103,7 +1106,7 @@ func FuzzReader(f *testing.F) {
 			require.NotEmpty(t, msg.Payload)
 
 		case *message.Video:
-			if msg.Type == message.VideoTypeAU {
+			if msg.PacketType == message.VideoPacketTypeAU {
 				require.NotEmpty(t, msg.AU)
 			}
 		}

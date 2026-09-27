@@ -446,7 +446,7 @@ func (w *Writer) writeTracks() error {
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecH264,
 					FrameType:       message.VideoFrameTypeKeyFrame,
-					Type:            message.VideoTypeConfig,
+					PacketType:      message.VideoPacketTypeConfig,
 					AVCConfig:       avcc,
 				})
 				if err != nil {
@@ -713,7 +713,7 @@ func (w *Writer) WriteH264(track *Track, pts time.Duration, dts time.Duration, a
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
 			FrameType:       frameType,
-			Type:            message.VideoTypeAU,
+			PacketType:      message.VideoPacketTypeAU,
 			AU:              avcc,
 			DTS:             dts,
 			PTSDelta:        pts - dts,

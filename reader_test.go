@@ -235,7 +235,7 @@ func TestReadTracks(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecH264,
 					FrameType:       message.VideoFrameTypeKeyFrame,
-					Type:            message.VideoTypeConfig,
+					PacketType:      message.VideoPacketTypeConfig,
 					AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 				},
 				&message.Audio{
@@ -294,7 +294,7 @@ func TestReadTracks(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecH264,
 					FrameType:       message.VideoFrameTypeKeyFrame,
-					Type:            message.VideoTypeConfig,
+					PacketType:      message.VideoPacketTypeConfig,
 					AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 				},
 				&message.Video{
@@ -303,7 +303,7 @@ func TestReadTracks(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecH264,
 					FrameType:       message.VideoFrameTypeKeyFrame,
-					Type:            message.VideoTypeAU,
+					PacketType:      message.VideoPacketTypeAU,
 					AU:              []byte{1},
 				},
 			},
@@ -347,7 +347,7 @@ func TestReadTracks(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecH265,
 					FrameType:       message.VideoFrameTypeKeyFrame,
-					Type:            message.VideoTypeConfig,
+					PacketType:      message.VideoPacketTypeConfig,
 					HEVCConfig:      generateHvcC(t, testCodecH265.VPS, testCodecH265.SPS, testCodecH265.PPS),
 				},
 				&message.Video{
@@ -356,7 +356,7 @@ func TestReadTracks(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecH265,
 					FrameType:       message.VideoFrameTypeKeyFrame,
-					Type:            message.VideoTypeAU,
+					PacketType:      message.VideoPacketTypeAU,
 					AU:              []byte{1},
 				},
 			},
@@ -383,7 +383,7 @@ func TestReadTracks(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecH264,
 					FrameType:       message.VideoFrameTypeKeyFrame,
-					Type:            message.VideoTypeConfig,
+					PacketType:      message.VideoPacketTypeConfig,
 					AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 				},
 				&message.Audio{
@@ -444,7 +444,7 @@ func TestReadTracks(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecH264,
 					FrameType:       message.VideoFrameTypeKeyFrame,
-					Type:            message.VideoTypeConfig,
+					PacketType:      message.VideoPacketTypeConfig,
 					AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 				},
 				&message.Audio{
@@ -594,7 +594,7 @@ func TestReadTracks(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecH264,
 					FrameType:       message.VideoFrameTypeKeyFrame,
-					Type:            message.VideoTypeConfig,
+					PacketType:      message.VideoPacketTypeConfig,
 					AVCConfig:       nil,
 				},
 				&message.Video{
@@ -602,7 +602,7 @@ func TestReadTracks(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecH264,
 					FrameType:       message.VideoFrameTypeKeyFrame,
-					Type:            message.VideoTypeConfig,
+					PacketType:      message.VideoPacketTypeConfig,
 					AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 				},
 				&message.Video{
@@ -611,7 +611,7 @@ func TestReadTracks(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecH264,
 					FrameType:       message.VideoFrameTypeKeyFrame,
-					Type:            message.VideoTypeAU,
+					PacketType:      message.VideoPacketTypeAU,
 					AU:              []byte{1},
 				},
 			},
@@ -859,7 +859,7 @@ func TestReadTracks(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Codec:           0x7,
 					FrameType:       message.VideoFrameTypeKeyFrame,
-					Type:            message.VideoTypeConfig,
+					PacketType:      message.VideoPacketTypeConfig,
 					AVCConfig: generateAvcC(t,
 						[]byte{
 							0x67, 0x64, 0x00, 0x1f, 0xac, 0x2c, 0x6a, 0x81,
@@ -950,7 +950,7 @@ func TestReadTracks(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecH264,
 					FrameType:       message.VideoFrameTypeKeyFrame,
-					Type:            message.VideoTypeConfig,
+					PacketType:      message.VideoPacketTypeConfig,
 					AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 				},
 				&message.Video{
@@ -958,7 +958,7 @@ func TestReadTracks(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Codec:           0x7,
 					FrameType:       message.VideoFrameTypeKeyFrame,
-					Type:            message.VideoTypeAU,
+					PacketType:      message.VideoPacketTypeAU,
 					AU:              []uint8{5},
 				},
 				&message.Video{
@@ -967,7 +967,7 @@ func TestReadTracks(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Codec:           0x7,
 					FrameType:       message.VideoFrameTypeKeyFrame,
-					Type:            message.VideoTypeAU,
+					PacketType:      message.VideoPacketTypeAU,
 					AU:              []uint8{5},
 				},
 			},
@@ -1228,7 +1228,7 @@ func TestReadTracks(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Codec:           0x7,
 					FrameType:       message.VideoFrameTypeKeyFrame,
-					Type:            message.VideoTypeConfig,
+					PacketType:      message.VideoPacketTypeConfig,
 					AVCConfig: generateAvcC(t,
 						[]byte{
 							0x67, 0x64, 0x00, 0x2a, 0xac, 0x2b, 0x20, 0x0f,
@@ -1355,7 +1355,7 @@ func TestReadTracks(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Codec:           0x7,
 					FrameType:       message.VideoFrameTypeKeyFrame,
-					Type:            0x0,
+					PacketType:      0x0,
 					AVCConfig: generateAvcC(t,
 						[]byte{
 							0x67, 0x64, 0x00, 0x2a, 0xac, 0x2c, 0xac, 0x07,
@@ -1774,7 +1774,7 @@ func TestReadTracks(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecH264,
 					FrameType:       message.VideoFrameTypeKeyFrame,
-					Type:            message.VideoTypeConfig,
+					PacketType:      message.VideoPacketTypeConfig,
 					AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 				},
 				&message.Video{
@@ -1782,7 +1782,7 @@ func TestReadTracks(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecH264,
 					FrameType:       message.VideoFrameTypeKeyFrame,
-					Type:            message.VideoTypeConfig,
+					PacketType:      message.VideoPacketTypeConfig,
 					AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 				},
 				&message.Video{
@@ -1791,7 +1791,7 @@ func TestReadTracks(t *testing.T) {
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecH264,
 					FrameType:       message.VideoFrameTypeKeyFrame,
-					Type:            message.VideoTypeAU,
+					PacketType:      message.VideoPacketTypeAU,
 					AU:              []byte{1},
 				},
 			},
@@ -1866,7 +1866,7 @@ func TestReadTracksErrors(t *testing.T) {
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecH264,
-					Type:            message.VideoTypeAU,
+					PacketType:      message.VideoPacketTypeAU,
 					DTS:             0,
 					AU:              []byte{1},
 				},
@@ -1889,7 +1889,7 @@ func TestReadTracksErrors(t *testing.T) {
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
 					Codec:           message.CodecH264,
-					Type:            message.VideoTypeAU,
+					PacketType:      message.VideoPacketTypeAU,
 					DTS:             2 * time.Second,
 					AU:              []byte{1},
 				},
@@ -1923,7 +1923,7 @@ func TestReaderH264SeparateSEI(t *testing.T) {
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
 			FrameType:       message.VideoFrameTypeKeyFrame,
-			Type:            message.VideoTypeConfig,
+			PacketType:      message.VideoPacketTypeConfig,
 			AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 		},
 		&message.Video{
@@ -1931,7 +1931,7 @@ func TestReaderH264SeparateSEI(t *testing.T) {
 			DTS:             2 * time.Second,
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
-			Type:            message.VideoTypeAU,
+			PacketType:      message.VideoPacketTypeAU,
 			AU:              []byte{0, 0, 0, 2, 6, 1},
 		},
 		&message.Video{
@@ -1939,7 +1939,7 @@ func TestReaderH264SeparateSEI(t *testing.T) {
 			DTS:             2 * time.Second,
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
-			Type:            message.VideoTypeAU,
+			PacketType:      message.VideoPacketTypeAU,
 			AU:              []byte{0, 0, 0, 2, 6, 2},
 		},
 		&message.Video{
@@ -1948,7 +1948,7 @@ func TestReaderH264SeparateSEI(t *testing.T) {
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
 			FrameType:       message.VideoFrameTypeKeyFrame,
-			Type:            message.VideoTypeAU,
+			PacketType:      message.VideoPacketTypeAU,
 			AU:              []byte{0, 0, 0, 2, 5, 3},
 		},
 		&message.Video{
@@ -1956,7 +1956,7 @@ func TestReaderH264SeparateSEI(t *testing.T) {
 			DTS:             3 * time.Second,
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
-			Type:            message.VideoTypeAU,
+			PacketType:      message.VideoPacketTypeAU,
 			AU:              []byte{0, 0, 0, 2, 6, 4},
 		},
 		&message.Video{
@@ -1964,7 +1964,7 @@ func TestReaderH264SeparateSEI(t *testing.T) {
 			DTS:             3 * time.Second,
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
-			Type:            message.VideoTypeAU,
+			PacketType:      message.VideoPacketTypeAU,
 			AU:              []byte{0, 0, 0, 2, 6, 5},
 		},
 		&message.Video{
@@ -1972,7 +1972,7 @@ func TestReaderH264SeparateSEI(t *testing.T) {
 			DTS:             3 * time.Second,
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
-			Type:            message.VideoTypeEOS,
+			PacketType:      message.VideoPacketTypeEOS,
 		},
 	}
 
@@ -2034,7 +2034,7 @@ func TestReaderH264SeparateSEILimits(t *testing.T) {
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
 			FrameType:       message.VideoFrameTypeKeyFrame,
-			Type:            message.VideoTypeConfig,
+			PacketType:      message.VideoPacketTypeConfig,
 			AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 		})
 
@@ -2044,7 +2044,7 @@ func TestReaderH264SeparateSEILimits(t *testing.T) {
 				DTS:             2 * time.Second,
 				MessageStreamID: 0x1000000,
 				Codec:           message.CodecH264,
-				Type:            message.VideoTypeAU,
+				PacketType:      message.VideoPacketTypeAU,
 				AU:              []byte{0, 0, 0, 2, 6, 1},
 			})
 		}
@@ -2084,7 +2084,7 @@ func TestReaderH264SeparateSEILimits(t *testing.T) {
 				MessageStreamID: 0x1000000,
 				Codec:           message.CodecH264,
 				FrameType:       message.VideoFrameTypeKeyFrame,
-				Type:            message.VideoTypeConfig,
+				PacketType:      message.VideoPacketTypeConfig,
 				AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 			},
 			&message.Video{
@@ -2092,7 +2092,7 @@ func TestReaderH264SeparateSEILimits(t *testing.T) {
 				DTS:             2 * time.Second,
 				MessageStreamID: 0x1000000,
 				Codec:           message.CodecH264,
-				Type:            message.VideoTypeAU,
+				PacketType:      message.VideoPacketTypeAU,
 				AU:              avcc,
 			},
 			&message.Video{
@@ -2100,7 +2100,7 @@ func TestReaderH264SeparateSEILimits(t *testing.T) {
 				DTS:             2 * time.Second,
 				MessageStreamID: 0x1000000,
 				Codec:           message.CodecH264,
-				Type:            message.VideoTypeAU,
+				PacketType:      message.VideoPacketTypeAU,
 				AU:              []byte{0, 0, 0, 2, 6, 1},
 			},
 		}
@@ -2137,7 +2137,7 @@ func TestReaderRewind(t *testing.T) {
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
 			FrameType:       message.VideoFrameTypeKeyFrame,
-			Type:            message.VideoTypeConfig,
+			PacketType:      message.VideoPacketTypeConfig,
 			AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 		},
 		&message.Video{
@@ -2146,7 +2146,7 @@ func TestReaderRewind(t *testing.T) {
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
 			FrameType:       message.VideoFrameTypeKeyFrame,
-			Type:            message.VideoTypeAU,
+			PacketType:      message.VideoPacketTypeAU,
 			AU:              []byte{0x00, 0x00, 0x00, 0x02, 0x09, 0xf0},
 		},
 		&message.Video{
@@ -2155,7 +2155,7 @@ func TestReaderRewind(t *testing.T) {
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
 			FrameType:       message.VideoFrameTypeInterFrame,
-			Type:            message.VideoTypeAU,
+			PacketType:      message.VideoPacketTypeAU,
 			AU:              []byte{0x00, 0x00, 0x00, 0x02, 0x09, 0xf0},
 		},
 		&message.Video{
@@ -2164,7 +2164,7 @@ func TestReaderRewind(t *testing.T) {
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
 			FrameType:       message.VideoFrameTypeInterFrame,
-			Type:            message.VideoTypeAU,
+			PacketType:      message.VideoPacketTypeAU,
 			AU:              []byte{0x00, 0x00, 0x00, 0x02, 0x09, 0xf0},
 		},
 	}
@@ -2221,7 +2221,7 @@ func TestReaderEmptyH264Config(t *testing.T) {
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
 			FrameType:       message.VideoFrameTypeKeyFrame,
-			Type:            message.VideoTypeConfig,
+			PacketType:      message.VideoPacketTypeConfig,
 			AVCConfig:       nil,
 		},
 		&message.Video{
@@ -2229,7 +2229,7 @@ func TestReaderEmptyH264Config(t *testing.T) {
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
 			FrameType:       message.VideoFrameTypeKeyFrame,
-			Type:            message.VideoTypeConfig,
+			PacketType:      message.VideoPacketTypeConfig,
 			AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 		},
 		&message.Video{
@@ -2238,7 +2238,7 @@ func TestReaderEmptyH264Config(t *testing.T) {
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
 			FrameType:       message.VideoFrameTypeKeyFrame,
-			Type:            message.VideoTypeAU,
+			PacketType:      message.VideoPacketTypeAU,
 			AU:              []byte{0x00, 0x00, 0x00, 0x02, 0x09, 0xf0},
 		},
 	}
@@ -2301,7 +2301,7 @@ func TestReaderCommandFramesAndEmptyAudio(t *testing.T) {
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
 			FrameType:       message.VideoFrameTypeKeyFrame,
-			Type:            message.VideoTypeConfig,
+			PacketType:      message.VideoPacketTypeConfig,
 			AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 		},
 		&message.Video{
@@ -2318,7 +2318,7 @@ func TestReaderCommandFramesAndEmptyAudio(t *testing.T) {
 			MessageStreamID: 0x1000000,
 			Codec:           message.CodecH264,
 			FrameType:       message.VideoFrameTypeKeyFrame,
-			Type:            message.VideoTypeAU,
+			PacketType:      message.VideoPacketTypeAU,
 			AU:              []byte{0x00, 0x00, 0x00, 0x02, 0x09, 0xf0},
 		},
 	}
@@ -2371,7 +2371,7 @@ func TestReaderEmptyH26xConfigNALUs(t *testing.T) {
 				MessageStreamID: 0x1000000,
 				Codec:           message.CodecH264,
 				FrameType:       message.VideoFrameTypeKeyFrame,
-				Type:            message.VideoTypeConfig,
+				PacketType:      message.VideoPacketTypeConfig,
 				AVCConfig: &mp4.AVCDecoderConfiguration{ // <avcc/>
 					AnyTypeBox:                 mp4.AnyTypeBox{Type: mp4.BoxTypeAvcC()},
 					ConfigurationVersion:       0x1,
@@ -2393,7 +2393,7 @@ func TestReaderEmptyH26xConfigNALUs(t *testing.T) {
 				MessageStreamID: 0x1000000,
 				Codec:           message.CodecH264,
 				FrameType:       message.VideoFrameTypeKeyFrame,
-				Type:            message.VideoTypeAU,
+				PacketType:      message.VideoPacketTypeAU,
 				AU:              []byte{0x00, 0x00, 0x00, 0x02, 0x09, 0xf0},
 			},
 		}
@@ -2422,7 +2422,7 @@ func TestReaderEmptyH26xConfigNALUs(t *testing.T) {
 				MessageStreamID: 0x1000000,
 				Codec:           message.CodecH264,
 				FrameType:       message.VideoFrameTypeKeyFrame,
-				Type:            message.VideoTypeConfig,
+				PacketType:      message.VideoPacketTypeConfig,
 				AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
 			},
 			&message.Video{
@@ -2431,7 +2431,7 @@ func TestReaderEmptyH26xConfigNALUs(t *testing.T) {
 				MessageStreamID: 0x1000000,
 				Codec:           message.CodecH264,
 				FrameType:       message.VideoFrameTypeKeyFrame,
-				Type:            message.VideoTypeAU,
+				PacketType:      message.VideoPacketTypeAU,
 				AU:              []byte{0x00, 0x00, 0x00, 0x02, 0x09, 0xf0},
 			},
 			&message.Video{
@@ -2440,7 +2440,7 @@ func TestReaderEmptyH26xConfigNALUs(t *testing.T) {
 				MessageStreamID: 0x1000000,
 				Codec:           message.CodecH264,
 				FrameType:       message.VideoFrameTypeKeyFrame,
-				Type:            message.VideoTypeConfig,
+				PacketType:      message.VideoPacketTypeConfig,
 				AVCConfig: &mp4.AVCDecoderConfiguration{
 					AnyTypeBox:                 mp4.AnyTypeBox{Type: mp4.BoxTypeAvcC()},
 					ConfigurationVersion:       0x1,

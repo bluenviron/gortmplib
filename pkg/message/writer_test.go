@@ -46,7 +46,7 @@ func TestWriterConcurrentChunkSize(t *testing.T) {
 				MessageStreamID: 1,
 				Codec:           message.CodecH264,
 				IsKeyFrame:      true,
-				Type:            message.VideoTypeAU,
+				PacketType:      message.VideoPacketTypeAU,
 				AU:              bytes.Repeat([]byte{1}, 1024),
 			}); err != nil {
 				errs <- err
