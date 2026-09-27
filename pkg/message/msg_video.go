@@ -114,7 +114,6 @@ type Video struct {
 	ChunkStreamID   byte
 	DTS             time.Duration
 	MessageStreamID uint32
-	Codec           uint8
 	FrameType       VideoFrameType
 
 	// only in case of FrameType = VideoFrameTypeCommand.
@@ -122,6 +121,7 @@ type Video struct {
 	Command VideoCommand
 
 	// only in case of FrameType = VideoFrameTypeKeyFrame or FrameType = VideoFrameTypeInterFrame.
+	Codec    uint8
 	Type     VideoType
 	PTSDelta time.Duration
 
@@ -162,13 +162,6 @@ func (m *Video) unmarshal(raw *rawmessage.Message) error {
 		m.FrameType = VideoFrameTypeInterFrame
 	}
 
-	m.Codec = raw.Body[0] & 0x0F
-	switch m.Codec {
-	case CodecH264, CodecH265:
-	default:
-		return fmt.Errorf("unsupported video codec: %d", m.Codec)
-	}
-
 	if m.FrameType == VideoFrameTypeCommand {
 		m.Command = VideoCommand(raw.Body[1])
 		switch m.Command {
@@ -177,6 +170,13 @@ func (m *Video) unmarshal(raw *rawmessage.Message) error {
 			return fmt.Errorf("unsupported video command: %d", m.Command)
 		}
 	} else {
+		m.Codec = raw.Body[0] & 0x0F
+		switch m.Codec {
+		case CodecH264, CodecH265:
+		default:
+			return fmt.Errorf("unsupported video codec: %d", m.Codec)
+		}
+
 		if len(raw.Body) < 5 {
 			return fmt.Errorf("invalid body size")
 		}

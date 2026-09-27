@@ -631,6 +631,20 @@ var readWriterCases = []struct {
 		},
 	},
 	{
+		"video command without codec",
+		&message.Video{
+			ChunkStreamID:   6,
+			DTS:             2543534 * time.Millisecond,
+			MessageStreamID: 0x1000000,
+			FrameType:       message.VideoFrameTypeCommand,
+			Command:         message.VideoCommandStartSeek,
+		},
+		[]byte{
+			0x06, 0x26, 0xcf, 0xae, 0x00, 0x00, 0x02, 0x09,
+			0x01, 0x00, 0x00, 0x00, 0x50, 0x00,
+		},
+	},
+	{
 		"audio empty",
 		&message.Audio{
 			ChunkStreamID:   4,
