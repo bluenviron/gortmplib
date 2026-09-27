@@ -234,6 +234,7 @@ func (m *Video) unmarshal(raw *rawmessage.Message) error {
 }
 
 func (m Video) marshal() (*rawmessage.Message, error) {
+	// support for the deprecated field IsKeyFrame
 	frameType := m.FrameType
 	if frameType == 0 {
 		if m.IsKeyFrame {
