@@ -618,11 +618,12 @@ func TestServerConn(t *testing.T) {
 
 func TestServerConnURL(t *testing.T) {
 	for _, ca := range []struct {
-		name        string
-		tcurl       string
-		app         string
-		streamKey   string
-		expectedURL string
+		name            string
+		tcurl           string
+		app             string
+		streamKey       string
+		expectedURL     string
+		expectedRawPath string
 	}{
 		{
 			name:        "ffmpeg, publish, single-component path",
@@ -651,6 +652,28 @@ func TestServerConnURL(t *testing.T) {
 			app:         "comp1",
 			streamKey:   "comp2?key=val",
 			expectedURL: "rtmp://localhost:1935/comp1/comp2?key=val",
+		},
+		{
+			name:        "ffmpeg, publish, two-component path, with tcURL query",
+			tcurl:       "rtmp://localhost:1935/comp1?key=val",
+			app:         "comp1?key=val",
+			streamKey:   "comp2",
+			expectedURL: "rtmp://localhost:1935/comp1/comp2?key=val",
+		},
+		{
+			name:        "ffmpeg, publish, two-component path, with both queries",
+			tcurl:       "rtmp://localhost:1935/comp1?key1=val1",
+			app:         "comp1?key1=val1",
+			streamKey:   "comp2?key2=val2",
+			expectedURL: "rtmp://localhost:1935/comp1/comp2?key1=val1&key2=val2",
+		},
+		{
+			name:            "ffmpeg, publish, escaped two-component path, with tcURL query",
+			tcurl:           "rtmp://localhost:1935/comp%2F1?key=val",
+			app:             "comp%2F1?key=val",
+			streamKey:       "comp%2F2",
+			expectedURL:     "rtmp://localhost:1935/comp%2F1/comp%2F2?key=val",
+			expectedRawPath: "/comp%2F1/comp%2F2",
 		},
 		{
 			name:        "gstreamer, publish, rtmpsink, single-component path",
@@ -768,6 +791,7 @@ func TestServerConnURL(t *testing.T) {
 				require.NoError(t, err2)
 
 				require.Equal(t, ca.expectedURL, conn.URL.String())
+				require.Equal(t, ca.expectedRawPath, conn.URL.RawPath)
 			}()
 
 			conn, err := net.Dial("tcp", "127.0.0.1:9121")
