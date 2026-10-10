@@ -75,12 +75,12 @@ func testCryptoRandRead(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func setCryptoRandRead(t testing.TB) {
-	t.Helper()
+func setCryptoRandRead(tb testing.TB) {
+	tb.Helper()
 
 	previous := cryptoRandRead
 	cryptoRandRead = testCryptoRandRead
-	t.Cleanup(func() {
+	tb.Cleanup(func() {
 		cryptoRandRead = previous
 	})
 }

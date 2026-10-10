@@ -60,6 +60,8 @@ func boolToUint8(v bool) uint8 {
 }
 
 func generateAvcC(t *testing.T, sps, pps []byte) *mp4.AVCDecoderConfiguration {
+	t.Helper()
+
 	var psps h264.SPS
 	err := psps.Unmarshal(sps)
 	require.NoError(t, err)
@@ -93,6 +95,8 @@ func generateAvcC(t *testing.T, sps, pps []byte) *mp4.AVCDecoderConfiguration {
 }
 
 func generateHvcC(t *testing.T, vps, sps, pps []byte) *mp4.HvcC {
+	t.Helper()
+
 	var psps h265.SPS
 	err := psps.Unmarshal(sps)
 	require.NoError(t, err)
