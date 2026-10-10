@@ -764,6 +764,13 @@ func TestServerConnURL(t *testing.T) {
 			streamKey:   "comp%2F2",
 			expectedURL: "rtmp://localhost:1935/comp%2F1/comp%2F2?key=val",
 		},
+		{
+			name:        "stream key with leading question mark",
+			tcurl:       "rtmp://localhost:1935/comp1",
+			app:         "comp1",
+			streamKey:   "?key2=val2",
+			expectedURL: "rtmp://localhost:1935/comp1/?key2=val2",
+		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			ln, err := net.Listen("tcp", "127.0.0.1:9121")
