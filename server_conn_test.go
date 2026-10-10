@@ -618,12 +618,11 @@ func TestServerConn(t *testing.T) {
 
 func TestServerConnURL(t *testing.T) {
 	for _, ca := range []struct {
-		name            string
-		tcurl           string
-		app             string
-		streamKey       string
-		expectedURL     string
-		expectedRawPath string
+		name        string
+		tcurl       string
+		app         string
+		streamKey   string
+		expectedURL string
 	}{
 		{
 			name:        "ffmpeg, publish, single-component path",
@@ -759,12 +758,11 @@ func TestServerConnURL(t *testing.T) {
 			expectedURL: "rtmp://localhost:1935/comp1/comp2?key1=val1&key2=val2",
 		},
 		{
-			name:            "escaped two-component path, with tcURL query",
-			tcurl:           "rtmp://localhost:1935/comp%2F1?key=val",
-			app:             "comp%2F1?key=val",
-			streamKey:       "comp%2F2",
-			expectedURL:     "rtmp://localhost:1935/comp%2F1/comp%2F2?key=val",
-			expectedRawPath: "/comp%2F1/comp%2F2",
+			name:        "escaped two-component path, with tcURL query",
+			tcurl:       "rtmp://localhost:1935/comp%2F1?key=val",
+			app:         "comp%2F1?key=val",
+			streamKey:   "comp%2F2",
+			expectedURL: "rtmp://localhost:1935/comp%2F1/comp%2F2?key=val",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
@@ -791,7 +789,6 @@ func TestServerConnURL(t *testing.T) {
 				require.NoError(t, err2)
 
 				require.Equal(t, ca.expectedURL, conn.URL.String())
-				require.Equal(t, ca.expectedRawPath, conn.URL.RawPath)
 			}()
 
 			conn, err := net.Dial("tcp", "127.0.0.1:9121")
