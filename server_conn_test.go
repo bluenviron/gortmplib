@@ -654,28 +654,6 @@ func TestServerConnURL(t *testing.T) {
 			expectedURL: "rtmp://localhost:1935/comp1/comp2?key=val",
 		},
 		{
-			name:        "ffmpeg, publish, two-component path, with tcURL query",
-			tcurl:       "rtmp://localhost:1935/comp1?key=val",
-			app:         "comp1?key=val",
-			streamKey:   "comp2",
-			expectedURL: "rtmp://localhost:1935/comp1/comp2?key=val",
-		},
-		{
-			name:        "ffmpeg, publish, two-component path, with both queries",
-			tcurl:       "rtmp://localhost:1935/comp1?key1=val1",
-			app:         "comp1?key1=val1",
-			streamKey:   "comp2?key2=val2",
-			expectedURL: "rtmp://localhost:1935/comp1/comp2?key1=val1&key2=val2",
-		},
-		{
-			name:            "ffmpeg, publish, escaped two-component path, with tcURL query",
-			tcurl:           "rtmp://localhost:1935/comp%2F1?key=val",
-			app:             "comp%2F1?key=val",
-			streamKey:       "comp%2F2",
-			expectedURL:     "rtmp://localhost:1935/comp%2F1/comp%2F2?key=val",
-			expectedRawPath: "/comp%2F1/comp%2F2",
-		},
-		{
 			name:        "gstreamer, publish, rtmpsink, single-component path",
 			tcurl:       "rtmp://localhost:1935/comp1",
 			app:         "comp1",
@@ -765,6 +743,28 @@ func TestServerConnURL(t *testing.T) {
 			app:         "comp1?authmod=adobe&user=myuser&challenge=1234&response=5678",
 			streamKey:   "",
 			expectedURL: "rtmp://localhost:1935/comp1",
+		},
+		{
+			name:        "two-component path, with tcURL query",
+			tcurl:       "rtmp://localhost:1935/comp1?key=val",
+			app:         "comp1?key=val",
+			streamKey:   "comp2",
+			expectedURL: "rtmp://localhost:1935/comp1/comp2?key=val",
+		},
+		{
+			name:        "two-component path, with both queries",
+			tcurl:       "rtmp://localhost:1935/comp1?key1=val1",
+			app:         "comp1?key1=val1",
+			streamKey:   "comp2?key2=val2",
+			expectedURL: "rtmp://localhost:1935/comp1/comp2?key1=val1&key2=val2",
+		},
+		{
+			name:            "escaped two-component path, with tcURL query",
+			tcurl:           "rtmp://localhost:1935/comp%2F1?key=val",
+			app:             "comp%2F1?key=val",
+			streamKey:       "comp%2F2",
+			expectedURL:     "rtmp://localhost:1935/comp%2F1/comp%2F2?key=val",
+			expectedRawPath: "/comp%2F1/comp%2F2",
 		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
