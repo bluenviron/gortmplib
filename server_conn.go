@@ -69,7 +69,7 @@ func joinURL(tcURL string, streamKey string) (*url.URL, error) {
 		return nil, err
 	}
 
-	if streamKey == "" || streamKey[0] == '?' {
+	if streamKey == "" || (streamKey[0] == '?' && strings.HasSuffix(tcURL, streamKey)) {
 		return tu, nil
 	}
 
@@ -82,6 +82,7 @@ func joinURL(tcURL string, streamKey string) (*url.URL, error) {
 	streamPath := strings.TrimPrefix(su.EscapedPath(), "./")
 	tu.Path += "/" + strings.TrimPrefix(su.Path, "./")
 	tu.RawPath = basePath + "/" + streamPath
+
 	if tu.RawPath == tu.Path {
 		tu.RawPath = ""
 	}
