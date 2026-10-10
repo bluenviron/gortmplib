@@ -743,6 +743,27 @@ func TestServerConnURL(t *testing.T) {
 			streamKey:   "",
 			expectedURL: "rtmp://localhost:1935/comp1",
 		},
+		{
+			name:        "two-component path, with tcURL query",
+			tcurl:       "rtmp://localhost:1935/comp1?key=val",
+			app:         "comp1?key=val",
+			streamKey:   "comp2",
+			expectedURL: "rtmp://localhost:1935/comp1/comp2?key=val",
+		},
+		{
+			name:        "two-component path, with both queries",
+			tcurl:       "rtmp://localhost:1935/comp1?key1=val1",
+			app:         "comp1?key1=val1",
+			streamKey:   "comp2?key2=val2",
+			expectedURL: "rtmp://localhost:1935/comp1/comp2?key1=val1&key2=val2",
+		},
+		{
+			name:        "escaped two-component path, with tcURL query",
+			tcurl:       "rtmp://localhost:1935/comp%2F1?key=val",
+			app:         "comp%2F1?key=val",
+			streamKey:   "comp%2F2",
+			expectedURL: "rtmp://localhost:1935/comp%2F1/comp%2F2?key=val",
+		},
 	} {
 		t.Run(ca.name, func(t *testing.T) {
 			ln, err := net.Listen("tcp", "127.0.0.1:9121")

@@ -64,13 +64,39 @@ func authResponse(user, pass, salt, opaque, challenge, challenge2 string) string
 }
 
 func joinURL(tcURL string, streamKey string) (*url.URL, error) {
-	if streamKey != "" && streamKey[0] != '?' {
-		tcURL += "/" + streamKey
-	}
-
 	tu, err := url.Parse(tcURL)
 	if err != nil {
 		return nil, err
+	}
+
+	if streamKey == "" || streamKey[0] == '?' {
+		return tu, nil
+	}
+
+	su, err := url.Parse("./" + streamKey)
+	if err != nil {
+		return nil, err
+	}
+
+	basePath := tu.EscapedPath()
+	streamPath := strings.TrimPrefix(su.EscapedPath(), "./")
+	tu.Path += "/" + strings.TrimPrefix(su.Path, "./")
+	tu.RawPath = basePath + "/" + streamPath
+	if tu.RawPath == tu.Path {
+		tu.RawPath = ""
+	}
+
+	if su.RawQuery != "" {
+		if tu.RawQuery != "" {
+			tu.RawQuery += "&"
+		}
+		tu.RawQuery += su.RawQuery
+	}
+	tu.ForceQuery = tu.ForceQuery || su.ForceQuery
+
+	if su.Fragment != "" {
+		tu.Fragment = su.Fragment
+		tu.RawFragment = su.RawFragment
 	}
 
 	return tu, nil
