@@ -19,6 +19,7 @@ import (
 	"github.com/bluenviron/gortmplib/pkg/amf0"
 	"github.com/bluenviron/gortmplib/pkg/bytecounter"
 	"github.com/bluenviron/gortmplib/pkg/codecs"
+	"github.com/bluenviron/gortmplib/pkg/liberrors"
 	"github.com/bluenviron/gortmplib/pkg/message"
 )
 
@@ -2499,4 +2500,70 @@ func TestReaderEmptyH26xConfigNALUs(t *testing.T) {
 
 		require.Equal(t, 2, receivedCount)
 	})
+}
+
+func TestReaderUnpublish(t *testing.T) {
+	for _, ca := range []string{
+		"FCUnpublish",
+		"deleteStream",
+		"closeStream",
+	} {
+		t.Run(ca, func(t *testing.T) {
+			var buf bytes.Buffer
+			bc := bytecounter.NewReadWriter(&buf)
+			mrw := message.NewReadWriter(bc, bc, true)
+
+			for _, msg := range []message.Message{
+				&message.Video{
+					ChunkStreamID:   message.VideoChunkStreamID,
+					MessageStreamID: 0x1000000,
+					Codec:           message.CodecH264,
+					FrameType:       message.VideoFrameTypeKeyFrame,
+					PacketType:      message.VideoPacketTypeConfig,
+					AVCConfig:       generateAvcC(t, testCodecH264.SPS, testCodecH264.PPS),
+				},
+				&message.Video{
+					ChunkStreamID:   message.VideoChunkStreamID,
+					DTS:             2 * time.Second,
+					MessageStreamID: 0x1000000,
+					Codec:           message.CodecH264,
+					FrameType:       message.VideoFrameTypeKeyFrame,
+					PacketType:      message.VideoPacketTypeAU,
+					AU:              []byte{0x00, 0x00, 0x00, 0x02, 0x09, 0xf0},
+				},
+				&message.CommandAMF0{
+					ChunkStreamID:   3,
+					MessageStreamID: 0x1000000,
+					Name:            ca,
+					CommandID:       5,
+					Arguments:       []any{nil, float64(1)},
+				},
+			} {
+				err := mrw.Write(msg)
+				require.NoError(t, err)
+			}
+
+			c := &dummyConn{
+				rw: &buf,
+			}
+			c.initialize()
+
+			r := &gortmplib.Reader{
+				Conn: c,
+			}
+			err := r.Initialize()
+			require.NoError(t, err)
+
+			r.OnDataH264(r.Tracks()[0], func(_ time.Duration, _ time.Duration, _ [][]byte) {})
+
+			for {
+				err = r.Read()
+				if err != nil {
+					break
+				}
+			}
+			require.ErrorAs(t, err, &liberrors.ErrReaderUnpublished{})
+			require.EqualError(t, err, "stream unpublished")
+		})
+	}
 }

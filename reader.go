@@ -13,6 +13,7 @@ import (
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h265"
 
 	"github.com/bluenviron/gortmplib/pkg/codecs"
+	"github.com/bluenviron/gortmplib/pkg/liberrors"
 	"github.com/bluenviron/gortmplib/pkg/message"
 )
 
@@ -933,6 +934,12 @@ func (r *Reader) Read() error {
 	}
 
 	switch msg := msg.(type) {
+	case *message.CommandAMF0:
+		switch msg.Name {
+		case "FCUnpublish", "deleteStream", "closeStream":
+			return liberrors.ErrReaderUnpublished{}
+		}
+
 	case *message.Video, *message.VideoExCodedFrames, *message.VideoExFramesX:
 		if r.videoTracks[0] == nil {
 			return fmt.Errorf("received a packet for video track 0, but track is not set up")
