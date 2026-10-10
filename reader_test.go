@@ -2558,7 +2558,8 @@ func TestReaderUnpublish(t *testing.T) {
 					break
 				}
 			}
-			require.Equal(t, liberrors.ErrReaderUnpublished{}, err)
+			require.ErrorAs(t, err, &liberrors.ErrReaderUnpublished{})
+			require.EqualError(t, err, "stream unpublished")
 		})
 	}
 }
