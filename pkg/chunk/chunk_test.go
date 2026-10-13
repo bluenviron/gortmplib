@@ -159,6 +159,28 @@ func TestChunkMarshal(t *testing.T) {
 	}
 }
 
+func TestChunkAppendHeader(t *testing.T) {
+	for _, ca := range cases {
+		t.Run(ca.name, func(t *testing.T) {
+			var buf []byte
+			var body []byte
+
+			switch ch := ca.dec.(type) {
+			case *chunk.Chunk0:
+				buf, body = ch.AppendHeader([]byte{0xAA}, ca.hasExtendedTimestamp), ch.Body
+			case *chunk.Chunk1:
+				buf, body = ch.AppendHeader([]byte{0xAA}, ca.hasExtendedTimestamp), ch.Body
+			case *chunk.Chunk2:
+				buf, body = ch.AppendHeader([]byte{0xAA}, ca.hasExtendedTimestamp), ch.Body
+			case *chunk.Chunk3:
+				buf, body = ch.AppendHeader([]byte{0xAA}, ca.hasExtendedTimestamp), ch.Body
+			}
+
+			require.Equal(t, append([]byte{0xAA}, ca.enc...), append(buf, body...))
+		})
+	}
+}
+
 func FuzzChunk0Read(f *testing.F) {
 	f.Fuzz(func(t *testing.T, b []byte) {
 		var chunk chunk.Chunk0

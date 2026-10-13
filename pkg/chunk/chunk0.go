@@ -55,42 +55,28 @@ func (c Chunk0) marshalSize() int {
 	return n
 }
 
-// Marshal writes the chunk.
-func (c Chunk0) Marshal(_ bool) ([]byte, error) {
-	buf := make([]byte, c.marshalSize())
-	buf[0] = c.ChunkStreamID
-
+// AppendHeader appends the chunk header, that is the chunk without its body, to buf.
+func (c Chunk0) AppendHeader(buf []byte, _ bool) []byte {
 	if c.Timestamp >= 0xFFFFFF {
-		buf[1] = 0xFF
-		buf[2] = 0xFF
-		buf[3] = 0xFF
-		buf[4] = byte(c.BodyLen >> 16)
-		buf[5] = byte(c.BodyLen >> 8)
-		buf[6] = byte(c.BodyLen)
-		buf[7] = c.Type
-		buf[8] = byte(c.MessageStreamID >> 24)
-		buf[9] = byte(c.MessageStreamID >> 16)
-		buf[10] = byte(c.MessageStreamID >> 8)
-		buf[11] = byte(c.MessageStreamID)
-		buf[12] = byte(c.Timestamp >> 24)
-		buf[13] = byte(c.Timestamp >> 16)
-		buf[14] = byte(c.Timestamp >> 8)
-		buf[15] = byte(c.Timestamp)
-		copy(buf[16:], c.Body)
-	} else {
-		buf[1] = byte(c.Timestamp >> 16)
-		buf[2] = byte(c.Timestamp >> 8)
-		buf[3] = byte(c.Timestamp)
-		buf[4] = byte(c.BodyLen >> 16)
-		buf[5] = byte(c.BodyLen >> 8)
-		buf[6] = byte(c.BodyLen)
-		buf[7] = c.Type
-		buf[8] = byte(c.MessageStreamID >> 24)
-		buf[9] = byte(c.MessageStreamID >> 16)
-		buf[10] = byte(c.MessageStreamID >> 8)
-		buf[11] = byte(c.MessageStreamID)
-		copy(buf[12:], c.Body)
+		return append(buf,
+			c.ChunkStreamID,
+			0xFF, 0xFF, 0xFF,
+			byte(c.BodyLen>>16), byte(c.BodyLen>>8), byte(c.BodyLen),
+			c.Type,
+			byte(c.MessageStreamID>>24), byte(c.MessageStreamID>>16), byte(c.MessageStreamID>>8), byte(c.MessageStreamID),
+			byte(c.Timestamp>>24), byte(c.Timestamp>>16), byte(c.Timestamp>>8), byte(c.Timestamp))
 	}
 
-	return buf, nil
+	return append(buf,
+		c.ChunkStreamID,
+		byte(c.Timestamp>>16), byte(c.Timestamp>>8), byte(c.Timestamp),
+		byte(c.BodyLen>>16), byte(c.BodyLen>>8), byte(c.BodyLen),
+		c.Type,
+		byte(c.MessageStreamID>>24), byte(c.MessageStreamID>>16), byte(c.MessageStreamID>>8), byte(c.MessageStreamID))
+}
+
+// Marshal writes the chunk.
+func (c Chunk0) Marshal(hasExtendedTimestamp bool) ([]byte, error) {
+	buf := c.AppendHeader(make([]byte, 0, c.marshalSize()), hasExtendedTimestamp)
+	return append(buf, c.Body...), nil
 }
