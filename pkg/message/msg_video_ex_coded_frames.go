@@ -46,16 +46,16 @@ func (m *VideoExCodedFrames) unmarshal(raw *rawmessage.Message) error {
 	return nil
 }
 
-func (m VideoExCodedFrames) marshalBodySize() int {
+func (m VideoExCodedFrames) marshalHeaderSize() int {
 	switch m.FourCC {
 	case FourCCAVC, FourCCHEVC:
-		return 8 + len(m.Payload)
+		return 8
 	}
-	return 5 + len(m.Payload)
+	return 5
 }
 
 func (m VideoExCodedFrames) marshal() (*rawmessage.Message, error) {
-	body := make([]byte, m.marshalBodySize())
+	body := make([]byte, m.marshalHeaderSize())
 
 	body[0] = 0b10000000 | byte(VideoExTypeCodedFrames)
 	body[1] = uint8(m.FourCC >> 24)
@@ -69,9 +69,6 @@ func (m VideoExCodedFrames) marshal() (*rawmessage.Message, error) {
 		body[5] = uint8(tmp >> 16)
 		body[6] = uint8(tmp >> 8)
 		body[7] = uint8(tmp)
-		copy(body[8:], m.Payload)
-	default:
-		copy(body[5:], m.Payload)
 	}
 
 	return &rawmessage.Message{
@@ -80,5 +77,6 @@ func (m VideoExCodedFrames) marshal() (*rawmessage.Message, error) {
 		Type:            uint8(TypeVideo),
 		MessageStreamID: m.MessageStreamID,
 		Body:            body,
+		Payload:         m.Payload,
 	}, nil
 }

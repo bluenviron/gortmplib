@@ -91,5 +91,6 @@ func (m VideoExMultitrack) marshal() (*rawmessage.Message, error) {
 		Timestamp:       wrappedEnc.Timestamp,
 		Type:            uint8(TypeVideo),
 		Body:            body,
+		Payload:         wrappedEnc.Payload,
 	}, nil
 }

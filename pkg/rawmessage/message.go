@@ -12,6 +12,12 @@ type Message struct {
 	Type            uint8
 	MessageStreamID uint32
 	Body            []byte
+
+	// Payload is sent after Body, as part of the message body.
+	// It allows to write a message made of a small header and a big payload
+	// without copying them into a single buffer.
+	// It is never filled by Reader.
+	Payload []byte
 }
 
 func (m *Message) clone() *Message {
@@ -21,5 +27,6 @@ func (m *Message) clone() *Message {
 		Type:            m.Type,
 		MessageStreamID: m.MessageStreamID,
 		Body:            m.Body,
+		Payload:         m.Payload,
 	}
 }

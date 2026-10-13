@@ -973,6 +973,46 @@ var readWriterCases = []struct {
 			0x28, 0x82, 0x02, 0x02, 0x02, 0x00, 0x00,
 		},
 	},
+	{
+		"video ex multitrack coded frames",
+		&message.VideoExMultitrack{
+			MultitrackType: message.VideoExMultitrackTypeOneTrack,
+			TrackID:        1,
+			Wrapped: &message.VideoExCodedFrames{
+				ChunkStreamID:   6,
+				DTS:             15100 * time.Millisecond,
+				MessageStreamID: 0x1000000,
+				FourCC:          message.FourCCAVC,
+				PTSDelta:        30 * time.Millisecond,
+				Payload:         []byte{0x01, 0x02, 0x03},
+			},
+		},
+		[]byte{
+			0x06, 0x00, 0x3a, 0xfc, 0x00, 0x00, 0x0d, 0x09,
+			0x01, 0x00, 0x00, 0x00, 0x86, 0x01, 0x61, 0x76,
+			0x63, 0x31, 0x01, 0x00, 0x00, 0x1e, 0x01, 0x02,
+			0x03,
+		},
+	},
+	{
+		"audio ex multitrack coded frames",
+		&message.AudioExMultitrack{
+			MultitrackType: message.AudioExMultitrackTypeOneTrack,
+			TrackID:        1,
+			Wrapped: &message.AudioExCodedFrames{
+				ChunkStreamID:   4,
+				DTS:             15100 * time.Millisecond,
+				MessageStreamID: 0x1000000,
+				FourCC:          message.FourCCMP4A,
+				Payload:         []byte{0x01, 0x02, 0x03},
+			},
+		},
+		[]byte{
+			0x04, 0x00, 0x3a, 0xfc, 0x00, 0x00, 0x0a, 0x08,
+			0x01, 0x00, 0x00, 0x00, 0x95, 0x01, 0x6d, 0x70,
+			0x34, 0x61, 0x01, 0x01, 0x02, 0x03,
+		},
+	},
 }
 
 func TestReader(t *testing.T) {

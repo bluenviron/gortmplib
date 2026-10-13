@@ -154,20 +154,18 @@ func (m Audio) marshal() (*rawmessage.Message, error) {
 
 	var body []byte
 	if m.Codec == CodecMPEG4Audio {
-		body = make([]byte, 2+len(bodyData))
+		body = make([]byte, 2)
 		body[0] = m.Codec<<4 | byte(m.Rate)<<2 | byte(m.Depth)<<1
 		if m.IsStereo {
 			body[0] |= 1
 		}
 		body[1] = uint8(m.AACType)
-		copy(body[2:], bodyData)
 	} else {
-		body = make([]byte, 1+len(bodyData))
+		body = make([]byte, 1)
 		body[0] = m.Codec<<4 | byte(m.Rate)<<2 | byte(m.Depth)<<1
 		if m.IsStereo {
 			body[0] |= 1
 		}
-		copy(body[1:], bodyData)
 	}
 
 	return &rawmessage.Message{
@@ -176,5 +174,6 @@ func (m Audio) marshal() (*rawmessage.Message, error) {
 		Type:            uint8(TypeAudio),
 		MessageStreamID: m.MessageStreamID,
 		Body:            body,
+		Payload:         bodyData,
 	}, nil
 }
