@@ -70,13 +70,14 @@ func (wc *writerChunkStream) writeMessage(msg *Message) error {
 			switch {
 			case wc.lastMessageStreamID == nil || timestampDelta == nil || *wc.lastMessageStreamID != msg.MessageStreamID:
 				ts := uint32(timestamp)
-				err := wc.writeChunk(chunk.Chunk0{
+				n := chunk.Chunk0{
 					ChunkStreamID:   msg.ChunkStreamID,
 					Timestamp:       ts,
 					Type:            msg.Type,
 					MessageStreamID: msg.MessageStreamID,
 					BodyLen:         bodyLen,
-				}.AppendHeader(wc.mw.header[:0], false), msg.Body[pos:pos+chunkBodyLen])
+				}.MarshalHeaderTo(wc.mw.header[:], false)
+				err := wc.writeChunk(wc.mw.header[:n], msg.Body[pos:pos+chunkBodyLen])
 				if err != nil {
 					return err
 				}
@@ -84,12 +85,13 @@ func (wc *writerChunkStream) writeMessage(msg *Message) error {
 
 			case *wc.lastType != msg.Type || *wc.lastBodyLen != bodyLen:
 				ts := uint32(*timestampDelta)
-				err := wc.writeChunk(chunk.Chunk1{
+				n := chunk.Chunk1{
 					ChunkStreamID:  msg.ChunkStreamID,
 					TimestampDelta: ts,
 					Type:           msg.Type,
 					BodyLen:        bodyLen,
-				}.AppendHeader(wc.mw.header[:0], false), msg.Body[pos:pos+chunkBodyLen])
+				}.MarshalHeaderTo(wc.mw.header[:], false)
+				err := wc.writeChunk(wc.mw.header[:n], msg.Body[pos:pos+chunkBodyLen])
 				if err != nil {
 					return err
 				}
@@ -97,27 +99,30 @@ func (wc *writerChunkStream) writeMessage(msg *Message) error {
 
 			case wc.lastTimestampDelta == nil || *wc.lastTimestampDelta != *timestampDelta:
 				ts := uint32(*timestampDelta)
-				err := wc.writeChunk(chunk.Chunk2{
+				n := chunk.Chunk2{
 					ChunkStreamID:  msg.ChunkStreamID,
 					TimestampDelta: ts,
-				}.AppendHeader(wc.mw.header[:0], false), msg.Body[pos:pos+chunkBodyLen])
+				}.MarshalHeaderTo(wc.mw.header[:], false)
+				err := wc.writeChunk(wc.mw.header[:n], msg.Body[pos:pos+chunkBodyLen])
 				if err != nil {
 					return err
 				}
 				wc.hasExtendedTimestamp = ts >= 0xFFFFFF
 
 			default:
-				err := wc.writeChunk(chunk.Chunk3{
+				n := chunk.Chunk3{
 					ChunkStreamID: msg.ChunkStreamID,
-				}.AppendHeader(wc.mw.header[:0], wc.hasExtendedTimestamp), msg.Body[pos:pos+chunkBodyLen])
+				}.MarshalHeaderTo(wc.mw.header[:], wc.hasExtendedTimestamp)
+				err := wc.writeChunk(wc.mw.header[:n], msg.Body[pos:pos+chunkBodyLen])
 				if err != nil {
 					return err
 				}
 			}
 		} else {
-			err := wc.writeChunk(chunk.Chunk3{
+			n := chunk.Chunk3{
 				ChunkStreamID: msg.ChunkStreamID,
-			}.AppendHeader(wc.mw.header[:0], wc.hasExtendedTimestamp), msg.Body[pos:pos+chunkBodyLen])
+			}.MarshalHeaderTo(wc.mw.header[:], wc.hasExtendedTimestamp)
+			err := wc.writeChunk(wc.mw.header[:n], msg.Body[pos:pos+chunkBodyLen])
 			if err != nil {
 				return err
 			}

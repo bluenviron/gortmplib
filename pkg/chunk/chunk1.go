@@ -55,26 +55,37 @@ func (c Chunk1) marshalSize() int {
 	return n
 }
 
-// AppendHeader appends the chunk header, that is the chunk without its body, to buf.
-func (c Chunk1) AppendHeader(buf []byte, _ bool) []byte {
+// MarshalHeaderTo writes the chunk header, that is the chunk without its body, into buf.
+// buf must be large enough to contain the header (12 bytes are always enough).
+// It returns the number of bytes written.
+func (c Chunk1) MarshalHeaderTo(buf []byte, _ bool) int {
+	buf[0] = 1<<6 | c.ChunkStreamID
+	buf[4] = byte(c.BodyLen >> 16)
+	buf[5] = byte(c.BodyLen >> 8)
+	buf[6] = byte(c.BodyLen)
+	buf[7] = c.Type
+
 	if c.TimestampDelta >= 0xFFFFFF {
-		return append(buf,
-			1<<6|c.ChunkStreamID,
-			0xFF, 0xFF, 0xFF,
-			byte(c.BodyLen>>16), byte(c.BodyLen>>8), byte(c.BodyLen),
-			c.Type,
-			byte(c.TimestampDelta>>24), byte(c.TimestampDelta>>16), byte(c.TimestampDelta>>8), byte(c.TimestampDelta))
+		buf[1] = 0xFF
+		buf[2] = 0xFF
+		buf[3] = 0xFF
+		buf[8] = byte(c.TimestampDelta >> 24)
+		buf[9] = byte(c.TimestampDelta >> 16)
+		buf[10] = byte(c.TimestampDelta >> 8)
+		buf[11] = byte(c.TimestampDelta)
+		return 12
 	}
 
-	return append(buf,
-		1<<6|c.ChunkStreamID,
-		byte(c.TimestampDelta>>16), byte(c.TimestampDelta>>8), byte(c.TimestampDelta),
-		byte(c.BodyLen>>16), byte(c.BodyLen>>8), byte(c.BodyLen),
-		c.Type)
+	buf[1] = byte(c.TimestampDelta >> 16)
+	buf[2] = byte(c.TimestampDelta >> 8)
+	buf[3] = byte(c.TimestampDelta)
+	return 8
 }
 
 // Marshal writes the chunk.
-func (c Chunk1) Marshal(hasExtendedTimestamp bool) ([]byte, error) {
-	buf := c.AppendHeader(make([]byte, 0, c.marshalSize()), hasExtendedTimestamp)
-	return append(buf, c.Body...), nil
+func (c Chunk1) Marshal(_ bool) ([]byte, error) {
+	buf := make([]byte, c.marshalSize())
+	n := c.MarshalHeaderTo(buf, false)
+	copy(buf[n:], c.Body)
+	return buf, nil
 }

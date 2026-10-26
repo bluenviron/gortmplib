@@ -45,19 +45,27 @@ func (c Chunk3) marshalSize(hasExtendedTimestamp bool) int {
 	return n
 }
 
-// AppendHeader appends the chunk header, that is the chunk without its body, to buf.
-func (c Chunk3) AppendHeader(buf []byte, hasExtendedTimestamp bool) []byte {
-	buf = append(buf, 3<<6|c.ChunkStreamID)
+// MarshalHeaderTo writes the chunk header, that is the chunk without its body, into buf.
+// buf must be large enough to contain the header (5 bytes are always enough).
+// It returns the number of bytes written.
+func (c Chunk3) MarshalHeaderTo(buf []byte, hasExtendedTimestamp bool) int {
+	buf[0] = 3<<6 | c.ChunkStreamID
 
 	if hasExtendedTimestamp {
-		buf = append(buf, 0, 0, 0, 0)
+		buf[1] = 0
+		buf[2] = 0
+		buf[3] = 0
+		buf[4] = 0
+		return 5
 	}
 
-	return buf
+	return 1
 }
 
 // Marshal writes the chunk.
 func (c Chunk3) Marshal(hasExtendedTimestamp bool) ([]byte, error) {
-	buf := c.AppendHeader(make([]byte, 0, c.marshalSize(hasExtendedTimestamp)), hasExtendedTimestamp)
-	return append(buf, c.Body...), nil
+	buf := make([]byte, c.marshalSize(hasExtendedTimestamp))
+	n := c.MarshalHeaderTo(buf, hasExtendedTimestamp)
+	copy(buf[n:], c.Body)
+	return buf, nil
 }

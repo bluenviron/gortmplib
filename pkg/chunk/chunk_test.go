@@ -159,24 +159,26 @@ func TestChunkMarshal(t *testing.T) {
 	}
 }
 
-func TestChunkAppendHeader(t *testing.T) {
+func TestChunkMarshalHeaderTo(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
-			var buf []byte
+			// the buffer is dirty, in order to check that every header byte is written
+			buf := bytes.Repeat([]byte{0xAA}, 16)
+			var n int
 			var body []byte
 
 			switch ch := ca.dec.(type) {
 			case *chunk.Chunk0:
-				buf, body = ch.AppendHeader([]byte{0xAA}, ca.hasExtendedTimestamp), ch.Body
+				n, body = ch.MarshalHeaderTo(buf, ca.hasExtendedTimestamp), ch.Body
 			case *chunk.Chunk1:
-				buf, body = ch.AppendHeader([]byte{0xAA}, ca.hasExtendedTimestamp), ch.Body
+				n, body = ch.MarshalHeaderTo(buf, ca.hasExtendedTimestamp), ch.Body
 			case *chunk.Chunk2:
-				buf, body = ch.AppendHeader([]byte{0xAA}, ca.hasExtendedTimestamp), ch.Body
+				n, body = ch.MarshalHeaderTo(buf, ca.hasExtendedTimestamp), ch.Body
 			case *chunk.Chunk3:
-				buf, body = ch.AppendHeader([]byte{0xAA}, ca.hasExtendedTimestamp), ch.Body
+				n, body = ch.MarshalHeaderTo(buf, ca.hasExtendedTimestamp), ch.Body
 			}
 
-			require.Equal(t, append([]byte{0xAA}, ca.enc...), append(buf, body...))
+			require.Equal(t, ca.enc, append(buf[:n:n], body...))
 		})
 	}
 }
