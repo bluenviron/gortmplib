@@ -1,5 +1,5 @@
-github.com/abema/go-mp4 v1.7.3 h1:Aap+2vZl5KQrSGD9quYhLu4pWGXelFVUeFCa8IJaRXY=
-github.com/abema/go-mp4 v1.7.3/go.mod h1:vPl9t5ZK7K0x68jh12/+ECWBCXoWuIDtNgPtU2f04ws=
+github.com/abema/go-mp4 v1.7.4 h1:MztDjMx3nac+Lktig9wrUa962Mnyi4+ZtDtpbHuckww=
+github.com/abema/go-mp4 v1.7.4/go.mod h1:vPl9t5ZK7K0x68jh12/+ECWBCXoWuIDtNgPtU2f04ws=
 github.com/bluenviron/mediacommon/v2 v2.9.7 h1:BEexzVxSuh2X7rWKviZlYC0yneRG8w8SMxx34+7H7o4=
 github.com/bluenviron/mediacommon/v2 v2.9.7/go.mod h1:1J4QckclKIksdI9+7C+PJXVBkpO/JYWn7/h+wOYq+7E=
 github.com/creack/pty v1.1.7/go.mod h1:lj5s0c3V2DBrqTV7llrYr5NG6My20zk30Fl46Y7DoTY=
