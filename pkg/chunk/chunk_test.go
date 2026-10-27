@@ -178,7 +178,7 @@ func TestChunkMarshalHeaderTo(t *testing.T) {
 				n, body = ch.MarshalHeaderTo(buf, ca.hasExtendedTimestamp), ch.Body
 			}
 
-			require.Equal(t, ca.enc, append(buf[:n:n], body...))
+			require.Equal(t, ca.enc, append(buf[:n], body...))
 		})
 	}
 }

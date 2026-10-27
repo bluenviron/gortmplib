@@ -194,3 +194,25 @@ func TestWriterConcurrent(t *testing.T) {
 	_, err := r.Read()
 	require.ErrorIs(t, err, io.EOF)
 }
+
+func BenchmarkWriter(b *testing.B) {
+	bc := bytecounter.NewWriter(io.Discard)
+	w := &rawmessage.Writer{
+		BW:  bc,
+		BCW: bc,
+	}
+	w.Initialize()
+	w.SetChunkSize(4096)
+
+	msg := &rawmessage.Message{
+		ChunkStreamID:   6,
+		Type:            9,
+		MessageStreamID: 1,
+		Body:            make([]byte, 20000),
+	}
+
+	for b.Loop() {
+		msg.Timestamp += 33 * time.Millisecond
+		w.Write(msg) //nolint:errcheck
+	}
+}
