@@ -18,6 +18,11 @@ type Chunk1 struct {
 	Body           []byte
 }
 
+// GetBody returns the chunk body.
+func (c Chunk1) GetBody() []byte {
+	return c.Body
+}
+
 // Read reads the chunk.
 func (c *Chunk1) Read(r io.Reader, maxBodyLen uint32, _ bool) error {
 	header := make([]byte, 8)
@@ -83,6 +88,8 @@ func (c Chunk1) MarshalHeaderTo(buf []byte, _ bool) int {
 }
 
 // Marshal writes the chunk.
+//
+// Deprecated: not used anymore.
 func (c Chunk1) Marshal(_ bool) ([]byte, error) {
 	buf := make([]byte, c.marshalSize())
 	n := c.MarshalHeaderTo(buf, false)

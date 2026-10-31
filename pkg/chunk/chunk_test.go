@@ -145,6 +145,7 @@ func TestChunkRead(t *testing.T) {
 			err := chunk.Read(bytes.NewReader(ca.enc), ca.bodyLen, ca.hasExtendedTimestamp)
 			require.NoError(t, err)
 			require.Equal(t, ca.dec, chunk)
+			require.Equal(t, ca.bodyLen, len(ca.dec.GetBody()))
 		})
 	}
 }

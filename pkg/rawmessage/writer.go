@@ -21,7 +21,7 @@ type writerChunkStream struct {
 	hasExtendedTimestamp bool
 }
 
-func (wc *writerChunkStream) writeChunk(header []byte, body []byte) error {
+func (wc *writerChunkStream) writeChunk(ch chunk.Chunk) error {
 	// check if we received an acknowledge
 	if wc.mw.CheckAcknowledge && wc.mw.ackWindowSize != 0 {
 		diff := uint32(wc.mw.BCW.Count()) - wc.mw.AckValue
@@ -33,12 +33,13 @@ func (wc *writerChunkStream) writeChunk(header []byte, body []byte) error {
 
 	// write header and body separately, in order to avoid allocating
 	// and copying a buffer for each chunk.
-	_, err := wc.mw.bufw.Write(header)
+	n := ch.MarshalHeaderTo(wc.mw.header[:], wc.hasExtendedTimestamp)
+	_, err := wc.mw.bufw.Write(wc.mw.header[:n])
 	if err != nil {
 		return err
 	}
 
-	_, err = wc.mw.bufw.Write(body)
+	_, err = wc.mw.bufw.Write(ch.GetBody())
 	return err
 }
 
@@ -70,14 +71,15 @@ func (wc *writerChunkStream) writeMessage(msg *Message) error {
 			switch {
 			case wc.lastMessageStreamID == nil || timestampDelta == nil || *wc.lastMessageStreamID != msg.MessageStreamID:
 				ts := uint32(timestamp)
-				n := chunk.Chunk0{
+				ch := chunk.Chunk0{
 					ChunkStreamID:   msg.ChunkStreamID,
 					Timestamp:       ts,
 					Type:            msg.Type,
 					MessageStreamID: msg.MessageStreamID,
 					BodyLen:         bodyLen,
-				}.MarshalHeaderTo(wc.mw.header[:], false)
-				err := wc.writeChunk(wc.mw.header[:n], msg.Body[pos:pos+chunkBodyLen])
+					Body:            msg.Body[pos : pos+chunkBodyLen],
+				}
+				err := wc.writeChunk(&ch)
 				if err != nil {
 					return err
 				}
@@ -85,13 +87,14 @@ func (wc *writerChunkStream) writeMessage(msg *Message) error {
 
 			case *wc.lastType != msg.Type || *wc.lastBodyLen != bodyLen:
 				ts := uint32(*timestampDelta)
-				n := chunk.Chunk1{
+				ch := chunk.Chunk1{
 					ChunkStreamID:  msg.ChunkStreamID,
 					TimestampDelta: ts,
 					Type:           msg.Type,
 					BodyLen:        bodyLen,
-				}.MarshalHeaderTo(wc.mw.header[:], false)
-				err := wc.writeChunk(wc.mw.header[:n], msg.Body[pos:pos+chunkBodyLen])
+					Body:           msg.Body[pos : pos+chunkBodyLen],
+				}
+				err := wc.writeChunk(&ch)
 				if err != nil {
 					return err
 				}
@@ -99,30 +102,33 @@ func (wc *writerChunkStream) writeMessage(msg *Message) error {
 
 			case wc.lastTimestampDelta == nil || *wc.lastTimestampDelta != *timestampDelta:
 				ts := uint32(*timestampDelta)
-				n := chunk.Chunk2{
+				ch := chunk.Chunk2{
 					ChunkStreamID:  msg.ChunkStreamID,
 					TimestampDelta: ts,
-				}.MarshalHeaderTo(wc.mw.header[:], false)
-				err := wc.writeChunk(wc.mw.header[:n], msg.Body[pos:pos+chunkBodyLen])
+					Body:           msg.Body[pos : pos+chunkBodyLen],
+				}
+				err := wc.writeChunk(&ch)
 				if err != nil {
 					return err
 				}
 				wc.hasExtendedTimestamp = ts >= 0xFFFFFF
 
 			default:
-				n := chunk.Chunk3{
+				ch := chunk.Chunk3{
 					ChunkStreamID: msg.ChunkStreamID,
-				}.MarshalHeaderTo(wc.mw.header[:], wc.hasExtendedTimestamp)
-				err := wc.writeChunk(wc.mw.header[:n], msg.Body[pos:pos+chunkBodyLen])
+					Body:          msg.Body[pos : pos+chunkBodyLen],
+				}
+				err := wc.writeChunk(&ch)
 				if err != nil {
 					return err
 				}
 			}
 		} else {
-			n := chunk.Chunk3{
+			ch := chunk.Chunk3{
 				ChunkStreamID: msg.ChunkStreamID,
-			}.MarshalHeaderTo(wc.mw.header[:], wc.hasExtendedTimestamp)
-			err := wc.writeChunk(wc.mw.header[:n], msg.Body[pos:pos+chunkBodyLen])
+				Body:          msg.Body[pos : pos+chunkBodyLen],
+			}
+			err := wc.writeChunk(&ch)
 			if err != nil {
 				return err
 			}

@@ -15,6 +15,11 @@ type Chunk3 struct {
 	Body          []byte
 }
 
+// GetBody returns the chunk body.
+func (c Chunk3) GetBody() []byte {
+	return c.Body
+}
+
 // Read reads the chunk.
 func (c *Chunk3) Read(r io.Reader, bodyLen uint32, hasExtendedTimestamp bool) error {
 	header := make([]byte, 4)
@@ -63,6 +68,8 @@ func (c Chunk3) MarshalHeaderTo(buf []byte, hasExtendedTimestamp bool) int {
 }
 
 // Marshal writes the chunk.
+//
+// Deprecated: not used anymore.
 func (c Chunk3) Marshal(hasExtendedTimestamp bool) ([]byte, error) {
 	buf := make([]byte, c.marshalSize(hasExtendedTimestamp))
 	n := c.MarshalHeaderTo(buf, hasExtendedTimestamp)
