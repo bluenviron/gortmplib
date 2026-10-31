@@ -13,7 +13,7 @@ import (
 var cases = []struct {
 	name                 string
 	enc                  []byte
-	bodyLen              uint32
+	bodyLen              int
 	hasExtendedTimestamp bool
 	dec                  chunk.Chunk
 }{
@@ -142,9 +142,10 @@ func TestChunkRead(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
 			chunk := reflect.New(reflect.TypeOf(ca.dec).Elem()).Interface().(chunk.Chunk)
-			err := chunk.Read(bytes.NewReader(ca.enc), ca.bodyLen, ca.hasExtendedTimestamp)
+			err := chunk.Read(bytes.NewReader(ca.enc), uint32(ca.bodyLen), ca.hasExtendedTimestamp)
 			require.NoError(t, err)
 			require.Equal(t, ca.dec, chunk)
+			require.Equal(t, ca.bodyLen, len(ca.dec.GetBody()))
 		})
 	}
 }
@@ -155,6 +156,30 @@ func TestChunkMarshal(t *testing.T) {
 			buf, err := ca.dec.Marshal(ca.hasExtendedTimestamp)
 			require.NoError(t, err)
 			require.Equal(t, ca.enc, buf)
+		})
+	}
+}
+
+func TestChunkMarshalHeaderTo(t *testing.T) {
+	for _, ca := range cases {
+		t.Run(ca.name, func(t *testing.T) {
+			// the buffer is dirty, in order to check that every header byte is written
+			buf := bytes.Repeat([]byte{0xAA}, 16)
+			var n int
+			var body []byte
+
+			switch ch := ca.dec.(type) {
+			case *chunk.Chunk0:
+				n, body = ch.MarshalHeaderTo(buf, ca.hasExtendedTimestamp), ch.Body
+			case *chunk.Chunk1:
+				n, body = ch.MarshalHeaderTo(buf, ca.hasExtendedTimestamp), ch.Body
+			case *chunk.Chunk2:
+				n, body = ch.MarshalHeaderTo(buf, ca.hasExtendedTimestamp), ch.Body
+			case *chunk.Chunk3:
+				n, body = ch.MarshalHeaderTo(buf, ca.hasExtendedTimestamp), ch.Body
+			}
+
+			require.Equal(t, ca.enc, append(buf[:n], body...))
 		})
 	}
 }

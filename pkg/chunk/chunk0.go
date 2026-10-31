@@ -17,6 +17,11 @@ type Chunk0 struct {
 	Body            []byte
 }
 
+// GetBody returns the chunk body.
+func (c Chunk0) GetBody() []byte {
+	return c.Body
+}
+
 // Read reads the chunk.
 func (c *Chunk0) Read(r io.Reader, maxBodyLen uint32, _ bool) error {
 	header := make([]byte, 12)
@@ -55,42 +60,43 @@ func (c Chunk0) marshalSize() int {
 	return n
 }
 
-// Marshal writes the chunk.
-func (c Chunk0) Marshal(_ bool) ([]byte, error) {
-	buf := make([]byte, c.marshalSize())
+// MarshalHeaderTo writes the chunk header, that is the chunk without its body, into buf.
+// buf must be large enough to contain the header (16 bytes are always enough).
+// It returns the number of bytes written.
+func (c Chunk0) MarshalHeaderTo(buf []byte, _ bool) int {
 	buf[0] = c.ChunkStreamID
+	buf[4] = byte(c.BodyLen >> 16)
+	buf[5] = byte(c.BodyLen >> 8)
+	buf[6] = byte(c.BodyLen)
+	buf[7] = c.Type
+	buf[8] = byte(c.MessageStreamID >> 24)
+	buf[9] = byte(c.MessageStreamID >> 16)
+	buf[10] = byte(c.MessageStreamID >> 8)
+	buf[11] = byte(c.MessageStreamID)
 
 	if c.Timestamp >= 0xFFFFFF {
 		buf[1] = 0xFF
 		buf[2] = 0xFF
 		buf[3] = 0xFF
-		buf[4] = byte(c.BodyLen >> 16)
-		buf[5] = byte(c.BodyLen >> 8)
-		buf[6] = byte(c.BodyLen)
-		buf[7] = c.Type
-		buf[8] = byte(c.MessageStreamID >> 24)
-		buf[9] = byte(c.MessageStreamID >> 16)
-		buf[10] = byte(c.MessageStreamID >> 8)
-		buf[11] = byte(c.MessageStreamID)
 		buf[12] = byte(c.Timestamp >> 24)
 		buf[13] = byte(c.Timestamp >> 16)
 		buf[14] = byte(c.Timestamp >> 8)
 		buf[15] = byte(c.Timestamp)
-		copy(buf[16:], c.Body)
-	} else {
-		buf[1] = byte(c.Timestamp >> 16)
-		buf[2] = byte(c.Timestamp >> 8)
-		buf[3] = byte(c.Timestamp)
-		buf[4] = byte(c.BodyLen >> 16)
-		buf[5] = byte(c.BodyLen >> 8)
-		buf[6] = byte(c.BodyLen)
-		buf[7] = c.Type
-		buf[8] = byte(c.MessageStreamID >> 24)
-		buf[9] = byte(c.MessageStreamID >> 16)
-		buf[10] = byte(c.MessageStreamID >> 8)
-		buf[11] = byte(c.MessageStreamID)
-		copy(buf[12:], c.Body)
+		return 16
 	}
 
+	buf[1] = byte(c.Timestamp >> 16)
+	buf[2] = byte(c.Timestamp >> 8)
+	buf[3] = byte(c.Timestamp)
+	return 12
+}
+
+// Marshal writes the chunk.
+//
+// Deprecated: not used anymore.
+func (c Chunk0) Marshal(_ bool) ([]byte, error) {
+	buf := make([]byte, c.marshalSize())
+	n := c.MarshalHeaderTo(buf, false)
+	copy(buf[n:], c.Body)
 	return buf, nil
 }

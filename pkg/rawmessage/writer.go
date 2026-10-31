@@ -21,7 +21,7 @@ type writerChunkStream struct {
 	hasExtendedTimestamp bool
 }
 
-func (wc *writerChunkStream) writeChunk(c chunk.Chunk, hasExtendedTimestamp bool) error {
+func (wc *writerChunkStream) writeChunk(ch chunk.Chunk) error {
 	// check if we received an acknowledge
 	if wc.mw.CheckAcknowledge && wc.mw.ackWindowSize != 0 {
 		diff := uint32(wc.mw.BCW.Count()) - wc.mw.AckValue
@@ -31,17 +31,16 @@ func (wc *writerChunkStream) writeChunk(c chunk.Chunk, hasExtendedTimestamp bool
 		}
 	}
 
-	buf, err := c.Marshal(hasExtendedTimestamp)
+	// write header and body separately, in order to avoid allocating
+	// and copying a buffer for each chunk.
+	n := ch.MarshalHeaderTo(wc.mw.headerBuf[:], wc.hasExtendedTimestamp)
+	_, err := wc.mw.bufw.Write(wc.mw.headerBuf[:n])
 	if err != nil {
 		return err
 	}
 
-	_, err = wc.mw.bufw.Write(buf)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	_, err = wc.mw.bufw.Write(ch.GetBody())
+	return err
 }
 
 func (wc *writerChunkStream) writeMessage(msg *Message) error {
@@ -79,7 +78,7 @@ func (wc *writerChunkStream) writeMessage(msg *Message) error {
 					MessageStreamID: msg.MessageStreamID,
 					BodyLen:         bodyLen,
 					Body:            msg.Body[pos : pos+chunkBodyLen],
-				}, false)
+				})
 				if err != nil {
 					return err
 				}
@@ -93,7 +92,7 @@ func (wc *writerChunkStream) writeMessage(msg *Message) error {
 					Type:           msg.Type,
 					BodyLen:        bodyLen,
 					Body:           msg.Body[pos : pos+chunkBodyLen],
-				}, false)
+				})
 				if err != nil {
 					return err
 				}
@@ -105,7 +104,7 @@ func (wc *writerChunkStream) writeMessage(msg *Message) error {
 					ChunkStreamID:  msg.ChunkStreamID,
 					TimestampDelta: ts,
 					Body:           msg.Body[pos : pos+chunkBodyLen],
-				}, false)
+				})
 				if err != nil {
 					return err
 				}
@@ -115,7 +114,7 @@ func (wc *writerChunkStream) writeMessage(msg *Message) error {
 				err := wc.writeChunk(&chunk.Chunk3{
 					ChunkStreamID: msg.ChunkStreamID,
 					Body:          msg.Body[pos : pos+chunkBodyLen],
-				}, wc.hasExtendedTimestamp)
+				})
 				if err != nil {
 					return err
 				}
@@ -124,7 +123,7 @@ func (wc *writerChunkStream) writeMessage(msg *Message) error {
 			err := wc.writeChunk(&chunk.Chunk3{
 				ChunkStreamID: msg.ChunkStreamID,
 				Body:          msg.Body[pos : pos+chunkBodyLen],
-			}, wc.hasExtendedTimestamp)
+			})
 			if err != nil {
 				return err
 			}
@@ -159,6 +158,7 @@ type Writer struct {
 
 	mutex         sync.Mutex
 	bufw          *bufio.Writer
+	headerBuf     [16]byte
 	chunkSize     uint32
 	ackWindowSize uint32
 	chunkStreams  map[byte]*writerChunkStream

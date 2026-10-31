@@ -281,7 +281,7 @@ func TestReader(t *testing.T) {
 			hasExtendedTimestamp := false
 
 			for _, cach := range ca.chunks {
-				buf2, err := cach.Marshal(hasExtendedTimestamp)
+				buf2, err := cach.Marshal(hasExtendedTimestamp) //nolint:staticcheck
 				require.NoError(t, err)
 				buf.Write(buf2)
 				hasExtendedTimestamp = chunkHasExtendedTimestamp(cach)
@@ -358,7 +358,7 @@ func TestReaderAdditional(t *testing.T) {
 			hasExtendedTimestamp := false
 
 			for _, cach := range ca.chunks {
-				buf2, err := cach.Marshal(hasExtendedTimestamp)
+				buf2, err := cach.Marshal(hasExtendedTimestamp) //nolint:staticcheck
 				require.NoError(t, err)
 				buf.Write(buf2)
 				hasExtendedTimestamp = chunkHasExtendedTimestamp(cach)
@@ -444,7 +444,7 @@ func TestReaderAbortChunkStream(t *testing.T) {
 
 			hasExtendedTimestamp := false
 			for _, cach := range chunks {
-				buf2, err := cach.Marshal(hasExtendedTimestamp)
+				buf2, err := cach.Marshal(hasExtendedTimestamp) //nolint:staticcheck
 				require.NoError(t, err)
 				buf.Write(buf2)
 				hasExtendedTimestamp = chunkHasExtendedTimestamp(cach)
@@ -497,7 +497,7 @@ func TestReaderAcknowledge(t *testing.T) {
 
 			r.SetWindowAckSize(100)
 
-			buf2, err := chunk.Chunk0{
+			buf2, err := chunk.Chunk0{ //nolint:staticcheck
 				ChunkStreamID:   27,
 				Timestamp:       18576,
 				Type:            6,
