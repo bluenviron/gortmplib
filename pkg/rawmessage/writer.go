@@ -33,8 +33,8 @@ func (wc *writerChunkStream) writeChunk(ch chunk.Chunk) error {
 
 	// write header and body separately, in order to avoid allocating
 	// and copying a buffer for each chunk.
-	n := ch.MarshalHeaderTo(wc.mw.header[:], wc.hasExtendedTimestamp)
-	_, err := wc.mw.bufw.Write(wc.mw.header[:n])
+	n := ch.MarshalHeaderTo(wc.mw.headerBuf[:], wc.hasExtendedTimestamp)
+	_, err := wc.mw.bufw.Write(wc.mw.headerBuf[:n])
 	if err != nil {
 		return err
 	}
@@ -158,7 +158,7 @@ type Writer struct {
 
 	mutex         sync.Mutex
 	bufw          *bufio.Writer
-	header        [16]byte
+	headerBuf     [16]byte
 	chunkSize     uint32
 	ackWindowSize uint32
 	chunkStreams  map[byte]*writerChunkStream

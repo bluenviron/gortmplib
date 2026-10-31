@@ -13,7 +13,7 @@ import (
 var cases = []struct {
 	name                 string
 	enc                  []byte
-	bodyLen              uint32
+	bodyLen              int
 	hasExtendedTimestamp bool
 	dec                  chunk.Chunk
 }{
@@ -142,7 +142,7 @@ func TestChunkRead(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
 			chunk := reflect.New(reflect.TypeOf(ca.dec).Elem()).Interface().(chunk.Chunk)
-			err := chunk.Read(bytes.NewReader(ca.enc), ca.bodyLen, ca.hasExtendedTimestamp)
+			err := chunk.Read(bytes.NewReader(ca.enc), uint32(ca.bodyLen), ca.hasExtendedTimestamp)
 			require.NoError(t, err)
 			require.Equal(t, ca.dec, chunk)
 			require.Equal(t, ca.bodyLen, len(ca.dec.GetBody()))
