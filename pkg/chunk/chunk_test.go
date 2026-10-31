@@ -126,14 +126,15 @@ var cases = []struct {
 	{
 		"chunk3 extended timestamp",
 		[]byte{
-			0xd9, 0x00, 0x00, 0x00, 0x00, 0x05, 0x06, 0x07,
+			0xd9, 0xff, 0x34, 0x86, 0xa2, 0x05, 0x06, 0x07,
 			0x08,
 		},
 		4,
 		true,
 		&chunk.Chunk3{
-			ChunkStreamID: 25,
-			Body:          []byte{5, 6, 7, 8},
+			ChunkStreamID:     25,
+			ExtendedTimestamp: 0xFF3486A2,
+			Body:              []byte{5, 6, 7, 8},
 		},
 	},
 }

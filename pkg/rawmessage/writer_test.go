@@ -29,7 +29,7 @@ func chunkBodySize(ch chunk.Chunk) uint32 {
 	return 0
 }
 
-func chunkHasExtendedTimestamp(ch chunk.Chunk) bool {
+func chunkHasExtendedTimestamp(ch chunk.Chunk, previous bool) bool {
 	switch ch := ch.(type) {
 	case *chunk.Chunk0:
 		return ch.Timestamp >= 0xFFFFFF
@@ -38,7 +38,7 @@ func chunkHasExtendedTimestamp(ch chunk.Chunk) bool {
 	case *chunk.Chunk2:
 		return ch.TimestampDelta >= 0xFFFFFF
 	case *chunk.Chunk3:
-		return false
+		return previous
 	}
 	return false
 }
@@ -67,7 +67,7 @@ func TestWriter(t *testing.T) {
 				err := ch.Read(&buf, chunkBodySize(cach), hasExtendedTimestamp)
 				require.NoError(t, err)
 				require.Equal(t, cach, ch)
-				hasExtendedTimestamp = chunkHasExtendedTimestamp(cach)
+				hasExtendedTimestamp = chunkHasExtendedTimestamp(cach, hasExtendedTimestamp)
 			}
 
 			require.Zero(t, buf.Len())
