@@ -11,8 +11,9 @@ import (
 // single message is split into chunks, all chunks of a message except
 // the first one SHOULD use this type.
 type Chunk3 struct {
-	ChunkStreamID byte
-	Body          []byte
+	ChunkStreamID     byte
+	ExtendedTimestamp uint32
+	Body              []byte
 }
 
 // GetBody returns the chunk body.
@@ -29,12 +30,14 @@ func (c *Chunk3) Read(r io.Reader, bodyLen uint32, hasExtendedTimestamp bool) er
 	}
 
 	c.ChunkStreamID = header[0] & 0x3F
+	c.ExtendedTimestamp = 0
 
 	if hasExtendedTimestamp {
 		_, err = io.ReadFull(r, header[:4])
 		if err != nil {
 			return err
 		}
+		c.ExtendedTimestamp = uint32(header[0])<<24 | uint32(header[1])<<16 | uint32(header[2])<<8 | uint32(header[3])
 	}
 
 	c.Body = make([]byte, bodyLen)
@@ -57,10 +60,10 @@ func (c Chunk3) MarshalHeaderTo(buf []byte, hasExtendedTimestamp bool) int {
 	buf[0] = 3<<6 | c.ChunkStreamID
 
 	if hasExtendedTimestamp {
-		buf[1] = 0
-		buf[2] = 0
-		buf[3] = 0
-		buf[4] = 0
+		buf[1] = byte(c.ExtendedTimestamp >> 24)
+		buf[2] = byte(c.ExtendedTimestamp >> 16)
+		buf[3] = byte(c.ExtendedTimestamp >> 8)
+		buf[4] = byte(c.ExtendedTimestamp)
 		return 5
 	}
 

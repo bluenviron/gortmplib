@@ -196,9 +196,59 @@ var cases = []struct {
 				Body:            bytes.Repeat([]byte{5}, 128),
 			},
 			&chunk.Chunk3{
-				ChunkStreamID: 27,
-				Body:          bytes.Repeat([]byte{5}, 32),
+				ChunkStreamID:     27,
+				ExtendedTimestamp: 4279383126,
+				Body:              bytes.Repeat([]byte{5}, 32),
 			},
+		},
+	},
+	{
+		"extended timestamp at sentinel across chunk3 continuations",
+		[]*rawmessage.Message{
+			{
+				ChunkStreamID:   27,
+				Timestamp:       0xFFFFFF * time.Millisecond,
+				Type:            6,
+				MessageStreamID: 3123,
+				Body:            bytes.Repeat([]byte{5}, 260),
+			},
+		},
+		[]chunk.Chunk{
+			&chunk.Chunk0{
+				ChunkStreamID:   27,
+				Timestamp:       0xFFFFFF,
+				Type:            6,
+				MessageStreamID: 3123,
+				BodyLen:         260,
+				Body:            bytes.Repeat([]byte{5}, 128),
+			},
+			&chunk.Chunk3{
+				ChunkStreamID:     27,
+				ExtendedTimestamp: 0xFFFFFF,
+				Body:              bytes.Repeat([]byte{5}, 128),
+			},
+			&chunk.Chunk3{
+				ChunkStreamID:     27,
+				ExtendedTimestamp: 0xFFFFFF,
+				Body:              bytes.Repeat([]byte{5}, 4),
+			},
+		},
+	},
+	{
+		"extended timestamp deltas across chunk formats",
+		[]*rawmessage.Message{
+			{ChunkStreamID: 27, Type: 6, MessageStreamID: 3123, Body: []byte{1}},
+			{ChunkStreamID: 27, Timestamp: 0xFFFFFF * time.Millisecond, Type: 5, MessageStreamID: 3123, Body: []byte{2}},
+			{ChunkStreamID: 27, Timestamp: (0xFFFFFF + 1) * time.Millisecond, Type: 4, MessageStreamID: 3123, Body: []byte{3}},
+			{ChunkStreamID: 27, Timestamp: (2*0xFFFFFF + 1) * time.Millisecond, Type: 4, MessageStreamID: 3123, Body: []byte{4}},
+			{ChunkStreamID: 27, Timestamp: (3*0xFFFFFF + 1) * time.Millisecond, Type: 4, MessageStreamID: 3123, Body: []byte{5}},
+		},
+		[]chunk.Chunk{
+			&chunk.Chunk0{ChunkStreamID: 27, Type: 6, MessageStreamID: 3123, BodyLen: 1, Body: []byte{1}},
+			&chunk.Chunk1{ChunkStreamID: 27, TimestampDelta: 0xFFFFFF, Type: 5, BodyLen: 1, Body: []byte{2}},
+			&chunk.Chunk1{ChunkStreamID: 27, TimestampDelta: 1, Type: 4, BodyLen: 1, Body: []byte{3}},
+			&chunk.Chunk2{ChunkStreamID: 27, TimestampDelta: 0xFFFFFF, Body: []byte{4}},
+			&chunk.Chunk3{ChunkStreamID: 27, ExtendedTimestamp: 0xFFFFFF, Body: []byte{5}},
 		},
 	},
 	{
@@ -284,7 +334,7 @@ func TestReader(t *testing.T) {
 				buf2, err := cach.Marshal(hasExtendedTimestamp) //nolint:staticcheck
 				require.NoError(t, err)
 				buf.Write(buf2)
-				hasExtendedTimestamp = chunkHasExtendedTimestamp(cach)
+				hasExtendedTimestamp = chunkHasExtendedTimestamp(cach, hasExtendedTimestamp)
 			}
 
 			var msgs []*rawmessage.Message
@@ -337,8 +387,9 @@ func TestReaderAdditional(t *testing.T) {
 					Body:            bytes.Repeat([]byte{5}, 15),
 				},
 				&chunk.Chunk3{
-					ChunkStreamID: 27,
-					Body:          bytes.Repeat([]byte{6}, 15),
+					ChunkStreamID:     27,
+					ExtendedTimestamp: 4279383126,
+					Body:              bytes.Repeat([]byte{6}, 15),
 				},
 			},
 		},
@@ -361,7 +412,7 @@ func TestReaderAdditional(t *testing.T) {
 				buf2, err := cach.Marshal(hasExtendedTimestamp) //nolint:staticcheck
 				require.NoError(t, err)
 				buf.Write(buf2)
-				hasExtendedTimestamp = chunkHasExtendedTimestamp(cach)
+				hasExtendedTimestamp = chunkHasExtendedTimestamp(cach, hasExtendedTimestamp)
 			}
 
 			var msgs []*rawmessage.Message
@@ -447,7 +498,7 @@ func TestReaderAbortChunkStream(t *testing.T) {
 				buf2, err := cach.Marshal(hasExtendedTimestamp) //nolint:staticcheck
 				require.NoError(t, err)
 				buf.Write(buf2)
-				hasExtendedTimestamp = chunkHasExtendedTimestamp(cach)
+				hasExtendedTimestamp = chunkHasExtendedTimestamp(cach, hasExtendedTimestamp)
 			}
 
 			msg, err := r.Read()

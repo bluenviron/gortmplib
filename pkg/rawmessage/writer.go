@@ -19,6 +19,7 @@ type writerChunkStream struct {
 	lastTimestamp        *int64
 	lastTimestampDelta   *int64
 	hasExtendedTimestamp bool
+	extendedTimestamp    uint32
 }
 
 func (wc *writerChunkStream) writeChunk(ch chunk.Chunk) error {
@@ -83,6 +84,7 @@ func (wc *writerChunkStream) writeMessage(msg *Message) error {
 					return err
 				}
 				wc.hasExtendedTimestamp = ts >= 0xFFFFFF
+				wc.extendedTimestamp = ts
 
 			case *wc.lastType != msg.Type || *wc.lastBodyLen != bodyLen:
 				ts := uint32(*timestampDelta)
@@ -97,6 +99,7 @@ func (wc *writerChunkStream) writeMessage(msg *Message) error {
 					return err
 				}
 				wc.hasExtendedTimestamp = ts >= 0xFFFFFF
+				wc.extendedTimestamp = ts
 
 			case wc.lastTimestampDelta == nil || *wc.lastTimestampDelta != *timestampDelta:
 				ts := uint32(*timestampDelta)
@@ -109,11 +112,13 @@ func (wc *writerChunkStream) writeMessage(msg *Message) error {
 					return err
 				}
 				wc.hasExtendedTimestamp = ts >= 0xFFFFFF
+				wc.extendedTimestamp = ts
 
 			default:
 				err := wc.writeChunk(&chunk.Chunk3{
-					ChunkStreamID: msg.ChunkStreamID,
-					Body:          msg.Body[pos : pos+chunkBodyLen],
+					ChunkStreamID:     msg.ChunkStreamID,
+					ExtendedTimestamp: wc.extendedTimestamp,
+					Body:              msg.Body[pos : pos+chunkBodyLen],
 				})
 				if err != nil {
 					return err
@@ -121,8 +126,9 @@ func (wc *writerChunkStream) writeMessage(msg *Message) error {
 			}
 		} else {
 			err := wc.writeChunk(&chunk.Chunk3{
-				ChunkStreamID: msg.ChunkStreamID,
-				Body:          msg.Body[pos : pos+chunkBodyLen],
+				ChunkStreamID:     msg.ChunkStreamID,
+				ExtendedTimestamp: wc.extendedTimestamp,
+				Body:              msg.Body[pos : pos+chunkBodyLen],
 			})
 			if err != nil {
 				return err
