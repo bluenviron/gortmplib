@@ -22,7 +22,7 @@ type writerChunkStream struct {
 	extendedTimestamp    uint32
 }
 
-func (wc *writerChunkStream) writeChunk(ch chunk.Chunk) error {
+func (wc *writerChunkStream) writeChunk(ch chunk.Chunk, payload []byte) error {
 	// check if we received an acknowledge
 	if wc.mw.CheckAcknowledge && wc.mw.ackWindowSize != 0 {
 		diff := uint32(wc.mw.BCW.Count()) - wc.mw.AckValue
@@ -41,11 +41,33 @@ func (wc *writerChunkStream) writeChunk(ch chunk.Chunk) error {
 	}
 
 	_, err = wc.mw.bufw.Write(ch.GetBody())
+	if err != nil {
+		return err
+	}
+
+	_, err = wc.mw.bufw.Write(payload)
 	return err
 }
 
-func (wc *writerChunkStream) writeMessage(msg *Message) error {
+// splitBody returns the part of the message body that goes from start to end,
+// as a slice of Body and a slice of Payload. The body is Body followed by Payload.
+func splitBody(msg *Message, start uint32, end uint32) ([]byte, []byte) {
 	bodyLen := uint32(len(msg.Body))
+
+	switch {
+	case end <= bodyLen:
+		return msg.Body[start:end], nil
+
+	case start >= bodyLen:
+		return nil, msg.Payload[start-bodyLen : end-bodyLen]
+
+	default:
+		return msg.Body[start:], msg.Payload[:end-bodyLen]
+	}
+}
+
+func (wc *writerChunkStream) writeMessage(msg *Message) error {
+	bodyLen := uint32(len(msg.Body) + len(msg.Payload))
 	pos := uint32(0)
 	firstChunk := true
 
@@ -65,6 +87,7 @@ func (wc *writerChunkStream) writeMessage(msg *Message) error {
 
 	for {
 		chunkBodyLen := min(bodyLen-pos, wc.mw.chunkSize)
+		chunkBody, chunkPayload := splitBody(msg, pos, pos+chunkBodyLen)
 
 		if firstChunk {
 			firstChunk = false
@@ -78,8 +101,8 @@ func (wc *writerChunkStream) writeMessage(msg *Message) error {
 					Type:            msg.Type,
 					MessageStreamID: msg.MessageStreamID,
 					BodyLen:         bodyLen,
-					Body:            msg.Body[pos : pos+chunkBodyLen],
-				})
+					Body:            chunkBody,
+				}, chunkPayload)
 				if err != nil {
 					return err
 				}
@@ -93,8 +116,8 @@ func (wc *writerChunkStream) writeMessage(msg *Message) error {
 					TimestampDelta: ts,
 					Type:           msg.Type,
 					BodyLen:        bodyLen,
-					Body:           msg.Body[pos : pos+chunkBodyLen],
-				})
+					Body:           chunkBody,
+				}, chunkPayload)
 				if err != nil {
 					return err
 				}
@@ -106,8 +129,8 @@ func (wc *writerChunkStream) writeMessage(msg *Message) error {
 				err := wc.writeChunk(&chunk.Chunk2{
 					ChunkStreamID:  msg.ChunkStreamID,
 					TimestampDelta: ts,
-					Body:           msg.Body[pos : pos+chunkBodyLen],
-				})
+					Body:           chunkBody,
+				}, chunkPayload)
 				if err != nil {
 					return err
 				}
@@ -118,8 +141,8 @@ func (wc *writerChunkStream) writeMessage(msg *Message) error {
 				err := wc.writeChunk(&chunk.Chunk3{
 					ChunkStreamID:     msg.ChunkStreamID,
 					ExtendedTimestamp: wc.extendedTimestamp,
-					Body:              msg.Body[pos : pos+chunkBodyLen],
-				})
+					Body:              chunkBody,
+				}, chunkPayload)
 				if err != nil {
 					return err
 				}
@@ -128,8 +151,8 @@ func (wc *writerChunkStream) writeMessage(msg *Message) error {
 			err := wc.writeChunk(&chunk.Chunk3{
 				ChunkStreamID:     msg.ChunkStreamID,
 				ExtendedTimestamp: wc.extendedTimestamp,
-				Body:              msg.Body[pos : pos+chunkBodyLen],
-			})
+				Body:              chunkBody,
+			}, chunkPayload)
 			if err != nil {
 				return err
 			}

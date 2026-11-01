@@ -303,7 +303,7 @@ func (m Video) marshal() (*rawmessage.Message, error) {
 		bodyData = m.AU
 	}
 
-	body := make([]byte, 5+len(bodyData))
+	body := make([]byte, 5)
 
 	body[0] = uint8(frameType)<<4 | m.Codec
 	body[1] = uint8(m.PacketType)
@@ -313,13 +313,12 @@ func (m Video) marshal() (*rawmessage.Message, error) {
 	body[3] = uint8(tmp >> 8)
 	body[4] = uint8(tmp)
 
-	copy(body[5:], bodyData)
-
 	return &rawmessage.Message{
 		ChunkStreamID:   m.ChunkStreamID,
 		Timestamp:       m.DTS,
 		Type:            uint8(TypeVideo),
 		MessageStreamID: m.MessageStreamID,
 		Body:            body,
+		Payload:         bodyData,
 	}, nil
 }

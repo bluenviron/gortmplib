@@ -75,6 +75,50 @@ func TestWriter(t *testing.T) {
 	}
 }
 
+func TestWriterPayload(t *testing.T) {
+	for _, ca := range cases {
+		t.Run(ca.name, func(t *testing.T) {
+			var buf1 bytes.Buffer
+			bc := bytecounter.NewWriter(&buf1)
+			w := &rawmessage.Writer{BW: bc, BCW: bc}
+			w.Initialize()
+
+			for _, msg := range ca.messages {
+				err := w.Write(msg)
+				require.NoError(t, err)
+			}
+
+			// split the body of each message into Body and Payload at different positions,
+			// including chunk boundaries.
+			for _, split := range []int{0, 1, 64, 127, 128, 129, -1} {
+				var buf2 bytes.Buffer
+				bc = bytecounter.NewWriter(&buf2)
+				w = &rawmessage.Writer{BW: bc, BCW: bc}
+				w.Initialize()
+
+				for _, msg := range ca.messages {
+					n := min(split, len(msg.Body))
+					if n < 0 {
+						n = len(msg.Body)
+					}
+
+					err := w.Write(&rawmessage.Message{
+						ChunkStreamID:   msg.ChunkStreamID,
+						Timestamp:       msg.Timestamp,
+						Type:            msg.Type,
+						MessageStreamID: msg.MessageStreamID,
+						Body:            msg.Body[:n],
+						Payload:         msg.Body[n:],
+					})
+					require.NoError(t, err)
+				}
+
+				require.Equal(t, buf1.Bytes(), buf2.Bytes())
+			}
+		})
+	}
+}
+
 func TestWriterAcknowledge(t *testing.T) {
 	for _, ca := range []string{"standard", "overflow"} {
 		t.Run(ca, func(t *testing.T) {

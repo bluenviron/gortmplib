@@ -37,19 +37,14 @@ func (m *AudioExCodedFrames) unmarshal(raw *rawmessage.Message) error {
 	return nil
 }
 
-func (m AudioExCodedFrames) marshalBodySize() int {
-	return 5 + len(m.Payload)
-}
-
 func (m AudioExCodedFrames) marshal() (*rawmessage.Message, error) {
-	body := make([]byte, m.marshalBodySize())
+	body := make([]byte, 5)
 
 	body[0] = (9 << 4) | byte(AudioExTypeCodedFrames)
 	body[1] = uint8(m.FourCC >> 24)
 	body[2] = uint8(m.FourCC >> 16)
 	body[3] = uint8(m.FourCC >> 8)
 	body[4] = uint8(m.FourCC)
-	copy(body[5:], m.Payload)
 
 	return &rawmessage.Message{
 		ChunkStreamID:   m.ChunkStreamID,
@@ -57,5 +52,6 @@ func (m AudioExCodedFrames) marshal() (*rawmessage.Message, error) {
 		Type:            uint8(TypeAudio),
 		MessageStreamID: m.MessageStreamID,
 		Body:            body,
+		Payload:         m.Payload,
 	}, nil
 }

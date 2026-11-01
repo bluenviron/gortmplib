@@ -91,5 +91,6 @@ func (m AudioExMultitrack) marshal() (*rawmessage.Message, error) {
 		Timestamp:       wrappedEnc.Timestamp,
 		Type:            uint8(TypeAudio),
 		Body:            body,
+		Payload:         wrappedEnc.Payload,
 	}, nil
 }
