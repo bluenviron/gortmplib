@@ -1,17 +1,20 @@
-package gortmplib
+// Package rc4rw contains an RC4 ReadWriter.
+package rc4rw
 
 import (
 	"crypto/rc4"
 	"io"
 )
 
-type rc4ReadWriter struct {
+// ReadWriter is an RC4 ReadWriter.
+type ReadWriter struct {
 	rw  io.ReadWriter
 	in  *rc4.Cipher
 	out *rc4.Cipher
 }
 
-func newRC4ReadWriter(rw io.ReadWriter, keyIn []byte, keyOut []byte) (*rc4ReadWriter, error) {
+// New creates a new RC4 ReadWriter with the given keys.
+func New(rw io.ReadWriter, keyIn []byte, keyOut []byte) (*ReadWriter, error) {
 	in, err := rc4.NewCipher(keyIn)
 	if err != nil {
 		return nil, err
@@ -26,14 +29,15 @@ func newRC4ReadWriter(rw io.ReadWriter, keyIn []byte, keyOut []byte) (*rc4ReadWr
 	in.XORKeyStream(p, p)
 	out.XORKeyStream(p, p)
 
-	return &rc4ReadWriter{
+	return &ReadWriter{
 		rw:  rw,
 		in:  in,
 		out: out,
 	}, nil
 }
 
-func (r *rc4ReadWriter) Read(p []byte) (int, error) {
+// Read implements io.Reader.
+func (r *ReadWriter) Read(p []byte) (int, error) {
 	n, err := r.rw.Read(p)
 	if n == 0 {
 		return 0, err
@@ -43,7 +47,8 @@ func (r *rc4ReadWriter) Read(p []byte) (int, error) {
 	return n, err
 }
 
-func (r *rc4ReadWriter) Write(p []byte) (int, error) {
+// Write implements io.Writer.
+func (r *ReadWriter) Write(p []byte) (int, error) {
 	r.out.XORKeyStream(p, p)
 	return r.rw.Write(p)
 }

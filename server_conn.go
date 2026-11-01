@@ -12,6 +12,7 @@ import (
 	"github.com/bluenviron/gortmplib/pkg/bytecounter"
 	"github.com/bluenviron/gortmplib/pkg/handshake"
 	"github.com/bluenviron/gortmplib/pkg/message"
+	"github.com/bluenviron/gortmplib/pkg/rc4rw"
 )
 
 const (
@@ -149,7 +150,7 @@ func (c *ServerConn) Initialize() error {
 
 	var rw io.ReadWriter
 	if keyIn != nil {
-		rw, err = newRC4ReadWriter(c.bc, keyIn, keyOut)
+		rw, err = rc4rw.New(c.bc, keyIn, keyOut)
 		if err != nil {
 			return err
 		}
