@@ -62,16 +62,25 @@ func generateHvcC(vps, sps, pps []byte) (*mp4.HvcC, error) {
 		return nil, err
 	}
 
+	// general_constraint_indicator_flags are the 48 bits that follow
+	// general_profile_compatibility_flag in profile_tier_level().
+	// In the SPS RBSP, they are bytes 8-13 (2 bytes of NALU header, 1 byte of
+	// sps_video_parameter_set_id / sps_max_sub_layers_minus1 / sps_temporal_id_nesting_flag,
+	// 1 byte of general_profile_space / general_tier_flag / general_profile_idc,
+	// 4 bytes of general_profile_compatibility_flag).
+	// Length has already been checked by SPS.Unmarshal().
+	var constraintIndicator [6]uint8
+	copy(constraintIndicator[:], h264.EmulationPreventionRemove(sps)[8:14])
+
 	return &mp4.HvcC{
 		ConfigurationVersion:        1,
+		GeneralProfileSpace:         psps.ProfileTierLevel.GeneralProfileSpace,
+		GeneralTierFlag:             psps.ProfileTierLevel.GeneralTierFlag != 0,
 		GeneralProfileIdc:           psps.ProfileTierLevel.GeneralProfileIdc,
 		GeneralProfileCompatibility: psps.ProfileTierLevel.GeneralProfileCompatibilityFlag,
-		GeneralConstraintIndicator: [6]uint8{
-			sps[7], sps[8], sps[9],
-			sps[10], sps[11], sps[12],
-		},
-		GeneralLevelIdc: psps.ProfileTierLevel.GeneralLevelIdc,
-		Reserved1:       0b1111,
+		GeneralConstraintIndicator:  constraintIndicator,
+		GeneralLevelIdc:             psps.ProfileTierLevel.GeneralLevelIdc,
+		Reserved1:                   0b1111,
 		// MinSpatialSegmentationIdc
 		Reserved2: 0b111111,
 		// ParallelismType

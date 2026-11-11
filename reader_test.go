@@ -102,16 +102,18 @@ func generateHvcC(t *testing.T, vps, sps, pps []byte) *mp4.HvcC {
 	err := psps.Unmarshal(sps)
 	require.NoError(t, err)
 
+	var constraintIndicator [6]uint8
+	copy(constraintIndicator[:], h264.EmulationPreventionRemove(sps)[8:14])
+
 	return &mp4.HvcC{
 		ConfigurationVersion:        1,
+		GeneralProfileSpace:         psps.ProfileTierLevel.GeneralProfileSpace,
+		GeneralTierFlag:             psps.ProfileTierLevel.GeneralTierFlag != 0,
 		GeneralProfileIdc:           psps.ProfileTierLevel.GeneralProfileIdc,
 		GeneralProfileCompatibility: psps.ProfileTierLevel.GeneralProfileCompatibilityFlag,
-		GeneralConstraintIndicator: [6]uint8{
-			sps[7], sps[8], sps[9],
-			sps[10], sps[11], sps[12],
-		},
-		GeneralLevelIdc: psps.ProfileTierLevel.GeneralLevelIdc,
-		Reserved1:       0b1111,
+		GeneralConstraintIndicator:  constraintIndicator,
+		GeneralLevelIdc:             psps.ProfileTierLevel.GeneralLevelIdc,
+		Reserved1:                   0b1111,
 		// MinSpatialSegmentationIdc
 		Reserved2: 0b111111,
 		// ParallelismType
