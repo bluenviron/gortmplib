@@ -12,9 +12,11 @@ type VideoExCodedFrames struct {
 	ChunkStreamID   byte
 	DTS             time.Duration
 	MessageStreamID uint32
-	FourCC          FourCC
-	PTSDelta        time.Duration
-	Payload         []byte
+	// When zero, it is written as VideoFrameTypeInterFrame.
+	FrameType VideoFrameType
+	FourCC    FourCC
+	PTSDelta  time.Duration
+	Payload   []byte
 }
 
 func (m *VideoExCodedFrames) unmarshal(raw *rawmessage.Message) error {
@@ -25,6 +27,7 @@ func (m *VideoExCodedFrames) unmarshal(raw *rawmessage.Message) error {
 	m.ChunkStreamID = raw.ChunkStreamID
 	m.DTS = raw.Timestamp
 	m.MessageStreamID = raw.MessageStreamID
+	m.FrameType = VideoFrameType((raw.Body[0] >> 4) & 0b111)
 
 	m.FourCC = FourCC(raw.Body[1])<<24 | FourCC(raw.Body[2])<<16 | FourCC(raw.Body[3])<<8 | FourCC(raw.Body[4])
 	switch m.FourCC {
@@ -57,7 +60,7 @@ func (m VideoExCodedFrames) marshalBodySize() int {
 func (m VideoExCodedFrames) marshal() (*rawmessage.Message, error) {
 	body := make([]byte, m.marshalBodySize())
 
-	body[0] = 0b10000000 | byte(VideoExTypeCodedFrames)
+	body[0] = exVideoHeader(m.FrameType, VideoFrameTypeInterFrame, VideoExTypeCodedFrames)
 	body[1] = uint8(m.FourCC >> 24)
 	body[2] = uint8(m.FourCC >> 16)
 	body[3] = uint8(m.FourCC >> 8)

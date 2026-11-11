@@ -6,6 +6,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/abema/go-mp4"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bluenviron/gortmplib/pkg/bytecounter"
@@ -97,6 +98,72 @@ func TestWriter(t *testing.T) {
 			err := r.Write(ca.dec)
 			require.NoError(t, err)
 			require.Equal(t, ca.enc, buf.Bytes())
+		})
+	}
+}
+
+func TestWriterVideoExDefaultFrameType(t *testing.T) {
+	// VideoFrameType 0 is reserved. When FrameType is not set,
+	// SequenceStart is written as KeyFrame and coded frames as InterFrame.
+	for _, ca := range []struct {
+		name   string
+		msg    message.Message
+		header []byte
+	}{
+		{
+			"sequence start",
+			&message.VideoExSequenceStart{
+				ChunkStreamID:   6,
+				MessageStreamID: 0x1000000,
+				FourCC:          message.FourCCVP9,
+				VP9Config:       &mp4.VpcC{FullBox: mp4.FullBox{Version: 1}, CodecInitializationData: []uint8{}},
+			},
+			[]byte{0x90},
+		},
+		{
+			"coded frames",
+			&message.VideoExCodedFrames{
+				ChunkStreamID:   6,
+				MessageStreamID: 0x1000000,
+				FourCC:          message.FourCCHEVC,
+				Payload:         []byte{1},
+			},
+			[]byte{0xa1},
+		},
+		{
+			"frames x",
+			&message.VideoExFramesX{
+				ChunkStreamID:   6,
+				MessageStreamID: 0x1000000,
+				FourCC:          message.FourCCHEVC,
+				Payload:         []byte{1},
+			},
+			[]byte{0xa3},
+		},
+		{
+			"multitrack",
+			&message.VideoExMultitrack{
+				TrackID: 1,
+				Wrapped: &message.VideoExFramesX{
+					ChunkStreamID:   6,
+					MessageStreamID: 0x1000000,
+					FourCC:          message.FourCCHEVC,
+					Payload:         []byte{1},
+				},
+			},
+			[]byte{0xa6, 0x03},
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			bc := bytecounter.NewWriter(&buf)
+			w := &message.Writer{BW: bc, BCW: bc}
+			w.Initialize()
+			err := w.Write(ca.msg)
+			require.NoError(t, err)
+
+			// skip the 12-byte type 0 chunk header
+			require.Equal(t, ca.header, buf.Bytes()[12:12+len(ca.header)])
 		})
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h265"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg1audio"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/vp9"
 
 	"github.com/bluenviron/gortmplib/pkg/amf0"
 	"github.com/bluenviron/gortmplib/pkg/codecs"
@@ -337,6 +338,7 @@ func (w *Writer) writeTracks() error {
 			var msg message.Message = &message.VideoExSequenceStart{
 				ChunkStreamID:   message.VideoChunkStreamID,
 				MessageStreamID: 0x1000000,
+				FrameType:       message.VideoFrameTypeKeyFrame,
 				FourCC:          message.FourCCAV1,
 				AV1Config: &mp4.Av1C{
 					Marker:             0x1,
@@ -367,6 +369,7 @@ func (w *Writer) writeTracks() error {
 			var msg message.Message = &message.VideoExSequenceStart{
 				ChunkStreamID:   message.VideoChunkStreamID,
 				MessageStreamID: 0x1000000,
+				FrameType:       message.VideoFrameTypeKeyFrame,
 				FourCC:          message.FourCCVP9,
 				VP9Config: &mp4.VpcC{
 					FullBox:                 mp4.FullBox{Version: 0x1},
@@ -410,6 +413,7 @@ func (w *Writer) writeTracks() error {
 			var msg message.Message = &message.VideoExSequenceStart{
 				ChunkStreamID:   message.VideoChunkStreamID,
 				MessageStreamID: 0x1000000,
+				FrameType:       message.VideoFrameTypeKeyFrame,
 				FourCC:          message.FourCCHEVC,
 				HEVCConfig:      hvcc,
 			}
@@ -459,6 +463,7 @@ func (w *Writer) writeTracks() error {
 					Wrapped: &message.VideoExSequenceStart{
 						ChunkStreamID:   message.VideoChunkStreamID,
 						MessageStreamID: 0x1000000,
+						FrameType:       message.VideoFrameTypeKeyFrame,
 						FourCC:          message.FourCCAVC,
 						AVCConfig:       avcc,
 					},
@@ -608,9 +613,15 @@ func (w *Writer) WriteAV1(track *Track, pts time.Duration, tu [][]byte) error {
 		return err
 	}
 
+	frameType := message.VideoFrameTypeInterFrame
+	if av1.IsRandomAccess2(tu) {
+		frameType = message.VideoFrameTypeKeyFrame
+	}
+
 	var msg message.Message = &message.VideoExFramesX{
 		ChunkStreamID:   message.VideoChunkStreamID,
 		MessageStreamID: 0x1000000,
+		FrameType:       frameType,
 		FourCC:          message.FourCCAV1,
 		DTS:             pts,
 		Payload:         enc,
@@ -631,9 +642,15 @@ func (w *Writer) WriteAV1(track *Track, pts time.Duration, tu [][]byte) error {
 
 // WriteVP9 writes a VP9 frame.
 func (w *Writer) WriteVP9(track *Track, pts time.Duration, frame []byte) error {
+	frameType := message.VideoFrameTypeInterFrame
+	if vp9.IsRandomAccess(frame) {
+		frameType = message.VideoFrameTypeKeyFrame
+	}
+
 	var msg message.Message = &message.VideoExFramesX{
 		ChunkStreamID:   message.VideoChunkStreamID,
 		MessageStreamID: 0x1000000,
+		FrameType:       frameType,
 		FourCC:          message.FourCCVP9,
 		DTS:             pts,
 		Payload:         frame,
@@ -659,12 +676,18 @@ func (w *Writer) WriteH265(track *Track, pts time.Duration, dts time.Duration, a
 		return err
 	}
 
+	frameType := message.VideoFrameTypeInterFrame
+	if h265.IsRandomAccess(au) {
+		frameType = message.VideoFrameTypeKeyFrame
+	}
+
 	var msg message.Message
 
 	if pts == dts {
 		msg = &message.VideoExFramesX{
 			ChunkStreamID:   message.VideoChunkStreamID,
 			MessageStreamID: 0x1000000,
+			FrameType:       frameType,
 			FourCC:          message.FourCCHEVC,
 			DTS:             dts,
 			Payload:         avcc,
@@ -673,6 +696,7 @@ func (w *Writer) WriteH265(track *Track, pts time.Duration, dts time.Duration, a
 		msg = &message.VideoExCodedFrames{
 			ChunkStreamID:   message.VideoChunkStreamID,
 			MessageStreamID: 0x1000000,
+			FrameType:       frameType,
 			FourCC:          message.FourCCHEVC,
 			DTS:             dts,
 			PTSDelta:        pts - dts,
@@ -700,14 +724,14 @@ func (w *Writer) WriteH264(track *Track, pts time.Duration, dts time.Duration, a
 		return err
 	}
 
+	frameType := message.VideoFrameTypeInterFrame
+	if h264.IsRandomAccess(au) {
+		frameType = message.VideoFrameTypeKeyFrame
+	}
+
 	id := w.videoTrackToID[track]
 
 	if id == 0 {
-		frameType := message.VideoFrameTypeInterFrame
-		if h264.IsRandomAccess(au) {
-			frameType = message.VideoFrameTypeKeyFrame
-		}
-
 		return w.Conn.Write(&message.Video{
 			ChunkStreamID:   message.VideoChunkStreamID,
 			MessageStreamID: 0x1000000,
@@ -726,6 +750,7 @@ func (w *Writer) WriteH264(track *Track, pts time.Duration, dts time.Duration, a
 		msg = &message.VideoExFramesX{
 			ChunkStreamID:   message.VideoChunkStreamID,
 			MessageStreamID: 0x1000000,
+			FrameType:       frameType,
 			FourCC:          message.FourCCAVC,
 			DTS:             dts,
 			Payload:         avcc,
@@ -734,6 +759,7 @@ func (w *Writer) WriteH264(track *Track, pts time.Duration, dts time.Duration, a
 		msg = &message.VideoExCodedFrames{
 			ChunkStreamID:   message.VideoChunkStreamID,
 			MessageStreamID: 0x1000000,
+			FrameType:       frameType,
 			FourCC:          message.FourCCAVC,
 			DTS:             dts,
 			PTSDelta:        pts - dts,
