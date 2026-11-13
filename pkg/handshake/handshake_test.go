@@ -1,10 +1,12 @@
-package handshake
+package handshake_test
 
 import (
 	"bytes"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/bluenviron/gortmplib/pkg/handshake"
 )
 
 type testReadWriter struct {
@@ -32,12 +34,12 @@ func TestHandshake(t *testing.T) {
 
 			go func() {
 				var err error
-				serverInKey, serverOutKey, err = DoServer(rw, true)
+				serverInKey, serverOutKey, err = handshake.DoServer(rw, true)
 				require.NoError(t, err)
 				close(done)
 			}()
 
-			clientInKey, clientOutKey, err := DoClient(rw, ca == "encrypted", true)
+			clientInKey, clientOutKey, err := handshake.DoClient(rw, ca == "encrypted", true)
 			require.NoError(t, err)
 
 			<-done
@@ -75,22 +77,10 @@ func testCryptoRandRead(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func setCryptoRandRead(tb testing.TB) {
-	tb.Helper()
-
-	previous := cryptoRandRead
-	cryptoRandRead = testCryptoRandRead
-	tb.Cleanup(func() {
-		cryptoRandRead = previous
-	})
-}
-
 func FuzzDoClient(f *testing.F) {
-	setCryptoRandRead(f)
-
 	f.Fuzz(func(t *testing.T, encrypted bool, strict bool, input []byte) {
 		rw := newSplitReadWriter(input)
-		inKey, outKey, err := DoClient(rw, encrypted, strict)
+		inKey, outKey, err := handshake.DoClientWithRand(rw, encrypted, strict, testCryptoRandRead)
 		if err != nil {
 			return
 		}
@@ -106,11 +96,9 @@ func FuzzDoClient(f *testing.F) {
 }
 
 func FuzzDoServer(f *testing.F) {
-	setCryptoRandRead(f)
-
 	f.Fuzz(func(t *testing.T, strict bool, input []byte) {
 		rw := newSplitReadWriter(input)
-		inKey, outKey, err := DoServer(rw, strict)
+		inKey, outKey, err := handshake.DoServerWithRand(rw, strict, testCryptoRandRead)
 		if err != nil {
 			return
 		}

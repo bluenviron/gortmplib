@@ -78,14 +78,14 @@ func (c C2S2) validate(isS2 bool, prevDigest []byte) error {
 	return nil
 }
 
-func (c *C2S2) fillPlain() error {
+func (c *C2S2) fillPlain(randRead func([]byte) (int, error)) error {
 	c.Data = make([]byte, c2s2Size-8)
-	_, err := cryptoRandRead(c.Data)
+	_, err := randRead(c.Data)
 	return err
 }
 
-func (c *C2S2) fill(isS2 bool, prevDigest []byte) error {
-	err := c.fillPlain()
+func (c *C2S2) fill(isS2 bool, prevDigest []byte, randRead func([]byte) (int, error)) error {
+	err := c.fillPlain(randRead)
 	if err != nil {
 		return err
 	}

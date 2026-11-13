@@ -134,20 +134,20 @@ func (c C1S1) validate(isS1 bool) ([]byte, []byte, error) {
 	return digest, publicKey, nil
 }
 
-func (c *C1S1) fillPlain() error {
+func (c *C1S1) fillPlain(randRead func([]byte) (int, error)) error {
 	c.Data = make([]byte, c1s1Size-8)
-	_, err := cryptoRandRead(c.Data)
+	_, err := randRead(c.Data)
 	return err
 }
 
-func (c *C1S1) fill(isS1 bool, publicKey []byte) ([]byte, error) {
-	err := c.fillPlain()
+func (c *C1S1) fill(isS1 bool, publicKey []byte, randRead func([]byte) (int, error)) ([]byte, error) {
+	err := c.fillPlain(randRead)
 	if err != nil {
 		return nil, err
 	}
 
 	var r [1]byte
-	_, err = cryptoRandRead(r[:])
+	_, err = randRead(r[:])
 	if err != nil {
 		return nil, err
 	}

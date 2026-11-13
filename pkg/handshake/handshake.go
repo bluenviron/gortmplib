@@ -12,9 +12,7 @@ const (
 	encryptedVersion = 3<<24 | 5<<16 | 1<<8 | 1
 )
 
-var cryptoRandRead = rand.Read
-
-func doClientEncrypted(rw io.ReadWriter) ([]byte, []byte, error) {
+func doClientEncrypted(rw io.ReadWriter, randRead func([]byte) (int, error)) ([]byte, []byte, error) {
 	var c0 C0S0
 
 	c0.Version = 6
@@ -24,14 +22,14 @@ func doClientEncrypted(rw io.ReadWriter) ([]byte, []byte, error) {
 		return nil, nil, err
 	}
 
-	localPrivateKey, localPublicKey, err := dhGenerateKeyPair()
+	localPrivateKey, localPublicKey, err := dhGenerateKeyPair(randRead)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	var c1 C1S1
 
-	c1Digest, err := c1.fill(false, localPublicKey)
+	c1Digest, err := c1.fill(false, localPublicKey, randRead)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -78,7 +76,7 @@ func doClientEncrypted(rw io.ReadWriter) ([]byte, []byte, error) {
 
 	var c2 C2S2
 
-	err = c2.fill(false, s1Digest)
+	err = c2.fill(false, s1Digest, randRead)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -94,7 +92,7 @@ func doClientEncrypted(rw io.ReadWriter) ([]byte, []byte, error) {
 	return keyIn, keyOut, nil
 }
 
-func doClientPlain(rw io.ReadWriter, strict bool) error {
+func doClientPlain(rw io.ReadWriter, strict bool, randRead func([]byte) (int, error)) error {
 	var c0 C0S0
 
 	c0.Version = 3
@@ -106,7 +104,7 @@ func doClientPlain(rw io.ReadWriter, strict bool) error {
 
 	var c1 C1S1
 
-	err = c1.fillPlain()
+	err = c1.fillPlain(randRead)
 	if err != nil {
 		return err
 	}
@@ -154,13 +152,24 @@ func doClientPlain(rw io.ReadWriter, strict bool) error {
 
 // DoClient performs a client-side handshake.
 func DoClient(rw io.ReadWriter, encrypted bool, strict bool) ([]byte, []byte, error) {
-	if encrypted {
-		return doClientEncrypted(rw)
-	}
-	return nil, nil, doClientPlain(rw, strict)
+	return DoClientWithRand(rw, encrypted, strict, rand.Read)
 }
 
-func doServerEncrypted(rw io.ReadWriter) ([]byte, []byte, error) {
+// DoClientWithRand performs a client-side handshake, using the given function
+// to generate random data.
+func DoClientWithRand(
+	rw io.ReadWriter,
+	encrypted bool,
+	strict bool,
+	randRead func([]byte) (int, error),
+) ([]byte, []byte, error) {
+	if encrypted {
+		return doClientEncrypted(rw, randRead)
+	}
+	return nil, nil, doClientPlain(rw, strict, randRead)
+}
+
+func doServerEncrypted(rw io.ReadWriter, randRead func([]byte) (int, error)) ([]byte, []byte, error) {
 	var c1 C1S1
 
 	err := c1.Read(rw)
@@ -173,7 +182,7 @@ func doServerEncrypted(rw io.ReadWriter) ([]byte, []byte, error) {
 		return nil, nil, err
 	}
 
-	localPrivateKey, localPublicKey, err := dhGenerateKeyPair()
+	localPrivateKey, localPublicKey, err := dhGenerateKeyPair(randRead)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -191,7 +200,7 @@ func doServerEncrypted(rw io.ReadWriter) ([]byte, []byte, error) {
 
 	s1.Version = encryptedVersion
 
-	s1Digest, err := s1.fill(true, localPublicKey)
+	s1Digest, err := s1.fill(true, localPublicKey, randRead)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -205,7 +214,7 @@ func doServerEncrypted(rw io.ReadWriter) ([]byte, []byte, error) {
 
 	s2.Time2 = encryptedVersion
 
-	err = s2.fill(true, c1Digest)
+	err = s2.fill(true, c1Digest, randRead)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -233,7 +242,7 @@ func doServerEncrypted(rw io.ReadWriter) ([]byte, []byte, error) {
 	return keyIn, keyOut, nil
 }
 
-func doServerPlain(rw io.ReadWriter, strict bool) error {
+func doServerPlain(rw io.ReadWriter, strict bool, randRead func([]byte) (int, error)) error {
 	var c1 C1S1
 
 	err := c1.Read(rw)
@@ -252,7 +261,7 @@ func doServerPlain(rw io.ReadWriter, strict bool) error {
 
 	var s1 C1S1
 
-	err = s1.fillPlain()
+	err = s1.fillPlain(randRead)
 	if err != nil {
 		return err
 	}
@@ -287,6 +296,12 @@ func doServerPlain(rw io.ReadWriter, strict bool) error {
 
 // DoServer performs a server-side handshake.
 func DoServer(rw io.ReadWriter, strict bool) ([]byte, []byte, error) {
+	return DoServerWithRand(rw, strict, rand.Read)
+}
+
+// DoServerWithRand performs a server-side handshake, using the given function
+// to generate random data.
+func DoServerWithRand(rw io.ReadWriter, strict bool, randRead func([]byte) (int, error)) ([]byte, []byte, error) {
 	var c0 C0S0
 
 	err := c0.Read(rw)
@@ -295,8 +310,8 @@ func DoServer(rw io.ReadWriter, strict bool) ([]byte, []byte, error) {
 	}
 
 	if c0.Version == 6 {
-		return doServerEncrypted(rw)
+		return doServerEncrypted(rw, randRead)
 	}
 
-	return nil, nil, doServerPlain(rw, strict)
+	return nil, nil, doServerPlain(rw, strict, randRead)
 }
