@@ -80,7 +80,8 @@ func (m VideoExMultitrack) marshal() (*rawmessage.Message, error) {
 
 	body := make([]byte, 7+len(wrappedEnc.Body)-5)
 
-	body[0] = wrappedEnc.Body[0]&0b11110000 | byte(VideoExTypeMultitrack) // keep isExVideoHeader and frame type, replace packet type
+	// keep isExVideoHeader and frame type, replace packet type
+	body[0] = wrappedEnc.Body[0]&0b11110000 | byte(VideoExTypeMultitrack)
 	body[1] = wrappedEnc.Body[0] & 0b1111
 	copy(body[2:], wrappedEnc.Body[1:])
 	body[6] = m.TrackID

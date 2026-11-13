@@ -13,9 +13,8 @@ import (
 type VideoExSequenceStart struct {
 	ChunkStreamID   byte
 	MessageStreamID uint32
-	// When zero, it is written as VideoFrameTypeKeyFrame.
-	FrameType VideoFrameType
-	FourCC    FourCC
+	FrameType       VideoFrameType
+	FourCC          FourCC
 
 	// only in case of FourCC = FourCCAV1.
 	AV1Config *mp4.Av1C
