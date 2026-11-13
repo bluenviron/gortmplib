@@ -128,7 +128,13 @@ func (m VideoExSequenceStart) marshal() (*rawmessage.Message, error) {
 
 	body := make([]byte, 5+len(addBody))
 
-	body[0] = exVideoHeader(m.FrameType, VideoFrameTypeKeyFrame, VideoExTypeSequenceStart)
+	// support frameType = 0 for backward compatibility
+	frameType := m.FrameType
+	if frameType == 0 {
+		frameType = VideoFrameTypeKeyFrame
+	}
+
+	body[0] = 0b10000000 | byte(frameType&0b111)<<4 | byte(VideoExTypeSequenceStart)
 	body[1] = uint8(m.FourCC >> 24)
 	body[2] = uint8(m.FourCC >> 16)
 	body[3] = uint8(m.FourCC >> 8)

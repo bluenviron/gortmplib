@@ -32,15 +32,6 @@ const (
 	VideoFrameTypeCommand    VideoFrameType = 5
 )
 
-// exVideoHeader returns the first byte of an ExVideoTagHeader.
-// VideoFrameType 0 is reserved, therefore defaultFrameType is used when frameType is not set.
-func exVideoHeader(frameType VideoFrameType, defaultFrameType VideoFrameType, typ VideoExType) byte {
-	if frameType == 0 {
-		frameType = defaultFrameType
-	}
-	return 0b10000000 | byte(frameType&0b111)<<4 | byte(typ)
-}
-
 // VideoCommand is the command carried by a video message with FrameType = VideoFrameTypeCommand.
 type VideoCommand uint8
 
