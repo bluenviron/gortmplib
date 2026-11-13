@@ -14,6 +14,10 @@ type VideoExSequenceEnd struct {
 }
 
 func (m *VideoExSequenceEnd) unmarshal(raw *rawmessage.Message) error {
+	if len(raw.Body) > 0 && VideoFrameType((raw.Body[0]>>4)&0b111) == VideoFrameTypeCommand {
+		return fmt.Errorf("video command frames in extended messages are not supported")
+	}
+
 	if len(raw.Body) != 5 {
 		return fmt.Errorf("not enough bytes")
 	}
