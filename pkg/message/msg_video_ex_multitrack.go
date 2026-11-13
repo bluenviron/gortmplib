@@ -56,8 +56,9 @@ func (m *VideoExMultitrack) unmarshal(raw *rawmessage.Message) error { //nolint:
 	m.TrackID = raw.Body[6]
 
 	wrappedBody := make([]byte, 5+len(raw.Body[7:]))
-	copy(wrappedBody[1:], raw.Body[2:]) // fourCC
-	copy(wrappedBody[5:], raw.Body[7:]) // body
+	wrappedBody[0] = raw.Body[0] & 0b01110000 // frame type
+	copy(wrappedBody[1:], raw.Body[2:])       // fourCC
+	copy(wrappedBody[5:], raw.Body[7:])       // body
 	err := m.Wrapped.unmarshal(&rawmessage.Message{
 		ChunkStreamID:   raw.ChunkStreamID,
 		MessageStreamID: raw.MessageStreamID,
@@ -79,7 +80,8 @@ func (m VideoExMultitrack) marshal() (*rawmessage.Message, error) {
 
 	body := make([]byte, 7+len(wrappedEnc.Body)-5)
 
-	body[0] = 0b10000000 | byte(VideoExTypeMultitrack)
+	// keep isExVideoHeader and frame type, replace packet type
+	body[0] = wrappedEnc.Body[0]&0b11110000 | byte(VideoExTypeMultitrack)
 	body[1] = wrappedEnc.Body[0] & 0b1111
 	copy(body[2:], wrappedEnc.Body[1:])
 	body[6] = m.TrackID

@@ -13,6 +13,7 @@ import (
 type VideoExSequenceStart struct {
 	ChunkStreamID   byte
 	MessageStreamID uint32
+	FrameType       VideoFrameType
 	FourCC          FourCC
 
 	// only in case of FourCC = FourCCAV1.
@@ -37,6 +38,7 @@ func (m *VideoExSequenceStart) unmarshal(raw *rawmessage.Message) error {
 
 	m.ChunkStreamID = raw.ChunkStreamID
 	m.MessageStreamID = raw.MessageStreamID
+	m.FrameType = VideoFrameType((raw.Body[0] >> 4) & 0b111)
 
 	m.FourCC = FourCC(raw.Body[1])<<24 | FourCC(raw.Body[2])<<16 | FourCC(raw.Body[3])<<8 | FourCC(raw.Body[4])
 	switch m.FourCC {
@@ -125,7 +127,13 @@ func (m VideoExSequenceStart) marshal() (*rawmessage.Message, error) {
 
 	body := make([]byte, 5+len(addBody))
 
-	body[0] = 0b10000000 | byte(VideoExTypeSequenceStart)
+	// support frameType = 0 for backward compatibility
+	frameType := m.FrameType
+	if frameType == 0 {
+		frameType = VideoFrameTypeKeyFrame
+	}
+
+	body[0] = 0b10000000 | byte(frameType&0b111)<<4 | byte(VideoExTypeSequenceStart)
 	body[1] = uint8(m.FourCC >> 24)
 	body[2] = uint8(m.FourCC >> 16)
 	body[3] = uint8(m.FourCC >> 8)

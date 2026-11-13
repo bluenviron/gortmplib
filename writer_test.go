@@ -2,13 +2,17 @@ package gortmplib_test
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"net"
 	"testing"
 	"time"
 
 	"github.com/abema/go-mp4"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/av1"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/flac"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h265"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/opus"
 	"github.com/stretchr/testify/require"
@@ -18,6 +22,7 @@ import (
 	"github.com/bluenviron/gortmplib/pkg/bytecounter"
 	"github.com/bluenviron/gortmplib/pkg/codecs"
 	"github.com/bluenviron/gortmplib/pkg/message"
+	"github.com/bluenviron/gortmplib/pkg/rawmessage"
 )
 
 var (
@@ -508,6 +513,7 @@ func TestWriter(t *testing.T) {
 				require.Equal(t, &message.VideoExSequenceStart{
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
+					FrameType:       message.VideoFrameTypeKeyFrame,
 					FourCC:          message.FourCCAV1,
 					AV1Config: &mp4.Av1C{
 						Marker:             0x1,
@@ -527,6 +533,7 @@ func TestWriter(t *testing.T) {
 				require.Equal(t, &message.VideoExFramesX{
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
+					FrameType:       message.VideoFrameTypeInterFrame,
 					FourCC:          message.FourCCAV1,
 					Payload:         []byte{0x12, 0x0, 0x3, 0x1, 0x2},
 				}, msg)
@@ -537,6 +544,7 @@ func TestWriter(t *testing.T) {
 				require.Equal(t, &message.VideoExSequenceStart{
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
+					FrameType:       message.VideoFrameTypeKeyFrame,
 					FourCC:          message.FourCCVP9,
 					VP9Config: &mp4.VpcC{
 						FullBox:                 mp4.FullBox{Version: 0x1},
@@ -558,6 +566,7 @@ func TestWriter(t *testing.T) {
 				require.Equal(t, &message.VideoExFramesX{
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
+					FrameType:       message.VideoFrameTypeInterFrame,
 					FourCC:          message.FourCCVP9,
 					Payload:         []byte{0x1, 0x2},
 				}, msg)
@@ -569,6 +578,7 @@ func TestWriter(t *testing.T) {
 				require.Equal(t, &message.VideoExSequenceStart{
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
+					FrameType:       message.VideoFrameTypeKeyFrame,
 					FourCC:          message.FourCCHEVC,
 					HEVCConfig: &mp4.HvcC{
 						ConfigurationVersion: 0x1,
@@ -630,6 +640,7 @@ func TestWriter(t *testing.T) {
 				require.Equal(t, &message.VideoExFramesX{
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
+					FrameType:       message.VideoFrameTypeInterFrame,
 					FourCC:          message.FourCCHEVC,
 					Payload:         []byte{0, 0, 0, 2, 1, 2},
 				}, msg)
@@ -641,6 +652,7 @@ func TestWriter(t *testing.T) {
 				require.Equal(t, &message.VideoExSequenceStart{
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
+					FrameType:       message.VideoFrameTypeKeyFrame,
 					FourCC:          message.FourCCHEVC,
 					HEVCConfig: generateHvcC(t, h265DefaultVPS,
 						h265DefaultSPS, h265DefaultPPS),
@@ -654,6 +666,7 @@ func TestWriter(t *testing.T) {
 				require.Equal(t, &message.VideoExFramesX{
 					ChunkStreamID:   message.VideoChunkStreamID,
 					MessageStreamID: 0x1000000,
+					FrameType:       message.VideoFrameTypeInterFrame,
 					FourCC:          message.FourCCHEVC,
 					Payload:         []byte{0, 0, 0, 2, 1, 2},
 				}, msg)
@@ -834,4 +847,161 @@ func TestWriter(t *testing.T) {
 type readWriter struct {
 	io.Reader
 	io.Writer
+}
+
+// writeAndReadVideo initializes a Writer with the given tracks, calls write
+// and returns the bodies of the video messages that have been sent.
+func writeAndReadVideo(
+	t *testing.T,
+	tracks []*gortmplib.Track,
+	write func(w *gortmplib.Writer) error,
+) [][]byte {
+	t.Helper()
+
+	var input bytes.Buffer
+	var output bytes.Buffer
+	c := &dummyConn{
+		rw: &readWriter{
+			Reader: &input,
+			Writer: &output,
+		},
+	}
+	c.initialize()
+
+	w := &gortmplib.Writer{
+		Conn:   c,
+		Tracks: tracks,
+	}
+	err := w.Initialize()
+	require.NoError(t, err)
+
+	err = write(w)
+	require.NoError(t, err)
+
+	bc := bytecounter.NewReader(&output)
+	r := &rawmessage.Reader{
+		BR:  bc,
+		BCR: bc,
+	}
+	r.Initialize()
+
+	var bodies [][]byte
+
+	for {
+		var msg *rawmessage.Message
+		msg, err = r.Read()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		require.NoError(t, err)
+
+		if msg.Type == uint8(message.TypeVideo) {
+			bodies = append(bodies, msg.Body)
+		}
+	}
+
+	return bodies
+}
+
+func TestWriterVideoFrameType(t *testing.T) {
+	h265IDR := []byte{byte(h265.NALUType_IDR_W_RADL) << 1, 0x01}
+	h265NonIDR := []byte{byte(h265.NALUType_TRAIL_R) << 1, 0x01}
+	h264IDR := []byte{byte(h264.NALUTypeIDR), 0x01}
+	h264NonIDR := []byte{byte(h264.NALUTypeNonIDR), 0x01}
+	av1SequenceHeader := []byte{byte(av1.OBUTypeSequenceHeader) << 3, 0x01}
+	av1Frame := []byte{6 << 3, 0x01} // OBU_FRAME
+	vp9KeyFrame := []byte{
+		0x82, 0x49, 0x83, 0x42, 0x00, 0x77, 0xf0, 0x32,
+		0x34, 0x30, 0x38, 0x24, 0x1c, 0x19, 0x40, 0x18,
+		0x03, 0x40, 0x5f, 0xb4,
+	}
+	vp9InterFrame := []byte{0x86, 0x00}
+
+	for _, ca := range []struct {
+		name   string
+		tracks []*gortmplib.Track
+		write  func(w *gortmplib.Writer, tracks []*gortmplib.Track) error
+		// expected prefix of each video message body.
+		// 0x90 = isExVideoHeader | KeyFrame | SequenceStart
+		// 0x93 = isExVideoHeader | KeyFrame | CodedFramesX
+		// 0xa3 = isExVideoHeader | InterFrame | CodedFramesX
+		headers [][]byte
+	}{
+		{
+			"h265",
+			[]*gortmplib.Track{{Codec: testCodecH265}},
+			func(w *gortmplib.Writer, tracks []*gortmplib.Track) error {
+				err := w.WriteH265(tracks[0], 0, 0, [][]byte{h265IDR})
+				if err != nil {
+					return err
+				}
+				return w.WriteH265(tracks[0], 33*time.Millisecond, 33*time.Millisecond, [][]byte{h265NonIDR})
+			},
+			[][]byte{{0x90}, {0x93}, {0xa3}},
+		},
+		{
+			"h265 with pts delta",
+			[]*gortmplib.Track{{Codec: testCodecH265}},
+			func(w *gortmplib.Writer, tracks []*gortmplib.Track) error {
+				err := w.WriteH265(tracks[0], 66*time.Millisecond, 0, [][]byte{h265IDR})
+				if err != nil {
+					return err
+				}
+				return w.WriteH265(tracks[0], 100*time.Millisecond, 33*time.Millisecond, [][]byte{h265NonIDR})
+			},
+			[][]byte{{0x90}, {0x91}, {0xa1}},
+		},
+		{
+			"av1",
+			[]*gortmplib.Track{{Codec: &codecs.AV1{}}},
+			func(w *gortmplib.Writer, tracks []*gortmplib.Track) error {
+				err := w.WriteAV1(tracks[0], 0, [][]byte{av1SequenceHeader, av1Frame})
+				if err != nil {
+					return err
+				}
+				return w.WriteAV1(tracks[0], 33*time.Millisecond, [][]byte{av1Frame})
+			},
+			[][]byte{{0x90}, {0x93}, {0xa3}},
+		},
+		{
+			"vp9",
+			[]*gortmplib.Track{{Codec: &codecs.VP9{}}},
+			func(w *gortmplib.Writer, tracks []*gortmplib.Track) error {
+				err := w.WriteVP9(tracks[0], 0, vp9KeyFrame)
+				if err != nil {
+					return err
+				}
+				return w.WriteVP9(tracks[0], 33*time.Millisecond, vp9InterFrame)
+			},
+			[][]byte{{0x90}, {0x93}, {0xa3}},
+		},
+		{
+			"h264 secondary track",
+			[]*gortmplib.Track{{Codec: testCodecH264}, {Codec: testCodecH264}},
+			func(w *gortmplib.Writer, tracks []*gortmplib.Track) error {
+				err := w.WriteH264(tracks[1], 0, 0, [][]byte{h264IDR})
+				if err != nil {
+					return err
+				}
+				return w.WriteH264(tracks[1], 33*time.Millisecond, 33*time.Millisecond, [][]byte{h264NonIDR})
+			},
+			[][]byte{
+				{0x17},       // legacy header of the first track: KeyFrame | AVC
+				{0x96, 0x00}, // Multitrack, KeyFrame; OneTrack, SequenceStart
+				{0x96, 0x03}, // Multitrack, KeyFrame; OneTrack, CodedFramesX
+				{0xa6, 0x03}, // Multitrack, InterFrame; OneTrack, CodedFramesX
+			},
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			bodies := writeAndReadVideo(t, ca.tracks, func(w *gortmplib.Writer) error {
+				return ca.write(w, ca.tracks)
+			})
+
+			require.Len(t, bodies, len(ca.headers))
+			for i, header := range ca.headers {
+				require.Equal(t, header, bodies[i][:len(header)])
+			}
+		})
+	}
 }
