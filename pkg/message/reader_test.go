@@ -1066,6 +1066,51 @@ func TestReaderVideoExReservedFrameType(t *testing.T) {
 	}, msg)
 }
 
+func TestReaderVideoExCommandFrameType(t *testing.T) {
+	// command frames carry a VideoCommand byte instead of video data.
+	// They are not supported in extended messages.
+	for _, ca := range []struct {
+		name string
+		buf  []byte
+	}{
+		{
+			"frames x",
+			[]byte{
+				0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06, 0x09,
+				0x01, 0x00, 0x00, 0x00, 0xd3, 0x68, 0x76, 0x63,
+				0x31, 0x00,
+			},
+		},
+		{
+			"sequence end",
+			[]byte{
+				0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06, 0x09,
+				0x01, 0x00, 0x00, 0x00, 0xd2, 0x68, 0x76, 0x63,
+				0x31, 0x00,
+			},
+		},
+		{
+			"multitrack",
+			[]byte{
+				0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x09,
+				0x01, 0x00, 0x00, 0x00, 0xd6, 0x03, 0x68, 0x76,
+				0x63, 0x31, 0x01, 0x00,
+			},
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			bc := bytecounter.NewReader(bytes.NewReader(ca.buf))
+			r := &message.Reader{
+				BR:  bc,
+				BCR: bc,
+			}
+			r.Initialize()
+			_, err := r.Read()
+			require.EqualError(t, err, "video command frames in extended messages are not supported")
+		})
+	}
+}
+
 func TestReaderNonStandardControlChunkStreamID(t *testing.T) {
 	buf := []byte{
 		0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06, 0x04,

@@ -27,6 +27,10 @@ func (m *VideoExFramesX) unmarshal(raw *rawmessage.Message) error {
 	m.MessageStreamID = raw.MessageStreamID
 	m.FrameType = VideoFrameType((raw.Body[0] >> 4) & 0b111)
 
+	if m.FrameType == VideoFrameTypeCommand {
+		return fmt.Errorf("video command frames in extended messages are not supported")
+	}
+
 	m.FourCC = FourCC(raw.Body[1])<<24 | FourCC(raw.Body[2])<<16 | FourCC(raw.Body[3])<<8 | FourCC(raw.Body[4])
 	switch m.FourCC {
 	case FourCCAV1, FourCCVP9, FourCCHEVC, FourCCAVC:
