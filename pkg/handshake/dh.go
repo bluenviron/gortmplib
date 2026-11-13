@@ -82,9 +82,9 @@ func dhValidatePublicKey(key []byte) error {
 	return nil
 }
 
-func dhGenerateKeyPair() ([]byte, []byte, error) {
+func dhGenerateKeyPair(randRead func([]byte) (int, error)) ([]byte, []byte, error) {
 	priv := make([]byte, dhKeyLength)
-	_, err := cryptoRandRead(priv)
+	_, err := randRead(priv)
 	if err != nil {
 		return nil, nil, err
 	}

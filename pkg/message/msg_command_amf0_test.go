@@ -1,73 +1,77 @@
-package message
+package message_test
 
 import (
+	"bytes"
+	"io"
 	"testing"
 
 	"github.com/bluenviron/gortmplib/pkg/amf0"
-	"github.com/bluenviron/gortmplib/pkg/rawmessage"
+	"github.com/bluenviron/gortmplib/pkg/bytecounter"
+	"github.com/bluenviron/gortmplib/pkg/message"
 )
 
-func BenchmarkCommandAMF0Marshal(b *testing.B) {
-	msg := &CommandAMF0{
-		ChunkStreamID: 3,
-		Name:          "connect",
-		CommandID:     1,
-		Arguments: []any{
-			amf0.Object{
-				{Key: "app", Value: "/stream"},
-				{Key: "flashVer", Value: "LNX 9,0,124,2"},
-				{Key: "tcUrl", Value: "http://example.com"},
-				{Key: "fpad", Value: false},
-				{Key: "capabilities", Value: 15},
-				{Key: "audioCodecs", Value: 4071},
-				{Key: "videoCodecs", Value: 252},
-				{Key: "videoFunction", Value: 1},
-			},
+var benchmarkCommandAMF0 = &message.CommandAMF0{
+	ChunkStreamID: 3,
+	Name:          "connect",
+	CommandID:     1,
+	Arguments: []any{
+		amf0.Object{
+			{Key: "app", Value: "/stream"},
+			{Key: "flashVer", Value: "LNX 9,0,124,2"},
+			{Key: "tcUrl", Value: "http://example.com"},
+			{Key: "fpad", Value: false},
+			{Key: "capabilities", Value: float64(15)},
+			{Key: "audioCodecs", Value: float64(4071)},
+			{Key: "videoCodecs", Value: float64(252)},
+			{Key: "videoFunction", Value: float64(1)},
 		},
-	}
+	},
+}
+
+// cycleReader repeats a buffer forever.
+type cycleReader struct {
+	buf []byte
+	pos int
+}
+
+func (r *cycleReader) Read(p []byte) (int, error) {
+	n := copy(p, r.buf[r.pos:])
+	r.pos = (r.pos + n) % len(r.buf)
+	return n, nil
+}
+
+func BenchmarkWriterCommandAMF0(b *testing.B) {
+	bcw := bytecounter.NewWriter(io.Discard)
+	w := &message.Writer{BW: bcw, BCW: bcw}
+	w.Initialize()
 
 	for b.Loop() {
-		msg.marshal() //nolint:errcheck
+		err := w.Write(benchmarkCommandAMF0)
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
-func BenchmarkCommandAMF0Unmarshal(b *testing.B) {
-	raw := &rawmessage.Message{
-		ChunkStreamID:   0x3,
-		Timestamp:       0,
-		Type:            0x14,
-		MessageStreamID: 0x0,
-		Body: []uint8{
-			0x02, 0x00, 0x07, 0x63, 0x6f, 0x6e, 0x6e, 0x65,
-			0x63, 0x74, 0x00, 0x3f, 0xf0, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x03, 0x00, 0x03, 0x61, 0x70,
-			0x70, 0x02, 0x00, 0x07, 0x2f, 0x73, 0x74, 0x72,
-			0x65, 0x61, 0x6d, 0x00, 0x08, 0x66, 0x6c, 0x61,
-			0x73, 0x68, 0x56, 0x65, 0x72, 0x02, 0x00, 0x0d,
-			0x4c, 0x4e, 0x58, 0x20, 0x39, 0x2c, 0x30, 0x2c,
-			0x31, 0x32, 0x34, 0x2c, 0x32, 0x00, 0x05, 0x74,
-			0x63, 0x55, 0x72, 0x6c, 0x02, 0x00, 0x12, 0x68,
-			0x74, 0x74, 0x70, 0x3a, 0x2f, 0x2f, 0x65, 0x78,
-			0x61, 0x6d, 0x70, 0x6c, 0x65, 0x2e, 0x63, 0x6f,
-			0x6d, 0x00, 0x04, 0x66, 0x70, 0x61, 0x64, 0x01,
-			0x00, 0x00, 0x0c, 0x63, 0x61, 0x70, 0x61, 0x62,
-			0x69, 0x6c, 0x69, 0x74, 0x69, 0x65, 0x73, 0x00,
-			0x40, 0x2e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x0b, 0x61, 0x75, 0x64, 0x69, 0x6f, 0x43,
-			0x6f, 0x64, 0x65, 0x63, 0x73, 0x00, 0x40, 0xaf,
-			0xce, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0b,
-			0x76, 0x69, 0x64, 0x65, 0x6f, 0x43, 0x6f, 0x64,
-			0x65, 0x63, 0x73, 0x00, 0x40, 0x6f, 0x80, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x0d, 0x76, 0x69,
-			0x64, 0x65, 0x6f, 0x46, 0x75, 0x6e, 0x63, 0x74,
-			0x69, 0x6f, 0x6e, 0x00, 0x3f, 0xf0, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x09,
-		},
+func BenchmarkReaderCommandAMF0(b *testing.B) {
+	// every message is written with a full header, therefore the stream can be repeated.
+	var buf bytes.Buffer
+	bcw := bytecounter.NewWriter(&buf)
+	w := &message.Writer{BW: bcw, BCW: bcw}
+	w.Initialize()
+	err := w.Write(benchmarkCommandAMF0)
+	if err != nil {
+		b.Fatal(err)
 	}
 
-	msg := &CommandAMF0{}
+	bcr := bytecounter.NewReader(&cycleReader{buf: buf.Bytes()})
+	r := &message.Reader{BR: bcr, BCR: bcr}
+	r.Initialize()
 
 	for b.Loop() {
-		msg.unmarshal(raw) //nolint:errcheck
+		_, err = r.Read()
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }
