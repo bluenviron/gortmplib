@@ -6,6 +6,7 @@ import (
 
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg4audio"
 
+	"github.com/bluenviron/gortmplib/internal/bufpool"
 	"github.com/bluenviron/gortmplib/pkg/rawmessage"
 )
 
@@ -154,7 +155,7 @@ func (m Audio) marshal() (*rawmessage.Message, error) {
 
 	var body []byte
 	if m.Codec == CodecMPEG4Audio {
-		body = make([]byte, 2+len(bodyData))
+		body = bufpool.Get(2 + len(bodyData))
 		body[0] = m.Codec<<4 | byte(m.Rate)<<2 | byte(m.Depth)<<1
 		if m.IsStereo {
 			body[0] |= 1
@@ -162,7 +163,7 @@ func (m Audio) marshal() (*rawmessage.Message, error) {
 		body[1] = uint8(m.AACType)
 		copy(body[2:], bodyData)
 	} else {
-		body = make([]byte, 1+len(bodyData))
+		body = bufpool.Get(1 + len(bodyData))
 		body[0] = m.Codec<<4 | byte(m.Rate)<<2 | byte(m.Depth)<<1
 		if m.IsStereo {
 			body[0] |= 1

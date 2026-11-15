@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bluenviron/gortmplib/internal/bufpool"
 	"github.com/bluenviron/gortmplib/pkg/rawmessage"
 )
 
@@ -42,7 +43,7 @@ func (m AudioExCodedFrames) marshalBodySize() int {
 }
 
 func (m AudioExCodedFrames) marshal() (*rawmessage.Message, error) {
-	body := make([]byte, m.marshalBodySize())
+	body := bufpool.Get(m.marshalBodySize())
 
 	body[0] = (9 << 4) | byte(AudioExTypeCodedFrames)
 	body[1] = uint8(m.FourCC >> 24)

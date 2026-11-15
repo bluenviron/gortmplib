@@ -3,6 +3,7 @@ package message //nolint:dupl
 import (
 	"fmt"
 
+	"github.com/bluenviron/gortmplib/internal/bufpool"
 	"github.com/bluenviron/gortmplib/pkg/rawmessage"
 )
 
@@ -77,13 +78,14 @@ func (m AudioExMultitrack) marshal() (*rawmessage.Message, error) {
 		return nil, err
 	}
 
-	body := make([]byte, 7+len(wrappedEnc.Body)-5)
+	body := bufpool.Get(7 + len(wrappedEnc.Body) - 5)
 
 	body[0] = (9 << 4) | byte(AudioExTypeMultitrack)
 	body[1] = wrappedEnc.Body[0] & 0b1111
 	copy(body[2:], wrappedEnc.Body[1:])
 	body[6] = m.TrackID
 	copy(body[7:], wrappedEnc.Body[5:])
+	bufpool.Put(wrappedEnc.Body)
 
 	return &rawmessage.Message{
 		ChunkStreamID:   wrappedEnc.ChunkStreamID,

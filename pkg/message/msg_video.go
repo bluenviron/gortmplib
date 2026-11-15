@@ -8,6 +8,7 @@ import (
 	"github.com/abema/go-mp4"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h265"
 
+	"github.com/bluenviron/gortmplib/internal/bufpool"
 	"github.com/bluenviron/gortmplib/pkg/rawmessage"
 )
 
@@ -303,7 +304,7 @@ func (m Video) marshal() (*rawmessage.Message, error) {
 		bodyData = m.AU
 	}
 
-	body := make([]byte, 5+len(bodyData))
+	body := bufpool.Get(5 + len(bodyData))
 
 	body[0] = uint8(frameType)<<4 | m.Codec
 	body[1] = uint8(m.PacketType)
