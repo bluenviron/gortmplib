@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/abema/go-mp4 v1.7.4
-	github.com/bluenviron/mediacommon/v2 v2.9.7
+	github.com/bluenviron/mediacommon/v2 v2.10.0
 	github.com/google/uuid v1.6.0
 	github.com/stretchr/testify v1.12.1
 )
