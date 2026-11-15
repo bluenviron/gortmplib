@@ -1,6 +1,7 @@
 package gortmplib
 
 import (
+	"encoding/binary"
 	"fmt"
 	"strconv"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/mpeg1audio"
 	"github.com/bluenviron/mediacommon/v2/pkg/codecs/vp9"
 
+	"github.com/bluenviron/gortmplib/internal/bufpool"
 	"github.com/bluenviron/gortmplib/pkg/amf0"
 	"github.com/bluenviron/gortmplib/pkg/codecs"
 	"github.com/bluenviron/gortmplib/pkg/message"
@@ -190,6 +192,27 @@ func audioRateIntToRTMP(v int) (message.AudioRate, bool) {
 
 func mpeg1AudioChannels(m mpeg1audio.ChannelMode) bool {
 	return m != mpeg1audio.ChannelModeMono
+}
+
+// marshalAVCC encodes an access unit into the AVCC stream format.
+// It is the same as h264.AVCC(au).Marshal(), but the buffer comes from bufpool
+// and must be given back after Conn.Write() has returned.
+func marshalAVCC(au [][]byte) []byte {
+	size := 0
+	for _, nalu := range au {
+		size += 4 + len(nalu)
+	}
+
+	buf := bufpool.Get(size)
+	pos := 0
+
+	for _, nalu := range au {
+		binary.BigEndian.PutUint32(buf[pos:], uint32(len(nalu)))
+		pos += 4
+		pos += copy(buf[pos:], nalu)
+	}
+
+	return buf
 }
 
 // Writer provides functions to write outgoing data.
@@ -680,10 +703,8 @@ func (w *Writer) WriteVP9(track *Track, pts time.Duration, frame []byte) error {
 
 // WriteH265 writes a H265 access unit.
 func (w *Writer) WriteH265(track *Track, pts time.Duration, dts time.Duration, au [][]byte) error {
-	avcc, err := h264.AVCC(au).Marshal()
-	if err != nil {
-		return err
-	}
+	avcc := marshalAVCC(au)
+	defer bufpool.Put(avcc)
 
 	frameType := message.VideoFrameTypeInterFrame
 	if h265.IsRandomAccess(au) {
@@ -728,10 +749,8 @@ func (w *Writer) WriteH265(track *Track, pts time.Duration, dts time.Duration, a
 
 // WriteH264 writes a H264 access unit.
 func (w *Writer) WriteH264(track *Track, pts time.Duration, dts time.Duration, au [][]byte) error {
-	avcc, err := h264.AVCC(au).Marshal()
-	if err != nil {
-		return err
-	}
+	avcc := marshalAVCC(au)
+	defer bufpool.Put(avcc)
 
 	frameType := message.VideoFrameTypeInterFrame
 	if h264.IsRandomAccess(au) {
