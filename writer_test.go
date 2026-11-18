@@ -1111,3 +1111,36 @@ func TestWriterH265ConfigFFmpeg(t *testing.T) {
 		})
 	}
 }
+
+// every goroutine has its own Writer, like in a stream that is sent to many destinations.
+func BenchmarkWriterH264(b *testing.B) {
+	au := [][]byte{append([]byte{byte(h264.NALUTypeNonIDR)}, make([]byte, 30000)...)}
+
+	b.RunParallel(func(pb *testing.PB) {
+		c := &dummyConn{rw: &readWriter{Reader: &bytes.Buffer{}, Writer: io.Discard}}
+		c.initialize()
+
+		err := c.Write(&message.SetChunkSize{Value: 65536})
+		if err != nil {
+			b.Error(err)
+			return
+		}
+
+		w := &gortmplib.Writer{Conn: c, Tracks: []*gortmplib.Track{{Codec: testCodecH264}}}
+		err = w.Initialize()
+		if err != nil {
+			b.Error(err)
+			return
+		}
+
+		for i := 0; pb.Next(); i++ {
+			dts := time.Duration(i) * 33 * time.Millisecond
+
+			err = w.WriteH264(w.Tracks[0], dts, dts, au)
+			if err != nil {
+				b.Error(err)
+				return
+			}
+		}
+	})
+}
