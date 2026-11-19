@@ -40,8 +40,7 @@ func (c *Chunk3) Read(r io.Reader, bodyLen uint32, hasExtendedTimestamp bool) er
 		c.ExtendedTimestamp = uint32(header[0])<<24 | uint32(header[1])<<16 | uint32(header[2])<<8 | uint32(header[3])
 	}
 
-	c.Body = make([]byte, bodyLen)
-	_, err = io.ReadFull(r, c.Body)
+	c.Body, err = readBody(r, bodyLen)
 	return err
 }
 
