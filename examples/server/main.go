@@ -4,8 +4,8 @@ package main
 import (
 	"fmt"
 	"log"
+	"maps"
 	"net"
-	"slices"
 	"sync"
 	"time"
 
@@ -18,15 +18,32 @@ import (
 // 2. accept a stream from a publisher.
 // 3. broadcast the stream to players.
 
-var (
+const (
+	readTimeout  = 10 * time.Second
+	writeTimeout = 10 * time.Second
+)
+
+type player struct {
+	conn   net.Conn
+	writer *gortmplib.Writer
+}
+
+type server struct {
 	mutex     sync.Mutex
 	publisher *gortmplib.ServerConn
 	tracks    []*gortmplib.Track
-	players   []*gortmplib.Writer
-)
+	players   map[*player]struct{}
+}
 
-func handlePublisher(sc *gortmplib.ServerConn) error {
-	sc.RW.(net.Conn).SetReadDeadline(time.Now().Add(10 * time.Second))
+func (s *server) snapshotPlayers() map[*player]struct{} {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	return maps.Clone(s.players)
+}
+
+func (s *server) handlePublisher(conn net.Conn, sc *gortmplib.ServerConn) error {
+	conn.SetReadDeadline(time.Now().Add(readTimeout))
+	conn.SetWriteDeadline(time.Now().Add(writeTimeout))
 
 	r := &gortmplib.Reader{
 		Conn: sc,
@@ -36,32 +53,33 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 		return err
 	}
 
-	mutex.Lock()
+	s.mutex.Lock()
 
-	if publisher != nil {
-		mutex.Unlock()
+	if s.publisher != nil {
+		s.mutex.Unlock()
 		return fmt.Errorf("someone is already publishing")
 	}
 
-	publisher = sc
-	tracks = r.Tracks()
+	s.publisher = sc
+	s.tracks = r.Tracks()
+	s.players = make(map[*player]struct{})
 
-	mutex.Unlock()
+	s.mutex.Unlock()
 
 	defer func() {
-		mutex.Lock()
-		defer mutex.Unlock()
+		s.mutex.Lock()
+		s.publisher = nil
+		s.tracks = nil
+		oldPlayers := s.players
+		s.players = nil
+		s.mutex.Unlock()
 
-		if publisher == sc {
-			publisher = nil
-
-			for _, player := range players {
-				player.Conn.(*gortmplib.ServerConn).RW.(net.Conn).Close()
-			}
+		for player := range oldPlayers {
+			player.conn.Close()
 		}
 	}()
 
-	log.Printf("conn %v is publishing:", sc.RW.(net.Conn).RemoteAddr())
+	log.Printf("conn %v is publishing:", conn.RemoteAddr())
 
 	for _, track := range r.Tracks() {
 		log.Printf("%T", track)
@@ -69,118 +87,132 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 		switch track.Codec.(type) {
 		case *codecs.AV1:
 			r.OnDataAV1(track, func(pts time.Duration, tu [][]byte) {
-				mutex.Lock()
-				defer mutex.Unlock()
-
-				for _, player := range players {
-					player.WriteAV1(track, pts, tu) //nolint:errcheck
+				for player := range s.snapshotPlayers() {
+					player.conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+					if err2 := player.writer.WriteAV1(track, pts, tu); err2 != nil {
+						log.Printf("conn %v write failed: %v", player.conn.RemoteAddr(), err2)
+						player.conn.Close()
+					}
 				}
 			})
 
 		case *codecs.VP9:
 			r.OnDataVP9(track, func(pts time.Duration, frame []byte) {
-				mutex.Lock()
-				defer mutex.Unlock()
-
-				for _, player := range players {
-					player.WriteVP9(track, pts, frame) //nolint:errcheck
+				for player := range s.snapshotPlayers() {
+					player.conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+					if err2 := player.writer.WriteVP9(track, pts, frame); err2 != nil {
+						log.Printf("conn %v write failed: %v", player.conn.RemoteAddr(), err2)
+						player.conn.Close()
+					}
 				}
 			})
 
 		case *codecs.H265:
 			r.OnDataH265(track, func(pts time.Duration, dts time.Duration, au [][]byte) {
-				mutex.Lock()
-				defer mutex.Unlock()
-
-				for _, player := range players {
-					player.WriteH265(track, pts, dts, au) //nolint:errcheck
+				for player := range s.snapshotPlayers() {
+					player.conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+					if err2 := player.writer.WriteH265(track, pts, dts, au); err2 != nil {
+						log.Printf("conn %v write failed: %v", player.conn.RemoteAddr(), err2)
+						player.conn.Close()
+					}
 				}
 			})
 
 		case *codecs.H264:
 			r.OnDataH264(track, func(pts time.Duration, dts time.Duration, au [][]byte) {
-				mutex.Lock()
-				defer mutex.Unlock()
-
-				for _, player := range players {
-					player.WriteH264(track, pts, dts, au) //nolint:errcheck
+				for player := range s.snapshotPlayers() {
+					player.conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+					if err2 := player.writer.WriteH264(track, pts, dts, au); err2 != nil {
+						log.Printf("conn %v write failed: %v", player.conn.RemoteAddr(), err2)
+						player.conn.Close()
+					}
 				}
 			})
 
 		case *codecs.Opus:
 			r.OnDataOpus(track, func(pts time.Duration, packet []byte) {
-				mutex.Lock()
-				defer mutex.Unlock()
-
-				for _, player := range players {
-					player.WriteOpus(track, pts, packet) //nolint:errcheck
+				for player := range s.snapshotPlayers() {
+					player.conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+					if err2 := player.writer.WriteOpus(track, pts, packet); err2 != nil {
+						log.Printf("conn %v write failed: %v", player.conn.RemoteAddr(), err2)
+						player.conn.Close()
+					}
 				}
 			})
 
 		case *codecs.FLAC:
 			r.OnDataFLAC(track, func(pts time.Duration, frame []byte) {
-				mutex.Lock()
-				defer mutex.Unlock()
-
-				for _, player := range players {
-					player.WriteFLAC(track, pts, frame) //nolint:errcheck
+				for player := range s.snapshotPlayers() {
+					player.conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+					if err2 := player.writer.WriteFLAC(track, pts, frame); err2 != nil {
+						log.Printf("conn %v write failed: %v", player.conn.RemoteAddr(), err2)
+						player.conn.Close()
+					}
 				}
 			})
 
 		case *codecs.MPEG4Audio:
 			r.OnDataMPEG4Audio(track, func(pts time.Duration, au []byte) {
-				mutex.Lock()
-				defer mutex.Unlock()
-
-				for _, player := range players {
-					player.WriteMPEG4Audio(track, pts, au) //nolint:errcheck
+				for player := range s.snapshotPlayers() {
+					player.conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+					if err2 := player.writer.WriteMPEG4Audio(track, pts, au); err2 != nil {
+						log.Printf("conn %v write failed: %v", player.conn.RemoteAddr(), err2)
+						player.conn.Close()
+					}
 				}
 			})
 
 		case *codecs.MPEG1Audio:
 			r.OnDataMPEG1Audio(track, func(pts time.Duration, frame []byte) {
-				mutex.Lock()
-				defer mutex.Unlock()
-
-				for _, player := range players {
-					player.WriteMPEG1Audio(track, pts, frame) //nolint:errcheck
+				for player := range s.snapshotPlayers() {
+					player.conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+					if err2 := player.writer.WriteMPEG1Audio(track, pts, frame); err2 != nil {
+						log.Printf("conn %v write failed: %v", player.conn.RemoteAddr(), err2)
+						player.conn.Close()
+					}
 				}
 			})
 
 		case *codecs.AC3:
 			r.OnDataAC3(track, func(pts time.Duration, frame []byte) {
-				mutex.Lock()
-				defer mutex.Unlock()
-
-				for _, player := range players {
-					player.WriteAC3(track, pts, frame) //nolint:errcheck
+				for player := range s.snapshotPlayers() {
+					player.conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+					if err2 := player.writer.WriteAC3(track, pts, frame); err2 != nil {
+						log.Printf("conn %v write failed: %v", player.conn.RemoteAddr(), err2)
+						player.conn.Close()
+					}
 				}
 			})
 
 		case *codecs.G711:
 			r.OnDataG711(track, func(pts time.Duration, samples []byte) {
-				mutex.Lock()
-				defer mutex.Unlock()
-
-				for _, player := range players {
-					player.WriteG711(track, pts, samples) //nolint:errcheck
+				for player := range s.snapshotPlayers() {
+					player.conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+					if err2 := player.writer.WriteG711(track, pts, samples); err2 != nil {
+						log.Printf("conn %v write failed: %v", player.conn.RemoteAddr(), err2)
+						player.conn.Close()
+					}
 				}
 			})
 
 		case *codecs.LPCM:
 			r.OnDataLPCM(track, func(pts time.Duration, samples []byte) {
-				mutex.Lock()
-				defer mutex.Unlock()
-
-				for _, player := range players {
-					player.WriteLPCM(track, pts, samples) //nolint:errcheck
+				for player := range s.snapshotPlayers() {
+					player.conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+					if err2 := player.writer.WriteLPCM(track, pts, samples); err2 != nil {
+						log.Printf("conn %v write failed: %v", player.conn.RemoteAddr(), err2)
+						player.conn.Close()
+					}
 				}
 			})
 		}
 	}
 
 	for {
-		sc.RW.(net.Conn).SetReadDeadline(time.Now().Add(10 * time.Second))
+		// Read() can both read and write (acknowledgements and ping replies).
+		conn.SetReadDeadline(time.Now().Add(readTimeout))
+		conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+
 		err = r.Read()
 		if err != nil {
 			return err
@@ -188,73 +220,79 @@ func handlePublisher(sc *gortmplib.ServerConn) error {
 	}
 }
 
-func handlePlayer(sc *gortmplib.ServerConn) error {
-	mutex.Lock()
+func (s *server) handlePlayer(conn net.Conn, sc *gortmplib.ServerConn) error {
+	s.mutex.Lock()
+	currentPublisher, currentTracks := s.publisher, s.tracks
+	s.mutex.Unlock()
 
-	if publisher == nil {
-		mutex.Unlock()
+	if currentPublisher == nil {
 		return fmt.Errorf("wants to read but there is no publisher")
 	}
 
-	sc.RW.(net.Conn).SetReadDeadline(time.Now().Add(10 * time.Second))
-
-	w := &gortmplib.Writer{
-		Conn:   sc,
-		Tracks: tracks,
+	p := &player{
+		conn: conn,
+		writer: &gortmplib.Writer{
+			Conn:   sc,
+			Tracks: currentTracks,
+		},
 	}
-	err := w.Initialize()
+
+	conn.SetReadDeadline(time.Time{})
+	conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+	err := p.writer.Initialize()
 	if err != nil {
 		return err
 	}
 
-	players = append(players, w)
+	s.mutex.Lock()
+	if s.publisher != currentPublisher {
+		s.mutex.Unlock()
+		return fmt.Errorf("publisher changed while initializing player")
+	}
+	s.players[p] = struct{}{}
+	s.mutex.Unlock()
 
-	mutex.Unlock()
-
-	log.Printf("conn %v is reading", sc.RW.(net.Conn).RemoteAddr())
+	log.Printf("conn %v is reading", conn.RemoteAddr())
 
 	defer func() {
-		mutex.Lock()
-		defer mutex.Unlock()
+		s.mutex.Lock()
+		defer s.mutex.Unlock()
 
-		players = slices.DeleteFunc(players, func(el *gortmplib.Writer) bool {
-			return (el == w)
-		})
+		delete(s.players, p)
 	}()
 
-	sc.RW.(net.Conn).SetReadDeadline(time.Time{})
-
-	return w.Wait()
+	return p.writer.Wait()
 }
 
-func handleConnInner(conn net.Conn) error {
+func (s *server) handleConn(conn net.Conn) {
+	log.Printf("conn %v opened", conn.RemoteAddr())
+	err := s.handleConnInner(conn)
+	log.Printf("conn %v closed: %v", conn.RemoteAddr(), err)
+}
+
+func (s *server) handleConnInner(conn net.Conn) error {
 	defer conn.Close()
 
-	conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	sc := &gortmplib.ServerConn{RW: conn}
 
-	sc := &gortmplib.ServerConn{
-		RW: conn,
-	}
+	conn.SetReadDeadline(time.Now().Add(readTimeout))
+	conn.SetWriteDeadline(time.Now().Add(writeTimeout))
 	err := sc.Initialize()
 	if err != nil {
 		return err
 	}
 
+	conn.SetReadDeadline(time.Now().Add(readTimeout))
+	conn.SetWriteDeadline(time.Now().Add(writeTimeout))
 	err = sc.AcceptConn()
 	if err != nil {
 		return err
 	}
 
 	if sc.Publish {
-		return handlePublisher(sc)
+		return s.handlePublisher(conn, sc)
 	}
-	return handlePlayer(sc)
-}
-
-func handleConn(conn net.Conn) {
-	log.Printf("conn %v opened", conn.RemoteAddr())
-	err := handleConnInner(conn)
-	log.Printf("conn %v closed: %v", conn.RemoteAddr(), err)
+	return s.handlePlayer(conn, sc)
 }
 
 func main() {
@@ -266,6 +304,8 @@ func main() {
 
 	log.Printf("listening on :1935")
 
+	s := &server{}
+
 	for {
 		var conn net.Conn
 		conn, err = ln.Accept()
@@ -273,6 +313,6 @@ func main() {
 			panic(err)
 		}
 
-		go handleConn(conn)
+		go s.handleConn(conn)
 	}
 }
