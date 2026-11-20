@@ -2,7 +2,11 @@ package chunk_test
 
 import (
 	"bytes"
+	"errors"
+	"io"
+	"os"
 	"reflect"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -235,4 +239,187 @@ func FuzzChunk3Read(f *testing.F) {
 		_, err = chunk.Marshal(false)
 		require.NoError(t, err)
 	})
+}
+
+// readKind describes how to build a chunk of a given type and its encoded header.
+// bodyLen is the body length declared by the header (Chunk0, Chunk1)
+// and also the value passed to Read (all types).
+type readKind struct {
+	name     string
+	newChunk func() chunk.Chunk
+	header   func(bodyLen uint32) []byte
+}
+
+func marshalHeader(c chunk.Chunk) []byte {
+	buf := make([]byte, 16)
+	return buf[:c.MarshalHeaderTo(buf, false)]
+}
+
+var readKinds = []readKind{
+	{
+		"Chunk0",
+		func() chunk.Chunk { return &chunk.Chunk0{} },
+		func(bodyLen uint32) []byte {
+			return marshalHeader(&chunk.Chunk0{
+				ChunkStreamID:   5,
+				Timestamp:       100,
+				BodyLen:         bodyLen,
+				Type:            20,
+				MessageStreamID: 1,
+			})
+		},
+	},
+	{
+		"Chunk1",
+		func() chunk.Chunk { return &chunk.Chunk1{} },
+		func(bodyLen uint32) []byte {
+			return marshalHeader(&chunk.Chunk1{
+				ChunkStreamID:  5,
+				TimestampDelta: 100,
+				BodyLen:        bodyLen,
+				Type:           20,
+			})
+		},
+	},
+	{
+		"Chunk2",
+		func() chunk.Chunk { return &chunk.Chunk2{} },
+		func(uint32) []byte {
+			return marshalHeader(&chunk.Chunk2{ChunkStreamID: 5, TimestampDelta: 100})
+		},
+	},
+	{
+		"Chunk3",
+		func() chunk.Chunk { return &chunk.Chunk3{} },
+		func(uint32) []byte {
+			return marshalHeader(&chunk.Chunk3{ChunkStreamID: 5})
+		},
+	},
+}
+
+// dataThenErrReader returns its data and then err (io.EOF if nil), sticky.
+// err is returned together with the last bytes, like some readers do.
+type dataThenErrReader struct {
+	data []byte
+	err  error
+}
+
+func (r *dataThenErrReader) Read(p []byte) (int, error) {
+	n := copy(p, r.data)
+	r.data = r.data[n:]
+
+	if len(r.data) != 0 {
+		return n, nil
+	}
+
+	if r.err == nil {
+		return n, io.EOF
+	}
+	return n, r.err
+}
+
+func declaredBodyLen(c chunk.Chunk) uint32 {
+	switch ch := c.(type) {
+	case *chunk.Chunk0:
+		return ch.BodyLen
+	case *chunk.Chunk1:
+		return ch.BodyLen
+	}
+	return 0
+}
+
+// A header declaring a huge body must not make Read allocate it
+// when the payload is missing or tiny.
+// This test must not run in parallel since it measures global allocations.
+func TestChunkReadHeaderOnlyAllocation(t *testing.T) {
+	const declared = 10 * 1024 * 1024
+	const maxAlloc = 1024 * 1024
+
+	for _, kind := range readKinds {
+		for _, pl := range []struct {
+			name    string
+			payload []byte
+			wantErr error
+		}{
+			{"no payload", nil, io.EOF},
+			{"tiny payload", bytes.Repeat([]byte{0x42}, 16), io.ErrUnexpectedEOF},
+		} {
+			t.Run(kind.name+" "+pl.name, func(t *testing.T) {
+				r := bytes.NewReader(append(kind.header(declared), pl.payload...))
+				ch := kind.newChunk()
+
+				var before, after runtime.MemStats
+				runtime.GC()
+				runtime.ReadMemStats(&before)
+				err := ch.Read(r, declared, false)
+				runtime.ReadMemStats(&after)
+
+				require.Less(t, after.TotalAlloc-before.TotalAlloc, uint64(maxAlloc))
+				require.ErrorIs(t, err, pl.wantErr)
+				require.True(t, bytes.Equal(pl.payload, ch.GetBody()), "body = %x, want %x", ch.GetBody(), pl.payload)
+			})
+		}
+	}
+}
+
+func TestChunkReadBodyFraming(t *testing.T) {
+	errSentinel := errors.New("sentinel")
+	body := []byte{1, 2, 3, 4}
+	next := []byte{0xAA, 0xBB, 0xCC}
+
+	for _, bc := range []struct {
+		name     string
+		bodyLen  uint32
+		payload  []byte // bytes after the header
+		srcErr   error  // returned by the source after the payload
+		wantErr  error
+		wantBody []byte
+		wantNext []byte // bytes that must be left unread
+	}{
+		{"complete body, next header untouched", 4, append(bytes.Clone(body), next...), nil, nil, body, next},
+		{"zero length", 0, next, nil, nil, nil, next},
+		{"partial body then EOF", 4, body[:2], nil, io.ErrUnexpectedEOF, body[:2], nil},
+		{"no data then EOF", 4, nil, nil, io.EOF, nil, nil},
+		{"partial body then sentinel", 4, body[:2], errSentinel, errSentinel, body[:2], nil},
+		{"partial body then timeout", 4, body[:2], os.ErrDeadlineExceeded, os.ErrDeadlineExceeded, body[:2], nil},
+		{"error on empty payload", 4, nil, errSentinel, errSentinel, nil, nil},
+		{"final data with EOF", 4, body, io.EOF, nil, body, nil},
+		{"final data with sentinel", 4, body, errSentinel, nil, body, nil},
+	} {
+		for _, kind := range readKinds {
+			t.Run(kind.name+" "+bc.name, func(t *testing.T) {
+				r := &dataThenErrReader{
+					data: append(kind.header(bc.bodyLen), bc.payload...),
+					err:  bc.srcErr,
+				}
+				ch := kind.newChunk()
+
+				err := ch.Read(r, bc.bodyLen, false)
+				require.ErrorIs(t, err, bc.wantErr)
+				require.True(t, bytes.Equal(bc.wantBody, ch.GetBody()), "body = %x, want %x", ch.GetBody(), bc.wantBody)
+				require.True(t, bytes.Equal(bc.wantNext, r.data), "unread = %x, want %x", r.data, bc.wantNext)
+			})
+		}
+	}
+}
+
+func TestChunkReadBodyLenClamp(t *testing.T) {
+	const declared = 1024 * 1024
+	const maxBodyLen = 64 * 1024
+
+	body := bytes.Repeat([]byte{0x42}, maxBodyLen)
+	next := []byte{0xAA, 0xBB, 0xCC}
+
+	for _, kind := range readKinds[:2] {
+		t.Run(kind.name, func(t *testing.T) {
+			r := &dataThenErrReader{data: append(append(kind.header(declared), body...), next...)}
+			ch := kind.newChunk()
+
+			err := ch.Read(r, maxBodyLen, false)
+			require.NoError(t, err)
+			require.Equal(t, uint32(declared), declaredBodyLen(ch))
+			require.Equal(t, body, ch.GetBody())
+			require.Equal(t, next, r.data)
+		})
+	}
 }
