@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/bluenviron/gortmplib/internal/bufpool"
 	"github.com/bluenviron/gortmplib/pkg/rawmessage"
 )
 
@@ -48,7 +49,7 @@ func (m VideoExFramesX) marshalBodySize() int {
 }
 
 func (m VideoExFramesX) marshal() (*rawmessage.Message, error) {
-	body := make([]byte, m.marshalBodySize())
+	body := bufpool.Get(m.marshalBodySize())
 
 	// support frameType = 0 for backward compatibility
 	frameType := m.FrameType

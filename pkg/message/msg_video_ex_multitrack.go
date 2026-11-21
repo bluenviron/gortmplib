@@ -3,6 +3,7 @@ package message //nolint:dupl
 import (
 	"fmt"
 
+	"github.com/bluenviron/gortmplib/internal/bufpool"
 	"github.com/bluenviron/gortmplib/pkg/rawmessage"
 )
 
@@ -78,7 +79,7 @@ func (m VideoExMultitrack) marshal() (*rawmessage.Message, error) {
 		return nil, err
 	}
 
-	body := make([]byte, 7+len(wrappedEnc.Body)-5)
+	body := bufpool.Get(7 + len(wrappedEnc.Body) - 5)
 
 	// keep isExVideoHeader and frame type, replace packet type
 	body[0] = wrappedEnc.Body[0]&0b11110000 | byte(VideoExTypeMultitrack)
@@ -86,6 +87,7 @@ func (m VideoExMultitrack) marshal() (*rawmessage.Message, error) {
 	copy(body[2:], wrappedEnc.Body[1:])
 	body[6] = m.TrackID
 	copy(body[7:], wrappedEnc.Body[5:])
+	bufpool.Put(wrappedEnc.Body)
 
 	return &rawmessage.Message{
 		ChunkStreamID:   wrappedEnc.ChunkStreamID,

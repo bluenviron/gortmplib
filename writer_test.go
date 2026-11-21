@@ -1111,3 +1111,105 @@ func TestWriterH265ConfigFFmpeg(t *testing.T) {
 		})
 	}
 }
+
+// The access units are encoded in buffers that are recycled.
+// Access units of different sizes written one after the other must not leak anything of each other.
+func TestWriterReusedAVCC(t *testing.T) {
+	sizes := []int{3000, 10, 5000, 200, 3000, 10}
+	aus := make([][][]byte, 0, len(sizes))
+	for i, size := range sizes {
+		// the second NALU is longer than the first.
+		aus = append(aus, [][]byte{
+			append([]byte{byte(h264.NALUTypeNonIDR)}, bytes.Repeat([]byte{byte(i + 1)}, size)...),
+			append([]byte{byte(h264.NALUTypeNonIDR)}, bytes.Repeat([]byte{byte(0x80 + i)}, size+1)...),
+		})
+	}
+
+	for _, ca := range []struct {
+		name   string
+		tracks []*gortmplib.Track
+		write  func(w *gortmplib.Writer, track *gortmplib.Track, au [][]byte, pts time.Duration) error
+	}{
+		{
+			"h264",
+			[]*gortmplib.Track{{Codec: testCodecH264}},
+			func(w *gortmplib.Writer, track *gortmplib.Track, au [][]byte, pts time.Duration) error {
+				return w.WriteH264(track, pts, 0, au)
+			},
+		},
+		{
+			"h264 multitrack",
+			[]*gortmplib.Track{{Codec: testCodecH264}, {Codec: testCodecH264}},
+			func(w *gortmplib.Writer, track *gortmplib.Track, au [][]byte, pts time.Duration) error {
+				return w.WriteH264(track, pts, 0, au)
+			},
+		},
+		{
+			"h265",
+			[]*gortmplib.Track{{Codec: testCodecH265}},
+			func(w *gortmplib.Writer, track *gortmplib.Track, au [][]byte, pts time.Duration) error {
+				return w.WriteH265(track, pts, 0, au)
+			},
+		},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			// the last track is the one that uses multitrack messages, if there is more than one.
+			track := ca.tracks[len(ca.tracks)-1]
+
+			// with and without a PTS offset, that selects the type of message of multitrack tracks.
+			for _, pts := range []time.Duration{0, 33 * time.Millisecond} {
+				bodies := writeAndReadVideo(t, ca.tracks, func(w *gortmplib.Writer) error {
+					for _, au := range aus {
+						err := ca.write(w, track, au, pts)
+						if err != nil {
+							return err
+						}
+					}
+					return nil
+				})
+
+				require.GreaterOrEqual(t, len(bodies), len(aus))
+				bodies = bodies[len(bodies)-len(aus):]
+
+				for i, au := range aus {
+					avcc, err := h264.AVCC(au).Marshal()
+					require.NoError(t, err)
+					require.True(t, bytes.HasSuffix(bodies[i], avcc), "access unit %d", i)
+				}
+			}
+		})
+	}
+}
+
+// every goroutine has its own Writer, like in a stream that is sent to many destinations.
+func BenchmarkWriterH264(b *testing.B) {
+	au := [][]byte{append([]byte{byte(h264.NALUTypeNonIDR)}, make([]byte, 30000)...)}
+
+	b.RunParallel(func(pb *testing.PB) {
+		c := &dummyConn{rw: &readWriter{Reader: &bytes.Buffer{}, Writer: io.Discard}}
+		c.initialize()
+
+		err := c.Write(&message.SetChunkSize{Value: 65536})
+		if err != nil {
+			b.Error(err)
+			return
+		}
+
+		w := &gortmplib.Writer{Conn: c, Tracks: []*gortmplib.Track{{Codec: testCodecH264}}}
+		err = w.Initialize()
+		if err != nil {
+			b.Error(err)
+			return
+		}
+
+		for i := 0; pb.Next(); i++ {
+			dts := time.Duration(i) * 33 * time.Millisecond
+
+			err = w.WriteH264(w.Tracks[0], dts, dts, au)
+			if err != nil {
+				b.Error(err)
+				return
+			}
+		}
+	})
+}

@@ -4,6 +4,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/bluenviron/gortmplib/internal/bufpool"
 	"github.com/bluenviron/gortmplib/pkg/bytecounter"
 	"github.com/bluenviron/gortmplib/pkg/rawmessage"
 )
@@ -61,6 +62,9 @@ func (w *Writer) Write(msg Message) error {
 	if err != nil {
 		return err
 	}
+
+	// the body is not referenced anymore once rmw.Write has returned.
+	defer bufpool.Put(raw.Body)
 
 	err = w.rmw.Write(raw)
 	if err != nil {
