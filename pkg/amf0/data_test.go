@@ -338,6 +338,45 @@ func TestUnmarshal(t *testing.T) {
 	}
 }
 
+func TestUnmarshalNestingDepth(t *testing.T) {
+	const maxDepth = 64
+
+	object := func(value any) any { return amf0.Object{{Key: "value", Value: value}} }
+	ecmaArray := func(value any) any { return amf0.ECMAArray{{Key: "value", Value: value}} }
+	strictArray := func(value any) any { return amf0.StrictArray{value} }
+
+	for _, ca := range []struct {
+		name  string
+		wraps []func(any) any
+	}{
+		{"object", []func(any) any{object}},
+		{"ECMA array", []func(any) any{ecmaArray}},
+		{"strict array", []func(any) any{strictArray}},
+		{"mixed", []func(any) any{object, ecmaArray, strictArray}},
+	} {
+		t.Run(ca.name, func(t *testing.T) {
+			var value any = "leaf"
+			for i := range maxDepth {
+				value = ca.wraps[i%len(ca.wraps)](value)
+			}
+
+			data := amf0.Data{value, value}
+			enc, err := data.Marshal()
+			require.NoError(t, err)
+			dec, err := amf0.Unmarshal(enc)
+			require.NoError(t, err)
+			require.Equal(t, data, dec)
+
+			data[1] = ca.wraps[maxDepth%len(ca.wraps)](value)
+			enc, err = data.Marshal()
+			require.NoError(t, err)
+			dec, err = amf0.Unmarshal(enc)
+			require.EqualError(t, err, "maximum AMF0 nesting depth exceeded")
+			require.Nil(t, dec)
+		})
+	}
+}
+
 func TestMarshal(t *testing.T) {
 	for _, ca := range cases {
 		t.Run(ca.name, func(t *testing.T) {
