@@ -27,7 +27,12 @@ const (
 	markerTypedObject = 0x10
 )
 
-var errBufferTooShort = errors.New("buffer is too short")
+const maxNestingDepth = 64
+
+var (
+	errBufferTooShort = errors.New("buffer is too short")
+	errNestingTooDeep = errors.New("maximum AMF0 nesting depth exceeded")
+)
 
 // Data is a list of ActionScript object graphs.
 // These can be:
@@ -48,7 +53,7 @@ func Unmarshal(buf []byte) (Data, error) {
 	for len(buf) != 0 {
 		var item any
 		var err error
-		item, buf, err = unmarshal(buf)
+		item, buf, err = unmarshal(buf, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -59,7 +64,7 @@ func Unmarshal(buf []byte) (Data, error) {
 	return out, nil
 }
 
-func unmarshal(buf []byte) (any, []byte, error) {
+func unmarshal(buf []byte, depth int) (any, []byte, error) {
 	if len(buf) < 1 {
 		return nil, nil, errBufferTooShort
 	}
@@ -98,6 +103,10 @@ func unmarshal(buf []byte) (any, []byte, error) {
 		return string(buf[:le]), buf[le:], nil
 
 	case markerECMAArray:
+		if depth >= maxNestingDepth {
+			return nil, nil, errNestingTooDeep
+		}
+
 		if len(buf) < 4 {
 			return nil, nil, errBufferTooShort
 		}
@@ -127,7 +136,7 @@ func unmarshal(buf []byte) (any, []byte, error) {
 
 			var value any
 			var err error
-			value, buf, err = unmarshal(buf)
+			value, buf, err = unmarshal(buf, depth+1)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -149,6 +158,10 @@ func unmarshal(buf []byte) (any, []byte, error) {
 		return out, buf[1:], nil
 
 	case markerObject:
+		if depth >= maxNestingDepth {
+			return nil, nil, errNestingTooDeep
+		}
+
 		out := Object{}
 
 		for {
@@ -172,7 +185,7 @@ func unmarshal(buf []byte) (any, []byte, error) {
 
 			var value any
 			var err error
-			value, buf, err = unmarshal(buf)
+			value, buf, err = unmarshal(buf, depth+1)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -200,6 +213,10 @@ func unmarshal(buf []byte) (any, []byte, error) {
 		return Undefined{}, buf, nil
 
 	case markerStrictArray:
+		if depth >= maxNestingDepth {
+			return nil, nil, errNestingTooDeep
+		}
+
 		if len(buf) < 4 {
 			return nil, nil, errBufferTooShort
 		}
@@ -212,7 +229,7 @@ func unmarshal(buf []byte) (any, []byte, error) {
 		for i := 0; i < int(arrayCount); i++ {
 			var value any
 			var err error
-			value, buf, err = unmarshal(buf)
+			value, buf, err = unmarshal(buf, depth+1)
 			if err != nil {
 				return nil, nil, err
 			}
