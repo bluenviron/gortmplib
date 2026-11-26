@@ -39,8 +39,7 @@ func (c *Chunk2) Read(r io.Reader, bodyLen uint32, _ bool) error {
 		c.TimestampDelta = uint32(header[0])<<24 | uint32(header[1])<<16 | uint32(header[2])<<8 | uint32(header[3])
 	}
 
-	c.Body = make([]byte, bodyLen)
-	_, err = io.ReadFull(r, c.Body)
+	c.Body, err = readBody(r, bodyLen)
 	return err
 }
 
